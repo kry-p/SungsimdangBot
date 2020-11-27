@@ -1,2 +1,2 @@
 # Telegram bot token
-BOT_TOKEN = 'your api key'
+BOT_TOKEN = 'your bot key'

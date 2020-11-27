@@ -1,21 +1,11 @@
 import telepot
-import bot_settings
-import strings
+import bot_settings, strings, bot_functions
 from telepot.loop import MessageLoop
 from time import sleep
 
 
-class BotFunctions:
-    def __init__(self):
-        pass
-
-    def get_temp(self):
-        return '현재 한강 수온은 11.4도 입니다.'
-
-
 def main_handler(msg):
     msg_type, chat_type, chat_id, msg_data, msg_id = telepot.glance(msg, long=True)
-    print(msg)
 
     if msg_type == 'text':
         if msg['text'] == '/' + 'ping':
@@ -29,7 +19,7 @@ def main_handler(msg):
 
 
 sungsimdangBot = telepot.Bot(bot_settings.BOT_TOKEN)
-botFunctions = BotFunctions()
+botFunctions = bot_functions.BotFunctions()
 MessageLoop(sungsimdangBot, main_handler).run_as_thread()
 
 while True:
