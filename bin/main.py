@@ -3,7 +3,7 @@ import bot_settings, strings, bot_functions
 from telepot.loop import MessageLoop
 from time import sleep
 
-
+# Message handler
 def main_handler(msg):
     msg_type, chat_type, chat_id, msg_data, msg_id = telepot.glance(msg, long=True)
 
@@ -17,7 +17,7 @@ def main_handler(msg):
         elif msg['text'] == '미구현':
             sungsimdangBot.sendMessage(chat_id, '아직 구현되지 않았습니다.')
 
-
+# Initialize bot
 sungsimdangBot = telepot.Bot(bot_settings.BOT_TOKEN)
 botFunctions = bot_functions.BotFunctions()
 MessageLoop(sungsimdangBot, main_handler).run_as_thread()
