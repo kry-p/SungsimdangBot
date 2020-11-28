@@ -27,7 +27,7 @@ class BotFunctions:
     def picker(self, msg):
         random.seed()
         split = msg.split()
-        split = [item for item in split if item != '/pick']
+        split = [item for item in split if '/pick' not in item]
 
         try:
             choice = random.choice(split)
