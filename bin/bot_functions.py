@@ -1,3 +1,4 @@
+import random
 from selenium import webdriver
 from bs4 import BeautifulSoup
 
@@ -22,3 +23,16 @@ class BotFunctions:
             return '현재 한강 수온은 ' + hangang_temp + '도입니다.'
         except AttributeError:
             return '현재 한강 수온 정보를 가져올 수 없습니다..'
+
+    def picker(self, msg):
+        random.seed()
+        split = msg.split()
+        split = [item for item in split if item != '/pick']
+
+        try:
+            choice = random.choice(split)
+        except IndexError:
+            return "올바르게 입력되지 않았어요. 다시 확인해 주세요.\n\n" \
+               "예) /pick 튀김소보로 부추빵 모카번"
+
+        return choice

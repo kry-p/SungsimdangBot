@@ -18,6 +18,8 @@ def main_handler(msg):
             sungsimdangBot.sendMessage(chat_id, strings.functionList)
         elif msg['text'] == '한강 수온' or '자살' in msg['text']:
             sungsimdangBot.sendMessage(chat_id, botFunctions.get_temp())
+        elif '/'+'pick' in msg['text']:
+            sungsimdangBot.sendMessage(chat_id, botFunctions.picker(msg['text']))
         elif msg['text'] == '미구현':
             sungsimdangBot.sendMessage(chat_id, '아직 구현되지 않았습니다.')
 
