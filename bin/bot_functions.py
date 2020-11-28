@@ -1,12 +1,28 @@
 import random
+import pickle
 from selenium import webdriver
 from bs4 import BeautifulSoup
 
 TEMPERATURE_URL = 'http://www.koreawqi.go.kr/index_web.jsp'
+USER_INFO = 'userinfo.pickle'
+
+
+class PickleHandler:
+    # init (not in use for now)
+    def __init__(self):
+        pass
+
+    def load_file(self, path, data):
+        with open(path, 'rb') as f:
+            data = pickle.load(f)
+
+    def save_to_file(self, path, data):
+        with open(path, 'wb') as f:
+            pickle.dump(data, f)
 
 
 class BotFunctions:
-    # init (not in use for now)
+    # init
     def __init__(self):
         BotFunctions.driver = webdriver.PhantomJS()
 
