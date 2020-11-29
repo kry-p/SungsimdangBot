@@ -1,29 +1,27 @@
 import random
-import pickle
+import sqlite3
+
 from selenium import webdriver
 from bs4 import BeautifulSoup
 
 TEMPERATURE_URL = 'http://www.koreawqi.go.kr/index_web.jsp'
-USER_INFO = 'userinfo.pickle'
+USER_INFO = './user.db'
+
+userDB = sqlite3.connect(USER_INFO)
+cursor = userDB.cursor()
 
 
-class PickleHandler:
-    # init (not in use for now)
+class UserManager:
+    # init
     def __init__(self):
         pass
 
-    def load_file(self, path, data):
-        with open(path, 'rb') as f:
-            data = pickle.load(f)
-
-    def save_to_file(self, path, data):
-        with open(path, 'wb') as f:
-            pickle.dump(data, f)
 
 
 class BotFunctions:
     # init
     def __init__(self):
+
         BotFunctions.driver = webdriver.PhantomJS()
 
     # Get current river temperature (in progress)
@@ -38,7 +36,7 @@ class BotFunctions:
             hangang_temp = soup.select('tr > td.avg1')[18].text.strip()
             return '현재 한강 수온은 ' + hangang_temp + '도입니다.'
         except AttributeError:
-            return '현재 한강 수온 정보를 가져올 수 없습니다..'
+            return '현재 수온 정보를 가져올 수 없습니다..'
 
     def picker(self, msg):
         random.seed()
