@@ -34,7 +34,7 @@ class MessageProvider:
             message.chat.id, strings.start
         )
 
-    # location-based message if user sent message that includes '수온' or '자살
+    # location-based message if user sent message that includes '수온' or '자살'
     @sungsimdangBot.message_handler(regexp='[.수온.|.자살.]')
     def handle_message(message):
         sungsimdangBot.send_message(
