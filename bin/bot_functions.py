@@ -25,7 +25,8 @@ class BotFunctions:
         BotFunctions.driver = webdriver.PhantomJS()
 
     # Get current river temperature (in progress)
-    def get_temp(self):
+    def get_temp(self, user_id):
+        print(user_id)
         BotFunctions.driver.get(TEMPERATURE_URL)
         BotFunctions.driver.switch_to.frame('MainFrame')
 
