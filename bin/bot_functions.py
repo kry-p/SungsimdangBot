@@ -35,8 +35,9 @@ class RiverTempManager:
 class BotFunctions:
     # init
     def __init__(self):
-
+        self.fwordcount = 0
         BotFunctions.driver = webdriver.PhantomJS()
+        self.startFtime = 0
 
     # Get current river temperature (in progress)
     def get_temp(self, user_id):
@@ -74,6 +75,20 @@ class BotFunctions:
         init_rand = random.randrange(0, 3)
         return resources.magicConchSentence[init_rand][random.randrange(0, len(resources.magicConchSentence[init_rand]))]
 
+    def RussRoulette(self):
+        pass
+
+    def fwordCTup(self):
+        if not self.startFtime:
+            self.startFtime = time.time()
+        self.fwordcount += 1
+
+        if ((time.time() - self.startFtime) <= 600) and self.fwordcount >= 10:
+            return '진정좀 하라구 욕이 너무 많아'
+        elif ((time.time() - self.startFtime) >= 600) and self.fwordcount <= 10:
+            self.startFtime = 0
+            self.fwordcount = 0
+
     def ordinary_message(self, bot, chat_id, message, message_text):
 
         # location-based message if user sent message that includes '수온' or '자살'
@@ -86,21 +101,7 @@ class BotFunctions:
             bot.reply_to(message, BotFunctions.magic_conch(self))
             #bot.send_message(chat_id, BotFunctions.magic_conch(self))
 
-
-
-# class FWordChecker:
-#    def __init__(self):
-#        p1 = Process(FwordCount, args=, daemon=True)
-#        self.fwordcount = 0
-#        p1.start()
-#
-#    def checkfword(self):
-#        for i in resources.koreanFWord:
-#            fwordCount += message.count(i)
-#        self.fwordcount += 1
-#
-#    def FwordCount(self):
-#        while:
-#            if self.fwordcount >= 10:
-#                self.fwordstat = '다들 진정하세요.'
-        
+        for n in range(len(resources.koreanFWord)):
+            if resources.fwordlist[n] in message_text:
+                bot.reply_to(message, BotFunctions.fwordCTup(self))
+                #bot.send_message(chat_id, BotFunctions.fwordCTup(self))
