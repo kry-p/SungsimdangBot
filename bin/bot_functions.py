@@ -38,6 +38,7 @@ class BotFunctions:
         self.fwordcount = 0
         BotFunctions.driver = webdriver.PhantomJS()
         self.startFtime = 0
+        self.Bullet = ()
 
     # Get current river temperature (in progress)
     def get_temp(self, user_id):
@@ -75,8 +76,26 @@ class BotFunctions:
         init_rand = random.randrange(0, 3)
         return resources.magicConchSentence[init_rand][random.randrange(0, len(resources.magicConchSentence[init_rand]))]
 
-    def RussRoulette(self):
-        pass
+    def RussRoulette(self, msg):
+        if msg.split()[1].isdigit() and msg.split()[2].isdigit():
+            self.Bullet = list()
+            for n in range(len(msg.split()[1])):
+                self.Bullet.append(False)
+            for n in range(len(msg.split()[2])):
+                self.Bullet[n] = True
+            random.shuffle(self.Bullet)
+            return '{}발이 장전되었습니다.'.format(len(self.Bullet))
+        else:
+            return '명령어를 형식에 맞게 입력해주세요 (ex. /러시안룰렛 7 3 --> 장전탄수, 당첨탄수)'
+
+    def TrigBullet(self):
+        if len(self.Bullet) == 0:
+            return '/russ 명령어를 사용해 먼저 장전해주세요.'
+        check = self.Bullet.pop()
+        if check:
+            return '실탄'
+        else:
+            return '공포탄'
 
     def fwordCTup(self):
         if not self.startFtime:

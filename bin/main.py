@@ -61,6 +61,14 @@ class MessageProvider:
     @sungsimdangBot.message_handler(commands=['coin_toss'])
     def handle_message(message):
         sungsimdangBot.send_message(message.chat.id, botFunctions.coin_toss())
+
+    @sungsimdangBot.message_handler(commands=['russ'])
+    def handle_message(message):
+        sungsimdangBot.send_message(message.chat.id, botFunctions.RussRoulette(message.text))
+
+    @sungsimdangBot.message_handler(commands=['shot'])
+    def handle_message(message):
+        sungsimdangBot.send_message(message.chat.id, botFunctions.TrigBullet(message.text))
         
     # ordinary message handler
     @sungsimdangBot.message_handler(content_types=['text'])
