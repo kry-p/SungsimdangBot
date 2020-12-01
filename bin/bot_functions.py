@@ -32,12 +32,23 @@ class RiverTempManager:
 
         self.html = self.driver.page_source
         self.soup = BeautifulSoup(self.html, 'html.parser')
+        # 클래스 생성 시각이 1시 37분이라면 1시+ 1분(서버와의 딜레이)이 기록됨.
+        self.tempCtime = int(time.time()) - \
+                            (int(time.time()) % 3600) + 60
+        # 이 시점의 업데이트는 기록이 없는 상태라 새로 생성된 갱신시각이 업데이트되지 않은채로 리스트와 수온만 받아옴.
+        self.update()
 
         self.suon = list()
         self.site = list()
 
     # Update current temperature data
     def update(self):
+        # check recently update temperature info
+        if self.suon and int(time.time()) - self.tempCtime < 3600:  # 갱신 시각 1시간 이전, 리스트 존재시
+            return
+        elif int(time.time()) - self.tempCtime >= 3600:  # 갱신시각 한시간 이후
+            self.tempCtime = int(time.time()) - \
+                             (int(time.time()) % 3600) + 60  # 타임 업데이트
         site_temp = self.soup.select("tr[class^='site'] > th")
         suon_temp = self.soup.select('tr > td.avg1')
 
@@ -65,11 +76,10 @@ class BotFunctions:
         self.Bullet = ()
 
         self.riverTempManager = RiverTempManager(BotFunctions.driver)
-        self.riverTempManager.update()
 
-        #schedule.every(10).minutes.do(self.riverTempManager.update())
+        # schedule.every(10).minutes.do(self.riverTempManager.update())
 
-        #while True:
+        # while True:
         #    schedule.run_pending()
         #    time.sleep(1)
 
