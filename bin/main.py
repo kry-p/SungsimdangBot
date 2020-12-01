@@ -68,7 +68,7 @@ class MessageProvider:
     def handle_message(message):
         sungsimdangBot.send_message(message.chat.id, botFunctions.russian_roulette(message.text))
 
-    @sungsimdangBot.message_handler(commands=['shot'])
+    @sungsimdangBot.message_handler(commands=['shoot'])
     def handle_message(message):
         sungsimdangBot.send_message(message.chat.id, botFunctions.trig_bullet())
         
