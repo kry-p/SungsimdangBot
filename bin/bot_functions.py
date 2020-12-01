@@ -3,12 +3,10 @@
 import random
 import sqlite3
 import resources
-import schedule
 import time
 
 from selenium import webdriver
 from bs4 import BeautifulSoup
-from multiprocessing import Process
 
 TEMPERATURE_URL = 'http://www.koreawqi.go.kr/index_web.jsp'
 USER_INFO = './user.db'
@@ -26,36 +24,37 @@ class UserManager:
 class RiverTempManager:
     # init
     def __init__(self, driver):
-        self.driver = driver
-        self.driver.get(TEMPERATURE_URL)
-        self.driver.switch_to.frame('MainFrame')
+        self.suon = list()
+        self.site = list()
+        self.suon_temp = None
+        self.site_temp = None
 
-        self.html = self.driver.page_source
-        self.soup = BeautifulSoup(self.html, 'html.parser')
+        self.html = None
+        self.soup = None
+        self.driver = driver
         # 클래스 생성 시각이 1시 37분이라면 1시+ 1분(서버와의 딜레이)이 기록됨.
         self.tempCtime = int(time.time()) - \
                             (int(time.time()) % 3600) + 60
         # 이 시점의 업데이트는 기록이 없는 상태라 새로 생성된 갱신시각이 업데이트되지 않은채로 리스트와 수온만 받아옴.
         self.update()
 
-        self.suon = list()
-        self.site = list()
-
     # Update current temperature data
     def update(self):
         # check recently update temperature info
-        if self.suon and int(time.time()) - self.tempCtime < 3600:  # 갱신 시각 1시간 이전, 리스트 존재시
-            return
-        elif int(time.time()) - self.tempCtime >= 3600:  # 갱신시각 한시간 이후
-            self.tempCtime = int(time.time()) - \
-                             (int(time.time()) % 3600) + 60  # 타임 업데이트
-        site_temp = self.soup.select("tr[class^='site'] > th")
-        suon_temp = self.soup.select('tr > td.avg1')
+        if not self.suon and int(time.time()) - self.tempCtime < 3600 \
+                or int(time.time()) - self.tempCtime >= 3600:  # 갱신 시각 1시간 이전, 리스트 존재시, 갱신시각 한시간 이후
+            self.driver.get(TEMPERATURE_URL)
+            self.driver.switch_to.frame('MainFrame')
+            self.html = self.driver.page_source
+            self.soup = BeautifulSoup(self.html, 'html.parser')
 
-        for i in site_temp:
-            self.site.append(i.text.strip())
-        for i in suon_temp:
-            self.suon.append(i.text.strip())
+            self.site_temp = self.soup.select("tr[class^='site'] > th")
+            self.suon_temp = self.soup.select('tr > td.avg1')
+
+            for i in self.site_temp:
+                self.site.append(i.text.strip())
+            for i in self.suon_temp:
+                self.suon.append(i.text.strip())
 
     # Provide temperature data to other methods
     def provide(self, site):
@@ -69,19 +68,12 @@ class RiverTempManager:
 class BotFunctions:
     # init
     def __init__(self):
-
         BotFunctions.driver = webdriver.PhantomJS()
-        self.fwordcount = 0
+        self.fwordCount = 0
         self.startFtime = 0
         self.Bullet = ()
 
         self.riverTempManager = RiverTempManager(BotFunctions.driver)
-
-        # schedule.every(10).minutes.do(self.riverTempManager.update())
-
-        # while True:
-        #    schedule.run_pending()
-        #    time.sleep(1)
 
     # Get current river temperature (in progress)
     def get_temp(self, user_id):
@@ -100,7 +92,7 @@ class BotFunctions:
         result = self.riverTempManager.provide(site)
         try:
             if result == 'error':
-                return resources.tempErrorMsg
+                return '현재 한강 수온은 ' + self.riverTempManager.provide('구리') + '도입니다.'
             else:
                 return '현재 ' + alias + ' 수온은 ' + self.riverTempManager.provide(site) + '도입니다.'
         except AttributeError:
@@ -128,7 +120,7 @@ class BotFunctions:
         return resources.magicConchSentence[init_rand][
             random.randrange(0, len(resources.magicConchSentence[init_rand]))]
 
-    def RussRoulette(self, msg):
+    def russian_roulette(self, msg):
         try:
             if msg.split()[1].isdigit() and msg.split()[2].isdigit():
                 self.Bullet = list()
@@ -140,27 +132,27 @@ class BotFunctions:
                 print(self.Bullet)
                 return '{}발이 장전되었습니다.'.format(len(self.Bullet))
         except IndexError:
-            return '명령어를 형식에 맞게 입력해주세요 \n(ex. /roulette 7 3 장전탄수, 당첨탄수)'
+            return resources.rouletteErrorMsg
 
-    def TrigBullet(self):
+    def trig_bullet(self):
         if len(self.Bullet) == 0:
-            return '/roulette 명령어를 사용해 먼저 장전해주세요.'
+            return resources.shotErrorMsg
         check = self.Bullet.pop()
         if check:
-            return '실탄'
+            return resources.shotRealMsg
         else:
-            return '공포탄'
+            return resources.shotBlindMsg
 
-    def fwordCTup(self):
+    def fword_recognizer(self, bot, message):
         if not self.startFtime:
             self.startFtime = time.time()
-        self.fwordcount += 1
+        self.fwordCount += 1
 
-        if ((time.time() - self.startFtime) <= 600) and self.fwordcount >= 10:
-            return '진정좀 하라구 욕이 너무 많아'
-        elif ((time.time() - self.startFtime) >= 600) and self.fwordcount <= 10:
+        if ((time.time() - self.startFtime) <= 600) and self.fwordCount >= 10:
+            bot.send_message(message.chat.id, '다들 진정해')
+        elif ((time.time() - self.startFtime) >= 600) and self.fwordCount <= 10:
             self.startFtime = 0
-            self.fwordcount = 0
+            self.fwordCount = 0
 
     def ordinary_message(self, bot, chat_id, message):
         print(message)
@@ -175,4 +167,4 @@ class BotFunctions:
 
         for n in range(len(resources.koreanFWord)):
             if resources.koreanFWord[n] in message.text:
-                bot.reply_to(message, BotFunctions.fwordCTup(self))
+                BotFunctions.fword_recognizer(self, bot, message)

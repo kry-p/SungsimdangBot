@@ -24,31 +24,33 @@ class MessageProvider:
     # callback query handler
     @sungsimdangBot.callback_query_handler(func=lambda call: True)
     def iq_callback(query):
-        data = query.data
         MessageProvider.get_ex_callback(query)
     
     def get_ex_callback(query):
         sungsimdangBot.answer_callback_query(query.id)
-        MessageProvider.send_query_result(query.message)
+        MessageProvider.send_query_result(query, query.message)
 
-    def send_query_result(message):
+    # launch command or show help message
+    def send_query_result(query, message):
         sungsimdangBot.send_chat_action(message.chat.id, 'typing')
-        sungsimdangBot.send_message(
-            message.chat.id, '결과 예시입니다.'
-        )
+        if query.data == 'random_picker':
+            sungsimdangBot.send_message(message.chat.id, resources.pickerHelpMsg)
+        elif query.data == 'get_nearby_temp':
+            sungsimdangBot.send_message(message.chat.id, resources.temperatureHelpMsg)
+        elif query.data == 'russian_roulette':
+            sungsimdangBot.send_message(message.chat.id, resources.rouletteHelpMsg)
+        elif query.data == 'coin_toss':
+            sungsimdangBot.send_message(message.chat.id, resources.coinTossHelpMsg)
+        elif query.data == 'gaechu_info':
+            sungsimdangBot.send_message(message.chat.id, resources.gaechuInfoHelpMsg)
     
     # check bot status
     @sungsimdangBot.message_handler(commands=['ping'])
     def start_command(message):
         sungsimdangBot.send_message(message.chat.id, resources.workingMsg)
 
-    # message for /help
-    @sungsimdangBot.message_handler(commands=['help'])
-    def start_command(message):
-        sungsimdangBot.send_message(message.chat.id, resources.functionListMsg)
-
     # message for /start
-    @sungsimdangBot.message_handler(commands=['start'])
+    @sungsimdangBot.message_handler(commands=['start', 'help'])
     def exchange_command(message):
         sungsimdangBot.send_message(message.chat.id, resources.startMsg, reply_markup=resources.mainKeyboard)
 
@@ -64,11 +66,11 @@ class MessageProvider:
 
     @sungsimdangBot.message_handler(commands=['roulette'])
     def handle_message(message):
-        sungsimdangBot.send_message(message.chat.id, botFunctions.RussRoulette(message.text))
+        sungsimdangBot.send_message(message.chat.id, botFunctions.russian_roulette(message.text))
 
     @sungsimdangBot.message_handler(commands=['shot'])
     def handle_message(message):
-        sungsimdangBot.send_message(message.chat.id, botFunctions.TrigBullet())
+        sungsimdangBot.send_message(message.chat.id, botFunctions.trig_bullet())
         
     # ordinary message handler
     @sungsimdangBot.message_handler(content_types=['text'])
@@ -80,7 +82,5 @@ class MessageProvider:
             print('ordinary message handler working')
             botFunctions.ordinary_message(sungsimdangBot, message.chat.id, message)
 
-        # a[0][] == 김사각  -> b[0][0] == 야구 그만봐 [0][1] 게임 그만해 [0][2] 진정하자
- 
 
 sungsimdangBot.polling(none_stop=True)
