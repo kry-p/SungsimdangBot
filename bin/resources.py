@@ -3,7 +3,7 @@
 
 import telebot
 
-### Main strings
+# Main strings
 
 # Message for checking bot status
 workingMsg = "성심당봇이 정상 작동 중입니다."
@@ -26,16 +26,16 @@ functionListMsg = "성심당봇은 아래와 같은 기능을 제공해요.\n\n"
                   "이외에도 숨겨진 기능이 있으니 잘 찾아 보세요!"
 
 
-### Function strings
+# Function strings
 
 # picker message 
 pickerErrorMsg = "올바르게 입력되지 않았어요. 다시 확인해 주세요.\n\n" \
            "예) /pick 튀김소보로 부추빵 모카번"
 
+# river temperature message
+tempErrorMsg = '현재 수온 정보를 가져올 수 없습니다.'
 
-
-
-### Resources
+# Resources
 
 # Customized keyboards (inline)
 
@@ -54,8 +54,8 @@ mainKeyboard.row(
     )
 
 # User information
-user = [['user_id', 'river_measure', 'meme_list'],
-        ['user_id', 'river_measure', 'meme_list']]
+# ex) ['user_id', 'user_name', 'river_measure', 'river_alias', 'meme_list']
+user = [['user_id', 'user_name', 'river_measure', 'river_alias', 'meme_list']]
 
 # Magic conch reaction
 magicConchSentence = [['응', '그래', '언젠가는', '그럼'], 

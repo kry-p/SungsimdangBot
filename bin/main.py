@@ -62,13 +62,13 @@ class MessageProvider:
     def handle_message(message):
         sungsimdangBot.send_message(message.chat.id, botFunctions.coin_toss())
 
-    @sungsimdangBot.message_handler(commands=['russ'])
+    @sungsimdangBot.message_handler(commands=['roulette'])
     def handle_message(message):
         sungsimdangBot.send_message(message.chat.id, botFunctions.RussRoulette(message.text))
 
     @sungsimdangBot.message_handler(commands=['shot'])
     def handle_message(message):
-        sungsimdangBot.send_message(message.chat.id, botFunctions.TrigBullet(message.text))
+        sungsimdangBot.send_message(message.chat.id, botFunctions.TrigBullet())
         
     # ordinary message handler
     @sungsimdangBot.message_handler(content_types=['text'])
@@ -78,7 +78,7 @@ class MessageProvider:
             return
         else:
             print('ordinary message handler working')
-            botFunctions.ordinary_message(sungsimdangBot, message.chat.id, message, message.text)
+            botFunctions.ordinary_message(sungsimdangBot, message.chat.id, message)
 
         # a[0][] == 김사각  -> b[0][0] == 야구 그만봐 [0][1] 게임 그만해 [0][2] 진정하자
  

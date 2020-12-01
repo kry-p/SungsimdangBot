@@ -24,36 +24,77 @@ class UserManager:
 
 
 class RiverTempManager:
-    #init
-    def __init_(self):
-        pass
+    # init
+    def __init__(self, driver):
+        self.driver = driver
+        self.driver.get(TEMPERATURE_URL)
+        self.driver.switch_to.frame('MainFrame')
 
+        self.html = self.driver.page_source
+        self.soup = BeautifulSoup(self.html, 'html.parser')
+
+        self.suon = list()
+        self.site = list()
+
+    # Update current temperature data
     def update(self):
-        pass
+        site_temp = self.soup.select("tr[class^='site'] > th")
+        suon_temp = self.soup.select('tr > td.avg1')
+
+        for i in site_temp:
+            self.site.append(i.text.strip())
+        for i in suon_temp:
+            self.suon.append(i.text.strip())
+
+    # Provide temperature data to other methods
+    def provide(self, site):
+        try:
+            position = self.site.index(site)
+            return self.suon[position]
+        except ValueError:
+            return 'error'
 
 
 class BotFunctions:
     # init
     def __init__(self):
-        self.fwordcount = 0
+
         BotFunctions.driver = webdriver.PhantomJS()
+        self.fwordcount = 0
         self.startFtime = 0
         self.Bullet = ()
 
+        self.riverTempManager = RiverTempManager(BotFunctions.driver)
+        self.riverTempManager.update()
+
+        #schedule.every(10).minutes.do(self.riverTempManager.update())
+
+        #while True:
+        #    schedule.run_pending()
+        #    time.sleep(1)
+
     # Get current river temperature (in progress)
     def get_temp(self, user_id):
-        print(user_id)
-        BotFunctions.driver.get(TEMPERATURE_URL)
-        BotFunctions.driver.switch_to.frame('MainFrame')
-
-        html = BotFunctions.driver.page_source
-        soup = BeautifulSoup(html, 'html.parser')
+        site = ''
+        alias = ''
+        self.riverTempManager.update()
 
         try:
-            hangang_temp = soup.select('tr > td.avg1')[18].text.strip()
-            return '현재 한강 수온은 ' + hangang_temp + '도입니다.'
+            for user in resources.user:
+                if user[0] == str(user_id):
+                    site = user[2]
+                    alias = user[3]
+        except IndexError:
+            pass
+
+        result = self.riverTempManager.provide(site)
+        try:
+            if result == 'error':
+                return resources.tempErrorMsg
+            else:
+                return '현재 ' + alias + ' 수온은 ' + self.riverTempManager.provide(site) + '도입니다.'
         except AttributeError:
-            return '현재 수온 정보를 가져올 수 없습니다..'
+            return '현재 한강 수온은 ' + self.riverTempManager.provide('구리') + '도입니다.'
 
     def picker(self, msg):
         random.seed()
@@ -74,23 +115,26 @@ class BotFunctions:
     def magic_conch(self):
         random.seed()
         init_rand = random.randrange(0, 3)
-        return resources.magicConchSentence[init_rand][random.randrange(0, len(resources.magicConchSentence[init_rand]))]
+        return resources.magicConchSentence[init_rand][
+            random.randrange(0, len(resources.magicConchSentence[init_rand]))]
 
     def RussRoulette(self, msg):
-        if msg.split()[1].isdigit() and msg.split()[2].isdigit():
-            self.Bullet = list()
-            for n in range(len(msg.split()[1])):
-                self.Bullet.append(False)
-            for n in range(len(msg.split()[2])):
-                self.Bullet[n] = True
-            random.shuffle(self.Bullet)
-            return '{}발이 장전되었습니다.'.format(len(self.Bullet))
-        else:
-            return '명령어를 형식에 맞게 입력해주세요 (ex. /러시안룰렛 7 3 --> 장전탄수, 당첨탄수)'
+        try:
+            if msg.split()[1].isdigit() and msg.split()[2].isdigit():
+                self.Bullet = list()
+                for n in range(int(msg.split()[1])):
+                    self.Bullet.append(False)
+                for n in range(int(msg.split()[2])):
+                    self.Bullet[n] = True
+                random.shuffle(self.Bullet)
+                print(self.Bullet)
+                return '{}발이 장전되었습니다.'.format(len(self.Bullet))
+        except IndexError:
+            return '명령어를 형식에 맞게 입력해주세요 \n(ex. /roulette 7 3 장전탄수, 당첨탄수)'
 
     def TrigBullet(self):
         if len(self.Bullet) == 0:
-            return '/russ 명령어를 사용해 먼저 장전해주세요.'
+            return '/roulette 명령어를 사용해 먼저 장전해주세요.'
         check = self.Bullet.pop()
         if check:
             return '실탄'
@@ -108,19 +152,17 @@ class BotFunctions:
             self.startFtime = 0
             self.fwordcount = 0
 
-    def ordinary_message(self, bot, chat_id, message, message_text):
+    def ordinary_message(self, bot, chat_id, message):
+        print(message)
 
         # location-based message if user sent message that includes '수온' or '자살'
-        if ('수온' in message_text) or ('자살' in message_text):
-            bot.reply_to(message, BotFunctions.get_temp(self, chat_id))
-            #bot.send_message(chat_id, BotFunctions.get_temp(self, chat_id))
-        
+        if ('수온' in message.text) or ('자살' in message.text):
+            bot.reply_to(message, BotFunctions.get_temp(self, message.from_user.id))
+
         # randomly select magic conch message if user sent message that includes '마법의 소라고둥/동'
-        if ('마법의 소라고둥' in message_text) or ('마법의 소라고동' in message_text):
+        if ('마법의 소라고둥' in message.text) or ('마법의 소라고동' in message.text):
             bot.reply_to(message, BotFunctions.magic_conch(self))
-            #bot.send_message(chat_id, BotFunctions.magic_conch(self))
 
         for n in range(len(resources.koreanFWord)):
-            if resources.fwordlist[n] in message_text:
+            if resources.koreanFWord[n] in message.text:
                 bot.reply_to(message, BotFunctions.fwordCTup(self))
-                #bot.send_message(chat_id, BotFunctions.fwordCTup(self))
