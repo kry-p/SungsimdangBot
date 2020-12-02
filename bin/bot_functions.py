@@ -123,6 +123,9 @@ class BotFunctions:
     def russian_roulette(self, msg):
         try:
             if msg.split()[1].isdigit() and msg.split()[2].isdigit():
+                if msg.split()[1] == 0 and msg.split()[2] == 0:
+                    self.Bullet = ()
+                    return "약실을 비웠습니다. 사용하려면 다시 장전해주세요."
                 self.Bullet = list()
                 for n in range(int(msg.split()[1])):
                     self.Bullet.append(False)
@@ -168,3 +171,6 @@ class BotFunctions:
         for n in range(len(resources.koreanFWord)):
             if resources.koreanFWord[n] in message.text:
                 BotFunctions.fword_recognizer(self, bot, message)
+
+        if ('크리스마스' in message.text):
+            return '올해 크리스마스엔 산타대신 코로나가 우릴 반겨주네 오!'
