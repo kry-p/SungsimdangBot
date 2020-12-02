@@ -41,20 +41,26 @@ class RiverTempManager:
     # Update current temperature data
     def update(self):
         # check recently update temperature info
-        if not self.suon and int(time.time()) - self.tempCtime < 3600 \
-                or int(time.time()) - self.tempCtime >= 3600:  # 갱신 시각 1시간 이전, 리스트 존재시, 갱신시각 한시간 이후
-            self.driver.get(TEMPERATURE_URL)
-            self.driver.switch_to.frame('MainFrame')
-            self.html = self.driver.page_source
-            self.soup = BeautifulSoup(self.html, 'html.parser')
+        if not self.suon: # 리스트가 존재하지 않으면
+            pass  # 이 구문 통과
+        elif int(time.time()) - self.tempCtime >= 3600:  # 수질서버 기준 갱신시간이 지나있으면:
+            self.tempCtime = int(time.time()) - \
+                             (int(time.time()) % 3600) + 60  # 데이터 갱신
+        else:  # 리스트가 존재하고 한시간 이전이면
+            print('list update in 1 hour')
+            return
+        self.driver.get(TEMPERATURE_URL)
+        self.driver.switch_to.frame('MainFrame')
+        self.html = self.driver.page_source
+        self.soup = BeautifulSoup(self.html, 'html.parser')
 
-            self.site_temp = self.soup.select("tr[class^='site'] > th")
-            self.suon_temp = self.soup.select('tr > td.avg1')
+        self.site_temp = self.soup.select("tr[class^='site'] > th")
+        self.suon_temp = self.soup.select('tr > td.avg1')
 
-            for i in self.site_temp:
-                self.site.append(i.text.strip())
-            for i in self.suon_temp:
-                self.suon.append(i.text.strip())
+        for i in self.site_temp:
+            self.site.append(i.text.strip())
+        for i in self.suon_temp:
+            self.suon.append(i.text.strip())
 
     # Provide temperature data to other methods
     def provide(self, site):
