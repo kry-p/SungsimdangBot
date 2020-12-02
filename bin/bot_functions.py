@@ -3,7 +3,9 @@
 import random
 import sqlite3
 import resources
+import bot_settings
 import time
+import datetime
 
 from selenium import webdriver
 from bs4 import BeautifulSoup
@@ -24,43 +26,47 @@ class UserManager:
 class RiverTempManager:
     # init
     def __init__(self, driver):
-        self.suon = None
+        self.driver = driver
+        self.suon = list()
         self.site = list()
         self.suon_temp = None
         self.site_temp = None
-
         self.html = None
         self.soup = None
-        self.driver = driver
-        # 클래스 생성 시각이 1시 37분이라면 1시+ 1분(서버와의 딜레이)이 기록됨.
-        self.tempCtime = int(time.time()) - \
-                            (int(time.time()) % 3600) + 60
+        # Records current time and latest update
+        self.currentTime = datetime.datetime.now()
+        self.lastUpdateTime = datetime.datetime(self.currentTime.year,
+                                                self.currentTime.month,
+                                                self.currentTime.day,
+                                                self.currentTime.hour,
+                                                1)
+        if self.currentTime.minute == 0:
+            self.lastUpdateTime -= datetime.timedelta(hours=1)
+
         # 이 시점의 업데이트는 기록이 없는 상태라 새로 생성된 갱신시각이 업데이트되지 않은채로 리스트와 수온만 받아옴.
         self.update()
 
     # Update current temperature data
     def update(self):
         # check recently update temperature info
-        if not self.suon: # 리스트가 존재하지 않으면
-            pass  # 이 구문 통과
-        elif int(time.time()) - self.tempCtime >= 3600:  # 수질서버 기준 갱신시간이 지나있으면:
-            self.tempCtime = int(time.time()) - \
-                             (int(time.time()) % 3600) + 60  # 데이터 갱신
-        else:  # 리스트가 존재하고 한시간 이전이면
-            print('list update in 1 hour')
+        self.currentTime = datetime.datetime.now()
+        interval = (self.currentTime - self.lastUpdateTime).seconds
+
+        if self.suon and interval < 3600:
             return
-        self.driver.get(TEMPERATURE_URL)
-        self.driver.switch_to.frame('MainFrame')
-        self.html = self.driver.page_source
-        self.soup = BeautifulSoup(self.html, 'html.parser')
+        else:
+            self.driver.get(TEMPERATURE_URL)
+            self.driver.switch_to.frame('MainFrame')
+            self.html = self.driver.page_source
+            self.soup = BeautifulSoup(self.html, 'html.parser')
 
-        self.site_temp = self.soup.select("tr[class^='site'] > th")
-        self.suon_temp = self.soup.select('tr > td.avg1')
+            self.site_temp = self.soup.select("tr[class^='site'] > th")
+            self.suon_temp = self.soup.select('tr > td.avg1')
 
-        for i in self.site_temp:
-            self.site.append(i.text.strip())
-        for i in self.suon_temp:
-            self.suon.append(i.text.strip())
+            for i in self.site_temp:
+                self.site.append(i.text.strip())
+            for i in self.suon_temp:
+                self.suon.append(i.text.strip())
 
     # Provide temperature data to other methods
     def provide(self, site):
@@ -75,8 +81,8 @@ class BotFunctions:
     # init
     def __init__(self):
         BotFunctions.driver = webdriver.PhantomJS()
-        self.fwordCount = 0
-        self.startFtime = 0
+        self.badWordCount = 0
+        self.firstBadWordTimestamp = 0
         self.Bullet = ()
 
         self.riverTempManager = RiverTempManager(BotFunctions.driver)
@@ -152,16 +158,21 @@ class BotFunctions:
         else:
             return resources.shotBlindMsg
 
-    def fword_recognizer(self, bot, message):
-        if not self.startFtime:
-            self.startFtime = time.time()
-        self.fwordCount += 1
+    def bad_word_recognizer(self, bot, message, word_type):
+        if not self.firstBadWordTimestamp:
+            self.firstBadWordTimestamp = time.time()
+        self.badWordCount += 1
 
-        if ((time.time() - self.startFtime) <= 600) and self.fwordCount >= 10:
-            bot.send_message(message.chat.id, '다들 진정해')
-        elif ((time.time() - self.startFtime) >= 600) and self.fwordCount <= 10:
-            self.startFtime = 0
-            self.fwordCount = 0
+        if ((time.time() - self.firstBadWordTimestamp) <= bot_settings.RECOGNIZER_TIMEOUT) \
+                and self.badWordCount >= bot_settings.RECOGNIZER_COUNT:
+            if word_type == 'f_word':
+                bot.send_message(message.chat.id, random.choice(resources.stopFWord))
+            elif word_type == 'anitiation':
+                bot.send_message(message.chat.id, random.choice(resources.stopAnitiation))
+        elif ((time.time() - self.firstBadWordTimestamp) >= bot_settings.RECOGNIZER_TIMEOUT) \
+                and self.badWordCount <= bot_settings.RECOGNIZER_COUNT:
+            self.firstBadWordTimestamp = 0
+            self.badWordCount = 0
 
     def ordinary_message(self, bot, chat_id, message):
         print(message)
@@ -176,7 +187,11 @@ class BotFunctions:
 
         for n in range(len(resources.koreanFWord)):
             if resources.koreanFWord[n] in message.text:
-                BotFunctions.fword_recognizer(self, bot, message)
+                BotFunctions.bad_word_recognizer(self, bot, message, 'f_word')
 
-        if ('크리스마스' in message.text):
-            return '올해 크리스마스엔 산타대신 코로나가 우릴 반겨주네 오!'
+        for n in range(len(resources.anitiationWord)):
+            if resources.anitiationWord[n] in message.text:
+                BotFunctions.bad_word_recognizer(self, bot, message, 'anitiation')
+
+        if '크리스마스' in message.text:
+            bot.send_message(message.chat.id, '올해 크리스마스엔 산타대신 코로나가 우릴 반겨주네 오!')
