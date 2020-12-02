@@ -24,7 +24,7 @@ class UserManager:
 class RiverTempManager:
     # init
     def __init__(self, driver):
-        self.suon = list()
+        self.suon = None
         self.site = list()
         self.suon_temp = None
         self.site_temp = None
