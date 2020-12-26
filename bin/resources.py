@@ -32,9 +32,10 @@ rouletteHelpMsg = "* 러시안 룰렛 도움말 \n\n" \
                 "명령어 형식\n/roulette [총 회전 수] [실탄 수]\n\n" \
                 "설명\n러시안 룰렛 게임입니다. 총 회전 수에는 내기에 참여할 사람 수를 입력하고, " \
                 "실탄 수는 당첨될 사람 수를 입력합니다. \n" \
-                "장전 후 격발은 /shoot 명령어를 사용해주시고, \n" \
-                "룰렛 초기화는 /flush_bullet 명령어나 /roulette 0 0를 입력해주세요."
-rouletteErrorMsg = '명령어를 형식에 맞게 입력해주세요.\n(ex. /roulette 7 3 장전탄수, 당첨탄수)'
+                "장전 후 격발은 /shoot 명령어를 사용해 주시고, \n" \
+                "룰렛 초기화는 /flush_bullet 명령어나 /roulette 0 0를 입력해 주세요."
+rouletteErrorMsg = '명령어를 형식에 맞게 입력해 주세요.\n\n예) /roulette 7 3'
+
 
 shotErrorMsg = '/roulette 명령어를 사용해 먼저 장전해주세요.'
 shotRealMsg = '이번 격발 결과는 실탄입니다.'
@@ -78,6 +79,7 @@ mainKeyboard.row(
 
 # User information
 # ex) ['user_id', 'user_name', 'river_measure', 'river_alias', 'meme_list']
+# 예) ['사용자 ID', '사용자명', '강물 온도 측정소 이름', '표시될 강 이름', '밈 반응기 밈 목록']
 user = [['user_id', 'user_name', 'river_measure', 'river_alias', 'meme_list']]
 
 # Magic conch reaction

@@ -9,11 +9,12 @@ import bot_functions
 import bot_settings
 import resources
 import telebot
+import time
 
 # Initialize bot
 
 sungsimdangBot = telebot.TeleBot(bot_settings.BOT_TOKEN, parse_mode=None)
-botFunctions = bot_functions.BotFunctions()
+botFunctions = bot_functions.BotFunctions(sungsimdangBot)
 
 
 # Message handler
@@ -75,7 +76,13 @@ class MessageProvider:
     @sungsimdangBot.message_handler(commands=['flush_bullet'])
     def handle_message(message):
         sungsimdangBot.send_message(message.chat.id, botFunctions.russian_roulette('roulette 0 0'))
-        
+
+    # location
+    @sungsimdangBot.message_handler(content_types=['location'])
+    def handle_location(message):
+        # latitude : 위도, longitude : 경도
+        botFunctions.geolocation_info(sungsimdangBot, message, message.location.latitude, message.location.longitude)
+
     # ordinary message handler
     @sungsimdangBot.message_handler(content_types=['text'])
     def handle_message(message):
@@ -87,4 +94,9 @@ class MessageProvider:
             botFunctions.ordinary_message(sungsimdangBot, message.chat.id, message)
 
 
-sungsimdangBot.polling(none_stop=True)
+while True:
+    try:
+        sungsimdangBot.polling(none_stop=True)
+    except Exception as e:
+        time.sleep(15)
+
