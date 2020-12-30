@@ -8,13 +8,14 @@ import time
 import datetime
 import json
 import requests
+import urllib.parse
 
 from selenium import webdriver
 from bs4 import BeautifulSoup
 
-TEMPERATURE_URL = 'http://www.koreawqi.go.kr/index_web.jsp'
-MAP_URL = 'https://dapi.kakao.com/v2/local/geo/coord2address.json?'
-WEATHER_URL = 'http://api.openweathermap.org/data/2.5/weather?lang=kr&'
+TEMPERATURE_BASE_URL = 'http://www.koreawqi.go.kr/index_web.jsp'
+MAP_BASE_URL = 'https://dapi.kakao.com/v2/local/geo/coord2address.json?'
+WEATHER_BASE_URL = 'http://api.openweathermap.org/data/2.5/weather?'
 USER_INFO = './user.db'
 
 userDB = sqlite3.connect(USER_INFO)
@@ -60,7 +61,7 @@ class RiverTempManager:
         if self.suon and interval < 3600:
             return
         else:
-            self.driver.get(TEMPERATURE_URL)
+            self.driver.get(TEMPERATURE_BASE_URL)
             self.driver.switch_to.frame('MainFrame')
             self.html = self.driver.page_source
             self.soup = BeautifulSoup(self.html, 'html.parser')
@@ -176,36 +177,68 @@ class BotFunctions:
             self.firstBadWordTimestamp = time.time()
         self.badWordCount += 1
 
-        if ((time.time() - self.firstBadWordTimestamp) <= bot_settings.RECOGNIZER_TIMEOUT) \
+        if ((time.time() - self.firstBadWordTimestamp) <= bot_settings.DETECTOR_TIMEOUT) \
                 and self.badWordCount >= bot_settings.RECOGNIZER_COUNT:
             if word_type == 'f_word':
                 self.bot.send_message(message.chat.id, random.choice(resources.stopFWord))
             elif word_type == 'anitiation':
                 self.bot.send_message(message.chat.id, random.choice(resources.stopAnitiation))
-        elif ((time.time() - self.firstBadWordTimestamp) >= bot_settings.RECOGNIZER_TIMEOUT) \
+        elif ((time.time() - self.firstBadWordTimestamp) >= bot_settings.DETECTOR_TIMEOUT) \
                 and self.badWordCount <= bot_settings.RECOGNIZER_COUNT:
             self.firstBadWordTimestamp = 0
             self.badWordCount = 0
 
+    # D-day
+    def d_day(self, message):
+        now = datetime.datetime.now()  # today
+        today = datetime.date(now.year,
+                              now.month,
+                              now.day)
+
+        split = message.text.split()
+        split = [item for item in split if '/dday' not in item]
+        split = list(map(int, split))  # String to calculable integer values
+
+        try:
+            dest = datetime.date(split[0], split[1], split[2])  # date that user entered
+
+            result = (dest - today).days
+
+            if result == 0:
+                self.bot.reply_to(message, resources.dayDestMsg)
+            elif result > 0:
+                self.bot.reply_to(message, str(result) + resources.dayLeftMsg)
+            elif result < 0:
+                self.bot.reply_to(message, str(-1 * result) + resources.dayPassedMsg)
+
+        except (ValueError and IndexError):  # wrong input
+            self.bot.reply_to(message, resources.dayOutOfRangeMsg)
+
     # Geolocation information　위치 기반 정보 제공
     def geolocation_info(self, message, latitude, longitude):
-        map_url = MAP_URL + "x=" + str(longitude) + "&y=" + str(latitude)
-        weather_url = WEATHER_URL + "&appid=" + bot_settings.WEATHER_TOKEN + "&lat=" + \
-                      str(latitude) + "&lon=" + str(longitude)
 
+        # location info
+        map_args = {'x': longitude, 'y': latitude}
+        map_url = MAP_BASE_URL + urllib.parse.urlencode(map_args)
         map_headers = {"Authorization": 'KakaoAK ' + bot_settings.MAP_TOKEN}
         map_request = requests.get(map_url, headers=map_headers)
-        weather_request = requests.get(weather_url)
 
+        # weather info (by OpenWeatherMap)
+        weather_args = {'lang': 'kr', 'appid': bot_settings.WEATHER_TOKEN, 'lat': latitude, 'lon': longitude}
+        weather_url = WEATHER_BASE_URL + urllib.parse.urlencode(weather_args)
+        weather_request = requests.get(weather_url)
         weather_json = json.loads(weather_request.text)
 
+        # temporarily store weather info
         weather = weather_json['weather'][0]['description']
-        temp = str(int(weather_json['main']['temp'] - 273.15)) + '°C'
-        feels_temp = str(int(weather_json['main']['feels_like'] - 273.15)) + '°C'
-        humidity = str(int(weather_json['main']['humidity'])) + '%'
+        temp = str(round(weather_json['main']['temp'] - 273.15)) + '°C'
+        feels_temp = str(round(weather_json['main']['feels_like'] - 273.15)) + '°C'
+        humidity = str(round(weather_json['main']['humidity'])) + '%'
 
+        # makes script and sends message
         weather_result = '날씨 ' + weather + ', ' + '기온 ' + temp + ', ' + \
                          '체감온도 ' + feels_temp + ', ' + '습도 ' + humidity
+
         maplocation = json.loads(map_request.text)['documents'][0]['address']['address_name']
         geolocation = "위도 : " + str(latitude) + ", 경도 : " + str(longitude)
 

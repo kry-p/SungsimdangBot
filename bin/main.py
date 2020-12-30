@@ -42,6 +42,8 @@ class MessageProvider:
             sungsimdangBot.send_message(message.chat.id, resources.rouletteHelpMsg)
         elif query.data == 'coin_toss':
             sungsimdangBot.send_message(message.chat.id, resources.coinTossHelpMsg)
+        elif query.data == 'dday':
+            sungsimdangBot.send_message(message.chat.id, resources.dayHelpMsg)
         elif query.data == 'gaechu_info':
             sungsimdangBot.send_message(message.chat.id, resources.gaechuInfoHelpMsg)
     
@@ -65,6 +67,7 @@ class MessageProvider:
     def handle_message(message):
         sungsimdangBot.send_message(message.chat.id, botFunctions.coin_toss())
 
+    # Russian roulette
     @sungsimdangBot.message_handler(commands=['roulette'])
     def handle_message(message):
         sungsimdangBot.send_message(message.chat.id, botFunctions.russian_roulette(message.text))
@@ -77,11 +80,16 @@ class MessageProvider:
     def handle_message(message):
         sungsimdangBot.send_message(message.chat.id, botFunctions.russian_roulette('roulette 0 0'))
 
+    # D-day
+    @sungsimdangBot.message_handler(commands=['dday'])
+    def handle_message(message):
+        botFunctions.d_day(message)
+
     # location
     @sungsimdangBot.message_handler(content_types=['location'])
     def handle_location(message):
         # latitude : 위도, longitude : 경도
-        botFunctions.geolocation_info(sungsimdangBot, message, message.location.latitude, message.location.longitude)
+        botFunctions.geolocation_info(message, message.location.latitude, message.location.longitude)
 
     # ordinary message handler
     @sungsimdangBot.message_handler(content_types=['text'])
