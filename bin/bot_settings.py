@@ -1,9 +1,9 @@
 # PLEASE be careful about handling API Keys!
 
 # Telegram bot token 텔레그램 봇 토큰
-BOT_TOKEN = 'your bot token'
+BOT_TOKEN = 'your telegram bot token'
 # Kakaomap REST API token 카카오맵 REST API 토큰
-MAP_TOKEN = 'your kakaomap api token'
+MAP_TOKEN = 'your kakaomap rest api token'
 # OpenWeatherMap API token 오픈웨더맵 API 토큰
 WEATHER_TOKEN = 'your openweathermap api token'
 

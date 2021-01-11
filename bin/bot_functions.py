@@ -16,9 +16,9 @@ from bs4 import BeautifulSoup
 TEMPERATURE_BASE_URL = 'http://www.koreawqi.go.kr/index_web.jsp'
 MAP_BASE_URL = 'https://dapi.kakao.com/v2/local/geo/coord2address.json?'
 WEATHER_BASE_URL = 'http://api.openweathermap.org/data/2.5/weather?'
-USER_INFO = './user.db'
+DATA = './common_data.db'
 
-userDB = sqlite3.connect(USER_INFO)
+userDB = sqlite3.connect(DATA)
 cursor = userDB.cursor()
 
 
@@ -81,6 +81,12 @@ class RiverTempManager:
             return self.suon[position]
         except ValueError:
             return 'error'
+
+
+class GaechuInfo:
+    # init
+    def __init__(self):
+        pass
 
 
 class BotFunctions:
@@ -253,12 +259,12 @@ class BotFunctions:
         # Bad word detector 나쁜말 감지기
         for n in range(len(resources.koreanFWord)):
             if resources.koreanFWord[n] in message.text:
-                BotFunctions.bad_word_detector(self, self.bot, message, 'f_word')
+                BotFunctions.bad_word_detector(self, message, 'f_word')
 
         # 아니시에이션 감지기
         for n in range(len(resources.anitiationWord)):
             if resources.anitiationWord[n] in message.text:
-                BotFunctions.bad_word_detector(self, self.bot, message, 'anitiation')
+                BotFunctions.bad_word_detector(self, message, 'anitiation')
 
         # location-based message if user sent message that includes '수온' or '자살'
         if ('수온' in message.text) or ('자살' in message.text):
