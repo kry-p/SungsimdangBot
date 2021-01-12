@@ -182,4 +182,7 @@ $RECYCLE.BIN/
 # Windows shortcuts
 *.lnk
 
+# DB
+common_data.db
+
 # End of https://www.toptal.com/developers/gitignore/api/linux,windows,python

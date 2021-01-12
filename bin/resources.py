@@ -15,7 +15,8 @@ startMsg = "성심당봇이에요! 무엇을 도와드릴까요?\n\n" \
            "2. 강 온도 \n" \
            "3. 러시안 룰렛 \n" \
            "4. 동전 뒤집기 \n" \
-           "5. 추천 및 비추천 글 정보\n\n" \
+           "5. D-day \n" \
+           "6. 추천 및 비추천 글 정보\n\n" \
            "이외에도 숨겨진 기능이 있으니 잘 찾아 보세요!"
 
 # Function strings
@@ -32,11 +33,12 @@ rouletteHelpMsg = "* 러시안 룰렛 도움말 \n\n" \
                 "명령어 형식\n/roulette [총 회전 수] [실탄 수]\n\n" \
                 "설명\n러시안 룰렛 게임입니다. 총 회전 수에는 내기에 참여할 사람 수를 입력하고, " \
                 "실탄 수는 당첨될 사람 수를 입력합니다. \n" \
-                "장전 후 격발은 /shoot 명령어를 사용해주시고, \n" \
-                "룰렛 초기화는 /flush_bullet 명령어나 /roulette 0 0를 입력해주세요."
-rouletteErrorMsg = '명령어를 형식에 맞게 입력해주세요.\n(ex. /roulette 7 3 장전탄수, 당첨탄수)'
+                "장전 후 격발은 /shoot 명령어를 사용해 주시고, \n" \
+                "룰렛 초기화는 /flush_bullet 명령어나 /roulette 0 0를 입력해 주세요."
+rouletteErrorMsg = '명령어를 형식에 맞게 입력해 주세요.\n\n예) /roulette 7 3'
 
-shotErrorMsg = '/roulette 명령어를 사용해 먼저 장전해주세요.'
+
+shotErrorMsg = '/roulette 명령어를 사용해 먼저 장전해 주세요.'
 shotRealMsg = '이번 격발 결과는 실탄입니다.'
 shotBlindMsg = '이번 격발 결과는 공포탄입니다.'
 
@@ -53,10 +55,20 @@ coinTossHelpMsg = "* 동전 던지기 도움말 \n\n" \
                   "설명\n동전을 던진 결과를 제공합니다. 따로 입력할 사항은 없으며, " \
                   "가끔 특이한 결과가 나올 수도 있습니다."
 
-# recommend info message/
+# recommend info message
 gaechuInfoHelpMsg = "* 추천 및 비추천 글 정보 도움말 \n\n" \
                    "명령어 형식\n준비 중\n\n" \
                    "설명\n준비 중입니다."
+
+# D-day message
+dayHelpMsg = "* D-Day 도움말 \n\n" \
+            "명령어 형식\n/dday [연] [월] [일]\n\n" \
+            "설명\n입력한 날짜의 오늘 기준 D-day를 계산합니다."
+dayOutOfRangeMsg = "날짜를 잘못 입력했습니다. 확인 후 다시 입력해 주세요.\n\n" \
+                    "예) /dday 2020 1 23"
+dayLeftMsg = "일 남았습니다."
+dayPassedMsg = "일 지났습니다."
+dayDestMsg = "그 날이 바로 오늘입니다."
 
 # Resources
 
@@ -73,11 +85,13 @@ mainKeyboard.row(
     telebot.types.InlineKeyboardButton('4. 동전 뒤집기', callback_data='coin_toss')
     )
 mainKeyboard.row(
-    telebot.types.InlineKeyboardButton('5. 추천 및 비추천 글 정보', callback_data='gaechu_info')
+    telebot.types.InlineKeyboardButton('5. D-day', callback_data='dday'),
+    telebot.types.InlineKeyboardButton('6. 추천 및 비추천 글 정보', callback_data='gaechu_info')
     )
 
 # User information
 # ex) ['user_id', 'user_name', 'river_measure', 'river_alias', 'meme_list']
+# 예) ['사용자 ID', '사용자명', '강물 온도 측정소 이름', '표시될 강 이름', '밈 반응기 밈 목록']
 user = [['user_id', 'user_name', 'river_measure', 'river_alias', 'meme_list']]
 
 # Magic conch reaction
