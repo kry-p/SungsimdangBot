@@ -25,7 +25,9 @@ https://openweathermap.org/current
 실행 전 요구사항에 작성된 라이브러리를 설치한 Python 환경이 필요합니다.   
 가상 환경에서도 제한 없이 실행 가능하며, Raspberry Pi와 같은 환경에서 실행할 경우 Python 버전을 꼭 확인해 주세요.
 
-실행하기에 앞서, 아래의 봇 설정 방법과 사용자 정보 기입 방법을 참고하여 각각 수정해 주세요.   
+실행하기에 앞서, 아래의
+[사용자 정보 기입 방법](https://github.com/kry-p/SungsimdangBot#%EC%82%AC%EC%9A%A9%EC%9E%90-%EC%A0%95%EB%B3%B4-%EA%B8%B0%EC%9E%85-%EB%B0%A9%EB%B2%95)과 
+[봇 설정 방법](https://github.com/kry-p/SungsimdangBot#%EB%B4%87-%EC%84%A4%EC%A0%95-%EB%B0%A9%EB%B2%95)을 참고하여 각각 수정해 주세요.   
 특히 텔레그램 봇 토큰이 기입되지 않았을 경우 정상적으로 실행되지 않습니다.
 
 실행 환경이 마련되면 ```/bin/main.py``` 파일을 실행하기만 하면 됩니다. 참 쉽죠?
