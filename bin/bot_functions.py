@@ -28,6 +28,7 @@ class UserManager:
         pass
 
 
+
 # 강물 온도 조회
 class RiverTempManager:
     # init
