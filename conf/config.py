@@ -12,4 +12,4 @@ WEATHER_TOKEN = 'your openweathermap api token'
 # Bad word detector 나쁜말 감지기
 
 DETECTOR_TIMEOUT = 600  # Time to detect from the first word sent 첫 단어로부터 감지할 시간(초 단위)
-RECOGNIZER_COUNT = 10  # Number to detect (sending a message if exceeded this value) 감지할 개수 (이 횟수를 넘으면 메시지 전송)
+DETECTOR_COUNT = 10  # Number to detect (sending a message if exceeded this value) 감지할 개수 (이 횟수를 넘으면 메시지 전송)

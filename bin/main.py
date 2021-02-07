@@ -9,9 +9,9 @@
 # 정지된 동안에 수신된 메시지를 무시하도록 관련 처리가 필요합니다.
 # 여러 목적으로 활용하기 위한 로그를 작성할 예정입니다.
 
-import bot_functions
-import bot_settings
-import resources
+from lib import common_bot_features
+from res import resources
+from conf import config
 import telebot
 import threading
 from time import sleep
@@ -20,8 +20,8 @@ BOT_INTERVAL = 3
 BOT_TIMEOUT = 30
 
 # Initialize bot
-sungsimdangBot = telebot.TeleBot(bot_settings.BOT_TOKEN, parse_mode=None)
-botFunctions = bot_functions.BotFunctions(sungsimdangBot)
+sungsimdangBot = telebot.TeleBot(config.BOT_TOKEN, parse_mode=None)
+botFunctions = common_bot_features.BotFunctions(sungsimdangBot)
 
 
 def bot_polling():
@@ -83,25 +83,25 @@ class MessageProvider:
     # randomly select one word between 1 or more words
     @sungsimdangBot.message_handler(commands=['pick'])
     def handle_message(message):
-        sungsimdangBot.send_message(message.chat.id, botFunctions.picker(message.text))
+        sungsimdangBot.send_message(message.chat.id, botFunctions.randomBasedFeature.picker(message.text))
 
     # randomly select coin heads or tails
     @sungsimdangBot.message_handler(commands=['coin_toss'])
     def handle_message(message):
-        sungsimdangBot.send_message(message.chat.id, botFunctions.coin_toss())
+        sungsimdangBot.send_message(message.chat.id, botFunctions.randomBasedFeature.coin_toss())
 
     # Russian roulette
     @sungsimdangBot.message_handler(commands=['roulette'])
     def handle_message(message):
-        sungsimdangBot.send_message(message.chat.id, botFunctions.russian_roulette(message.text))
+        sungsimdangBot.send_message(message.chat.id, botFunctions.randomBasedFeature.russian_roulette(message.text))
 
     @sungsimdangBot.message_handler(commands=['shoot'])
     def handle_message(message):
-        sungsimdangBot.send_message(message.chat.id, botFunctions.trig_bullet())
+        sungsimdangBot.send_message(message.chat.id, botFunctions.randomBasedFeature.trig_bullet())
 
     @sungsimdangBot.message_handler(commands=['flush_bullet'])
     def handle_message(message):
-        sungsimdangBot.send_message(message.chat.id, botFunctions.russian_roulette('roulette 0 0'))
+        sungsimdangBot.send_message(message.chat.id, botFunctions.randomBasedFeature.russian_roulette('roulette 0 0'))
 
     # D-day
     @sungsimdangBot.message_handler(commands=['dday'])
