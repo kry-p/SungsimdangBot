@@ -37,7 +37,7 @@ https://openweathermap.org/current
 모든 기능은 그룹에서도 사용 가능하나, 봇에게 그룹 입장과 메시지 접근 권한을 부여하셔야 합니다.   
 해당 권한은 텔레그램 ```@BotFather``` 를 통해 수정할 수 있으며, 자세한 내용은 https://core.telegram.org/bots 을 참조해 주세요.
 
-1. 🌡 한강 수온 알림     
+1. 🌡 가까운 강 수온 알림     
 봇에게 ```🌊 수온```이나 ```😱 자살```이 포함된 메시지를 보낼 경우 실시간수질정보시스템으로부터 제공된 최근 수온 정보를 제공합니다.   
 아래의 사용자 정보 기입 을 참고하여 사용자 정보를 저장해 두면 사용자별 수온 정보를 반환할 수 있습니다.   
 예) ```자살마렵다``` → ```현재 한강 수온은 2.7도입니다.```
@@ -66,11 +66,17 @@ https://openweathermap.org/current
 7. 📅 D-day   
 ```/dday```와 계산하고자 하는 날짜를 함께 입력하면 며칠 남았는지 또는 며칠 지났는지를 알려 드립니다.   
 예) ```/dday 2020 12 31``` → ```12일 지났습니다.```
+   
+8. 🧮 계산기   
+수식을 입력하면 해당 수식의 결과를 반환합니다.  
+예) ```sin ( pi / 2 )``` → ```1.0```
+   
+
 
 
 ## 사용자 정보 기입 방법
 
-```resources.py``` 파일을 열면 아래와 같은 내용이 있습니다.   
+```/resources/users.py``` 파일을 열면 아래와 같은 내용이 있습니다.   
 일부 특수 기능 사용을 위해 필요하며, 기입하지 않아도 사용에 오류가 발생하는 등의 지장은 없습니다.
 ```
 # User information
@@ -109,25 +115,25 @@ user = [['1234567', '치코리타', '구리', '한강', None],
 
 ## 봇 설정 방법
 
-```bot_settings.py``` 파일을 열면 아래와 같은 내용이 있습니다.   
+```/config/config.py``` 파일을 열면 아래와 같은 내용이 있습니다.   
 API 토큰을 제외하면 수정하지 않아도 사용에 오류가 발생하는 등의 지장은 없으니 필요에 따라 수정해 주세요.
 
 ```
 # PLEASE be careful about handling API Keys!
 
-# Telegram bot token
+# Telegram bot token 텔레그램 봇 토큰
 BOT_TOKEN = 'your telegram bot token'
-# Kakaomap REST API token
-MAP_TOKEN = 'your kakaomap rest api token'
-# OpenWeatherMap API token
+# Kakaomap REST API token 카카오맵 REST API 토큰
+MAP_TOKEN = 'your kakaomap api token'
+# OpenWeatherMap API token 오픈웨더맵 API 토큰
 WEATHER_TOKEN = 'your openweathermap api token'
 
-# Settings
+# Settings 설정
 
-# Bad word detector
+# Bad word detector 나쁜말 감지기
 
-DETECTOR_TIMEOUT = 600  # Time to detect from the first word sent
-RECOGNIZER_COUNT = 10  # Number to detect (sending a message if exceeded this value)
+DETECTOR_TIMEOUT = 600  # Time to detect from the first word sent 첫 단어로부터 감지할 시간(초 단위)
+DETECTOR_COUNT = 10  # Number to detect (sending a message if exceeded this value) 감지할 개수 (이 횟수를 넘으면 메시지 전송)
 ```
 ⭐️ 표시는 필수입니다.   
 
@@ -143,7 +149,7 @@ OpenWeatherMap API 토큰입니다. 현재 위치 관련 정보를 제공받으�
 + DETECTOR_TIMEOUT ⭐️   
 나쁜말 감지기의 초 단위 시간제한입니다. 첫 번째 감지 이후 이 시간이 지나면 카운트가 초기화됩니다.
 
-+ RECOGNIZER_COUNT ⭐️   
++ DETECTOR_COUNT ⭐️   
 나쁜말 감지기의 감지 횟수입니다. 이 횟수를 넘으면 ```나쁜말 그만해``` 등과 같은 메시지를 보냅니다.
 
 
