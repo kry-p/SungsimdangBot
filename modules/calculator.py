@@ -3,7 +3,7 @@ import re
 
 
 class Calculator:
-    def __init__(self, ):
+    def __init__(self):
         self.library = {
             "operator": ['+', '-', '*', '/', '^', '(', ')'],
             "constant": ['pi', 'e'],
@@ -44,7 +44,7 @@ class Calculator:
         for i in self.library["constant"]:
             expression = re.sub(i, '', expression)
 
-        rule = re.compile(r'[0-9\+\-\*\/\^\(\)\s]')
+        rule = re.compile(r'[0-9\.\+\-\*\/\^\(\)\s]')
         expression = re.sub(rule, '', expression)
 
         if expression != '':

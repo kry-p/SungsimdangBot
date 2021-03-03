@@ -13,7 +13,6 @@
 성심당봇은 ```Python 3``` 기반으로 작동하며 아래 라이브러리를 필요로 합니다.
 
 + pyTelegramBotAPI
-+ PhantomJS
 + beautifulsoup4
 + selenium
 + urllib3
@@ -27,9 +26,11 @@
 + OpenWeatherMap API (Current weather data)   
   https://openweathermap.org/current
 
+이외에도 웹 리소스를 사용하기 위해 헤드리스 ChromeDriver를 사용하고 있습니다.
+
 ## 실행 방법
 
-실행 전 요구사항에 작성된 라이브러리를 설치한 Python 환경이 필요합니다.   
+실행 전 요구사항에 작성된 라이브러리를 설치한 Python 환경과 ChromeDriver의 설치가 필요합니다.   
 가상 환경에서도 제한 없이 실행 가능하며, Raspberry Pi와 같은 환경에서 실행할 경우 Python 버전을 꼭 확인해 주세요.
 
 실행하기에 앞서, 아래의
@@ -37,44 +38,44 @@
 [봇 설정 방법](https://github.com/kry-p/SungsimdangBot#%EB%B4%87-%EC%84%A4%EC%A0%95-%EB%B0%A9%EB%B2%95)을 참고하여 각각 수정해 주세요.   
 특히 텔레그램 봇 토큰이 기입되지 않았을 경우 정상적으로 실행되지 않습니다.
 
-실행 환경이 마련되면 ```/bin/main.py``` 파일을 실행하기만 하면 됩니다. 참 쉽죠?
+위 작업을 수행하고  ```/bin/main.py``` 파일을 실행하면 봇이 가동됩니다.
 
 ## 기능 목록
 
 모든 기능은 그룹에서도 사용 가능하나, 봇에게 그룹 입장과 메시지 접근 권한을 부여하셔야 합니다.   
 해당 권한은 텔레그램 ```@BotFather``` 를 통해 수정할 수 있으며, 자세한 내용은 https://core.telegram.org/bots 을 참조해 주세요.
 
-1. 🌡 가까운 강 수온 알림     
++ 🌡 가까운 강 수온 알림     
    봇에게 ```🌊 수온```이나 ```😱 자살```이 포함된 메시지를 보낼 경우 실시간수질정보시스템으로부터 제공된 최근 수온 정보를 제공합니다.   
    아래의 사용자 정보 기입 을 참고하여 사용자 정보를 저장해 두면 사용자별 수온 정보를 반환할 수 있습니다.   
    예) ```자살마렵다``` → ```현재 한강 수온은 2.7도입니다.```
 
-2. ✅ 선택봇     
++ ✅ 선택봇     
    ```/pick``` 명령어와 함께 단어의 집합을 띄어쓰기로 구분하여 입력하면 그 중 하나를 선택하여 반환합니다.   
-   예) ```/pick 퇴근할수있어 퇴근못해``` → ```퇴근못해```
+   예) ```/pick 퇴근할수있어 vs 퇴근못해``` → ```vs```
 
-3. 🔫 러시안 룰렛 게임     
++ 🔫 러시안 룰렛 게임     
    러시안 룰렛 게임입니다. ```/roulette``` 명령어로 장전, ```/shoot``` 명령어로 격발, ```/flush_bullet``` 명령어로 약실을 비웁니다.   
    예) ```/roulette 6 1 ``` → ```6발이 장전되었습니다.```
-
-4. 🪙 동전뒤집기     
+ 
++ 🪙 동전뒤집기     
    ```/coin_toss``` 명령어를 입력하면 동전을 뒤집은 결과를 제공합니다.   
    결과는 앞면과 뒷면입니다.   
    예) ```/coin_toss``` → ```동전뒤집기 결과 : 앞면```
-
-5. 🤬 나쁜말 감지기   
+ 
++ 🤬 나쁜말 감지기   
    설정된 시간 제한 이내에 다수의 나쁜말이 감지된 경우 자제할 것을 촉구하는 메시지를 보냅니다.   
    차후 감지기를 고도화할 예정에 있습니다.
 
-6. 📍 현재 위치 정보   
++ 📍 현재 위치 정보   
    텔레그램의 위치 기능을 사용하여 현재 위치를 메시지로 보낸 경우 그 상세 정보를 메시지로 보냅니다.   
    제공하는 정보는 주소, 경위도, 날씨입니다.
 
-7. 📅 D-day   
++ 📅 D-day   
    ```/dday```와 계산하고자 하는 날짜를 함께 입력하면 며칠 남았는지 또는 며칠 지났는지를 알려 드립니다.   
    예) ```/dday 2020 12 31``` → ```12일 지났습니다.```
 
-8. 🧮 계산기   
++ 🧮 계산기   
    수식을 입력하면 해당 수식의 결과를 반환합니다.  
    예) ```sin ( pi / 2 )``` → ```1.0```
 
@@ -136,6 +137,10 @@ WEATHER_TOKEN = 'your openweathermap api token'
 
 # Settings 설정
 
+# Global 전역 설정
+
+CHROME_DRIVER_PATH = 'your chrome driver path'  # Chrome driver path (like '/usr/lib/chromium-browser/chromedriver')
+
 # Bad word detector 나쁜말 감지기
 
 DETECTOR_TIMEOUT = 600  # Time to detect from the first word sent 첫 단어로부터 감지할 시간(초 단위)
@@ -152,6 +157,11 @@ DETECTOR_COUNT = 10  # Number to detect (sending a message if exceeded this valu
 
 + WEATHER_TOKEN   
   OpenWeatherMap API 토큰입니다. 현재 위치 관련 정보를 제공받으려면 필요합니다.
+
+
++ CHROME_DRIVER_PATH ⭐️  
+  웹 페이지 처리를 위한 ChromeDriver 경로입니다. 드라이버 설치 후 경로를 입력해 주세요.
+
 
 + DETECTOR_TIMEOUT ⭐️   
   나쁜말 감지기의 초 단위 시간제한입니다. 첫 번째 감지 이후 이 시간이 지나면 카운트가 초기화됩니다.

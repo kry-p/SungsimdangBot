@@ -1,6 +1,11 @@
+import os
+import sys
+sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
+
 import datetime
 from bs4 import BeautifulSoup
 from selenium import webdriver
+from config import config
 
 TEMPERATURE_BASE_URL = 'http://www.koreawqi.go.kr/index_web.jsp'
 
@@ -9,7 +14,11 @@ TEMPERATURE_BASE_URL = 'http://www.koreawqi.go.kr/index_web.jsp'
 class RiverTempManager:
     # init
     def __init__(self):
-        self.driver = webdriver.PhantomJS()
+        chrome_options = webdriver.ChromeOptions()
+        chrome_options.add_argument('headless')
+        chrome_options.add_argument("--disable-gpu")
+
+        self.driver = webdriver.Chrome(config.CHROME_DRIVER_PATH, chrome_options=chrome_options)
         self.suon = list()
         self.site = list()
         self.suon_temp = None
@@ -35,7 +44,7 @@ class RiverTempManager:
         self.currentTime = datetime.datetime.now()
         interval = (self.currentTime - self.lastUpdateTime).seconds
 
-        if self.suon and interval < 3600:
+        if self.suon and interval < 600:  # refresh rate: 10 min.
             return
         else:
             self.driver.get(TEMPERATURE_BASE_URL)

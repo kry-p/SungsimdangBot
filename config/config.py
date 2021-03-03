@@ -9,6 +9,10 @@ WEATHER_TOKEN = 'your openweathermap api token'
 
 # Settings 설정
 
+# Global 전역 설정
+
+CHROME_DRIVER_PATH = 'your chrome driver path'  # Chrome driver path (like '/usr/lib/chromium-browser/chromedriver')
+
 # Bad word detector 나쁜말 감지기
 
 DETECTOR_TIMEOUT = 600  # Time to detect from the first word sent 첫 단어로부터 감지할 시간(초 단위)

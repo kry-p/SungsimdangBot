@@ -1,4 +1,4 @@
-# Bot functions script
+# Bot features script
 
 import os
 import sys
