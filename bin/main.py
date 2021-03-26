@@ -54,7 +54,8 @@ query_string = {
     'bad_word_detector': strings.badWordDetectorHelpMsg,
     'geolocation': strings.geolocationHelpMsg,
     'dday': strings.dayHelpMsg,
-    'calc': strings.calcHelpMsg
+    'calc': strings.calcHelpMsg,
+    'mute': strings.muteHelpMsg
 }
 
 
@@ -114,6 +115,11 @@ class MessageProvider:
     @sungsimdangBot.message_handler(commands=['dday'])
     def handle_message(message):
         botFeatures.d_day(message)
+
+    # mute
+    @sungsimdangBot.message_handler(commands=['mute'])
+    def handle_message(message):
+        botFeatures.dumb_to_friedSoboru(message)
 
     # location
     @sungsimdangBot.message_handler(content_types=['location'])

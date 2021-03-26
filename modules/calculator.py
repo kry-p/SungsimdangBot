@@ -38,6 +38,9 @@ class Calculator:
 
     # 정해진 연산자나 함수 이외의 텍스트가 있는지 체크
     def wrong_syntax_checker(self, expression):
+        if ('+' or '-' or '*' or '/') in expression:
+            return 'pass'
+
         for i in self.library["function"]:
             expression = re.sub(i, '', expression)
 

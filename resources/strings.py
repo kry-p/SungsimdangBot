@@ -18,7 +18,8 @@ startMsg = "성심당봇이에요! 무엇을 도와드릴까요?\n\n" \
            "5. 🤬 나쁜말 감지기  \n" \
            "6. 📍 현재 위치 정보  \n" \
            "7. 📅 D-day \n" \
-           "8. 🧮 계산기 \n\n" \
+           "8. 🧮 계산기 \n" \
+           "9. 🍞 뮤트 (New Feature!!)\n\n"\
            "이외에도 많은 기능이 업데이트로 추가 제공될 예정입니다."
 
 # Function strings
@@ -84,6 +85,17 @@ calcHelpMsg = "🧮 계산기 도움말 \n\n" \
               "설명\n수식을 입력하면 자동으로 인식하여 결과를 반환합니다."
 calcSyntaxErrorMsg = "구문 오류입니다."
 calcDivisionByZeroErrorMsg = "0으로 나눌 수 없습니다."
+
+# mute message
+muteHelpMsg = "🍞 소보루는 항상 퍽퍽해... \n"\
+              "성심당봇에게 소보루타임을 주는 명령어입니다.\n\n"\
+              "명령어 형식\n/mute [분] [초]\n초단위 입력시 분 항목에는 0을 입력해주세요.\n\n"\
+              "최대 60분까지 봇을 멈출 수 있습니다.\n"\
+              "/mute 0 을 입력하시면 슬프게도 성심당봇이 다시 일합니다."
+muteErrorMsg = "구문 오류입니다. 다시 입력해주세요."
+muteOORMsg = "구문 오류입니다. 뮤트는 1초~60분내의 숫자형식에서 정의 가능합니다."
+muteSuccessMsg = "전 이 세상의 모든 굴레와 속박을 벗어 던지고\n" \
+                 "{0}분 {1}초동안 빵먹으러 갑니다!"
 
 # # recommend info message
 # gaechuInfoHelpMsg = "* 추천 및 비추천 글 정보 도움말 \n\n" \

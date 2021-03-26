@@ -17,6 +17,7 @@ from modules.ramdom_based import RandomBasedFeatures
 from modules.river_temp import RiverTempManager
 from resources import strings
 from resources import users
+from multiprocessing import Process
 
 MAP_BASE_URL = 'https://dapi.kakao.com/v2/local/geo/coord2address.json?'
 WEATHER_BASE_URL = 'http://api.openweathermap.org/data/2.5/weather?'
@@ -28,6 +29,7 @@ class BotFeaturesHub:
         self.badWordCount = 0  # 나쁜 말 카운트
         self.firstBadWordTimestamp = 0  # 나쁜 말 감지기가 최초 활성화된 시점
         self.bot = bot
+        self.mtChatList = {}
 
         self.randomBasedFeatures = RandomBasedFeatures()
         self.riverTempManager = RiverTempManager()
@@ -108,6 +110,41 @@ class BotFeaturesHub:
         except (ValueError and IndexError):  # wrong input
             self.bot.reply_to(message, strings.dayOutOfRangeMsg)
 
+    # mute 봇이 시끄러운 사람들을 위한 조치
+    def mute_by_friedsoboru(self, message):
+        stdtime = time.time()
+        settime = message.split()[1:]
+        idfchat = 'CH_' + message.chat.id
+
+        if len(settime) < 1 or len(settime) > 2:
+            self.bot.reply_to(message, strings.muteErrorMsg)
+            return
+        elif len(settime) == 1 and not settime[0].isdigit:
+            self.bot.reply_to(message, strings.muteErrorMsg)
+            return
+        elif (not len(settime)) == 2 or (not settime[1].isdigit):
+            if not(settime[0].isdigit or settime[1].isdigit):
+                self.bot.reply_to(message, strings.muteErrorMsg)
+                return
+
+        if len(settime) == 1:
+            if settime[0] > 60 or settime[0] < 0 :
+                self.bot.reply_to(message, strings.muteOORMsg)
+                return
+        elif len(settime) == 2:
+            if (settime[0]*60+settime[1]) < 0 or (settime[0]*60+settime[1]) > 3600:
+                self.bot.reply_to(message, strings.muteOORMsg)
+                return
+
+        self.mtChatList[idfchat] = stdtime + settime[0] * 60 + settime[1]
+        self.bot.reply_to(message, strings.muteSuccessMsg.format(settime[0], settime[1]))
+
+    def sbrchecker(self, chat_id):  # 봇에게 정당한 휴식의 권리를, 아직 다 안먹었냐 물어보기
+        if self.mtChatList['CH_' + chat_id] - time.time() > 0:  # 시간이 아직 안되었으면
+            return True
+        else:
+            return False
+
     # Geolocation information　위치 기반 정보 제공
     def geolocation_info(self, message, latitude, longitude):
 
@@ -141,18 +178,24 @@ class BotFeaturesHub:
         self.bot.reply_to(message, result)
 
     def calculator_handler(self, message):
-        if self.calculator.wrong_syntax_checker(message.text) != 'syntax error':
+        if self.sbrchecker(message.chat_id):
+            pass
+        elif self.calculator.wrong_syntax_checker(message.text) != 'syntax error':
             result = self.calculator.operation(message.text)
 
             if result == 'syntax error':
                 self.bot.reply_to(message, strings.calcSyntaxErrorMsg)
             elif result == 'division by zero error':
                 self.bot.reply_to(message, strings.calcDivisionByZeroErrorMsg)
+            elif result == 'pass':
+                pass
             else:
                 self.bot.reply_to(message, result)
 
     # Handling ordinary message 일반 메시지 처리
     def ordinary_message(self, chat_id, message):
+        if self.sbrchecker(chat_id):
+            return
         print(message)
 
         # simplified calculator 간단 계산기
