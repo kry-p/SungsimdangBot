@@ -134,7 +134,7 @@ class MessageProvider:
             return
         else:
             print('ordinary message handler working')
-            botFeatures.ordinary_message(message.chat.id, message)
+            botFeatures.ordinary_message(message)
 
 
 polling_thread = threading.Thread(target=bot_polling)
