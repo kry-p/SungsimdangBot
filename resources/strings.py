@@ -82,7 +82,7 @@ dayDestMsg = "그 날이 바로 오늘입니다."
 calcHelpMsg = "🧮 계산기 도움말 \n\n" \
               "명령어 형식\n(수식)\n\n" \
               "설명\n수식을 입력하면 자동으로 인식하여 결과를 반환합니다."
-calcSyntaxErrorMsg = "구문 오류입니다."
+calcSyntaxErrorMsg = "구문 오류입니다. 수식을 정확하게 입력했는지 다시 확인해 주세요."
 calcDivisionByZeroErrorMsg = "0으로 나눌 수 없습니다."
 
 # # recommend info message

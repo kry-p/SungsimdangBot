@@ -141,9 +141,16 @@ class BotFeaturesHub:
         self.bot.reply_to(message, result)
 
     def calculator_handler(self, message):
-        if self.calculator.wrong_syntax_checker(message.text) != 'syntax error':
-            result = self.calculator.operation(message.text)
+        # cut command string
+        command = message.text.split()[0]
 
+        if len(message.text.split()) >= 2:
+            actual_text = message.text[len(command):]
+
+            # calculate
+            result = self.calculator.operation(actual_text)
+
+            # error handling
             if result == 'syntax error':
                 self.bot.reply_to(message, strings.calcSyntaxErrorMsg)
             elif result == 'division by zero error':
@@ -152,11 +159,8 @@ class BotFeaturesHub:
                 self.bot.reply_to(message, result)
 
     # Handling ordinary message 일반 메시지 처리
-    def ordinary_message(self, chat_id, message):
-        print(message)
-
-        # simplified calculator 간단 계산기
-        self.calculator_handler(message)
+    def ordinary_message(self, message):
+        # print(message)
 
         # Bad word detector 나쁜말 감지기
         for n in range(len(strings.koreanFWord)):

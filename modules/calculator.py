@@ -102,6 +102,28 @@ class Calculator:
         self.tokenized_notation = list(map(self.string_to_number,
                                            temp.replace("  ", " ").split()))
 
+        prod = ['+', -1, '*']
+        prod_first = [-1, '*']
+
+        while True:
+            try:
+                index = self.tokenized_notation.index('-')
+
+                previous_notation = self.tokenized_notation[index-1]
+                del(self.tokenized_notation[index])
+
+                if index == 0 or previous_notation == '(':
+                    for i in prod_first:
+                        self.tokenized_notation.insert(index, i)
+                        index += 1
+                else:
+                    for i in prod:
+                        self.tokenized_notation.insert(index, i)
+                        index += 1
+                print(self.tokenized_notation)
+            except ValueError:
+                break
+
     # String 형태의 숫자를 정수와 실수로 변환
     @staticmethod
     def string_to_number(string):

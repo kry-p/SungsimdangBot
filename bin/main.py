@@ -110,6 +110,11 @@ class MessageProvider:
     def handle_message(message):
         sungsimdangBot.send_message(message.chat.id, botFeatures.randomBasedFeatures.russian_roulette('roulette 0 0'))
 
+    # calculator
+    @sungsimdangBot.message_handler(commands=['calc'])
+    def handle_message(message):
+        botFeatures.calculator_handler(message)
+
     # D-day
     @sungsimdangBot.message_handler(commands=['dday'])
     def handle_message(message):
