@@ -102,6 +102,7 @@ class Calculator:
         self.tokenized_notation = list(map(self.string_to_number,
                                            temp.replace("  ", " ").split()))
 
+        # 음의 상수배 처리
         prod = ['+', -1, '*']
         prod_first = [-1, '*']
 
@@ -120,7 +121,6 @@ class Calculator:
                     for i in prod:
                         self.tokenized_notation.insert(index, i)
                         index += 1
-                print(self.tokenized_notation)
             except ValueError:
                 break
 
