@@ -110,6 +110,14 @@ class MessageProvider:
     def handle_message(message):
         sungsimdangBot.send_message(message.chat.id, botFeatures.randomBasedFeatures.russian_roulette('roulette 0 0'))
 
+    @sungsimdangBot.message_handler(commands=['search'])
+    def handle_message(message):
+        botFeatures.daum_search(message, None)
+
+    @sungsimdangBot.message_handler(commands=['namu'])
+    def handle_message(message):
+        botFeatures.webManager.get_from_namuwiki(message)
+
     # calculator
     @sungsimdangBot.message_handler(commands=['calc'])
     def handle_message(message):

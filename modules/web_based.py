@@ -3,21 +3,32 @@ import sys
 sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 
 import datetime
+import requests
+import cloudscraper
 from bs4 import BeautifulSoup
 from selenium import webdriver
 from config import config
+from urllib import parse
 
 TEMPERATURE_BASE_URL = 'http://www.koreawqi.go.kr/index_web.jsp'
+NAMUWIKI_BASE_URL = 'https://namu.wiki/w/'
 
 
 # 강물 온도 조회
-class RiverTempManager:
+class WebManager:
     # init
     def __init__(self):
         chrome_options = webdriver.ChromeOptions()
         chrome_options.add_argument('headless')
         chrome_options.add_argument("--disable-gpu")
 
+        self.session = requests.session()
+        self.headers = {
+            "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) "
+                          "Chrome/92.0.4515.131 Safari/537.36",
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8"
+        }
+        self.cloudscraper = cloudscraper.create_scraper()
         self.driver = webdriver.Chrome(config.CHROME_DRIVER_PATH, chrome_options=chrome_options)
         self.suon = list()
         self.site = list()
@@ -36,10 +47,10 @@ class RiverTempManager:
             self.lastUpdateTime -= datetime.timedelta(hours=1)
 
         # Initialize current temperature information 현재 온도 정보를 최초 설정
-        self.update()
+        self.update_suon()
 
     # Update current temperature data 현재 온도 정보를 업데이트
-    def update(self):
+    def update_suon(self):
         # check recently update temperature info 최근에 업데이트하였는지 확인
         self.currentTime = datetime.datetime.now()
         interval = (self.currentTime - self.lastUpdateTime).seconds
@@ -60,8 +71,24 @@ class RiverTempManager:
             for i in self.suon_temp:
                 self.suon.append(i.text.strip())
 
+    def get_from_namuwiki(self, message):
+        command = message.text.split()
+        keyword = ''
+        for i in range(1, len(command)):
+            if i < len(command) - 1:
+                keyword += command[i] + ' '
+            else:
+                keyword += command[i]
+
+        url = NAMUWIKI_BASE_URL + parse.quote(keyword)
+
+        self.html = self.cloudscraper.get(url).text
+        self.soup = BeautifulSoup(self.html, 'html.parser')
+
+        print(self.soup.get_text())
+
     # Provide temperature data to other methods 다른 메소드로 온도 정보 전달
-    def provide(self, site):
+    def provide_suon(self, site):
         try:
             position = self.site.index(site)
             return self.suon[position]

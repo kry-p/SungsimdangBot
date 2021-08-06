@@ -13,12 +13,13 @@ import requests
 
 from config import config
 from modules.calculator import Calculator
-from modules.ramdom_based import RandomBasedFeatures
-from modules.river_temp import RiverTempManager
+from modules.random_based import RandomBasedFeatures
+from modules.web_based import WebManager
 from resources import strings
 from resources import users
 
 MAP_BASE_URL = 'https://dapi.kakao.com/v2/local/geo/coord2address.json?'
+SEARCH_BASE_URL = 'https://dapi.kakao.com/v2/search/web?'
 WEATHER_BASE_URL = 'http://api.openweathermap.org/data/2.5/weather?'
 
 
@@ -30,14 +31,14 @@ class BotFeaturesHub:
         self.bot = bot
 
         self.randomBasedFeatures = RandomBasedFeatures()
-        self.riverTempManager = RiverTempManager()
+        self.webManager = WebManager()
         self.calculator = Calculator()
 
     # Get current river temperature 현재 강물 온도 정보 획득
     def get_temp(self, user_id):
         site = ''
         alias = ''
-        self.riverTempManager.update()
+        self.webManager.update_suon()
 
         try:
             for user in users.user:
@@ -47,23 +48,23 @@ class BotFeaturesHub:
         except IndexError:
             pass
 
-        result = self.riverTempManager.provide(site)
-        result_if_error = self.riverTempManager.provide('구리')
+        result = self.webManager.provide_suon(site)
+        result_if_error = self.webManager.provide_suon('구리')
         # Default : Hangang(Guri) 잘못된 값이 입력된 경우 기본값으로 한강 구리 측정소 정보를 반환
         try:
             if result == 'error':
                 if result_if_error == 'error':
                     return '현재 한강 수온 정보를 가져올 수 없습니다.'
                 else:
-                    return '현재 한강 수온은 ' + self.riverTempManager.provide('구리') + '도입니다.'
+                    return '현재 한강 수온은 ' + self.webManager.provide_suon('구리') + '도입니다.'
             else:
-                return '현재 ' + alias + ' 수온은 ' + self.riverTempManager.provide(site) + '도입니다.'
+                return '현재 ' + alias + ' 수온은 ' + self.webManager.provide_suon(site) + '도입니다.'
         except AttributeError:
             if result == 'error':
                 if result_if_error == 'error':
                     return '현재 한강 수온 정보를 가져올 수 없습니다.'
                 else:
-                    return '현재 한강 수온은 ' + self.riverTempManager.provide('구리') + '도입니다.'
+                    return '현재 한강 수온은 ' + self.webManager.provide_suon('구리') + '도입니다.'
 
     # Bad word detector 나쁜말 감지기
     def bad_word_detector(self, message, word_type):
@@ -114,7 +115,7 @@ class BotFeaturesHub:
         # location info
         map_args = {'x': longitude, 'y': latitude}
         map_url = MAP_BASE_URL + urllib.parse.urlencode(map_args)
-        map_headers = {"Authorization": 'KakaoAK ' + config.MAP_TOKEN}
+        map_headers = {"Authorization": 'KakaoAK ' + config.KAKAO_TOKEN}
         map_request = requests.get(map_url, headers=map_headers)
 
         # weather info (by OpenWeatherMap)
@@ -139,6 +140,43 @@ class BotFeaturesHub:
         result = geo_location + '\n' + map_location + '\n\n' + weather_result
 
         self.bot.reply_to(message, result)
+
+    # Search from Daum and returns result by JSON
+    def daum_search(self, message, site):
+        command = message.text.split()
+        keyword = ''
+        for i in range(1, len(command)):
+            if i < len(command) - 1:
+                keyword += command[i] + ' '
+            else:
+                keyword += command[i]
+
+        # Sends request
+        search_args = {'query': keyword if site is None else keyword + ' site:' + site}
+        search_url = SEARCH_BASE_URL + urllib.parse.urlencode(search_args)
+        search_headers = {"Authorization": 'KakaoAK ' + config.KAKAO_TOKEN}
+        search_request = requests.get(search_url, headers=search_headers)
+
+        return json.loads(search_request.text)
+
+    # def get_from_namuwiki(self, message):
+    #     command = message.text.split()
+    #     keyword = ''
+    #     site = 'namu.wiki'
+    #     for i in range(1, len(command)):
+    #         if i < len(command) - 1:
+    #             keyword += command[i] + ' '
+    #         else:
+    #             keyword += command[i]
+    #
+    #     # Sends request
+    #     search_args = {'query': keyword + ' site:' + site}
+    #     search_url = SEARCH_BASE_URL + urllib.parse.urlencode(search_args)
+    #     search_headers = {"Authorization": 'KakaoAK ' + config.KAKAO_TOKEN}
+    #     search_request = requests.get(search_url, headers=search_headers)
+    #
+    #     result = json.loads(search_request.text)
+    #     print(result)
 
     def calculator_handler(self, message):
         # cut command string
