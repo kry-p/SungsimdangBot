@@ -1,17 +1,17 @@
 # PLEASE be careful about handling API Keys!
 
 # Telegram bot token 텔레그램 봇 토큰
-BOT_TOKEN = 'your telegram bot token'
+BOT_TOKEN = 'your token here'
 # Kakao REST API token 카카오 REST API 토큰
-KAKAO_TOKEN = 'your kakao api token'
+KAKAO_TOKEN = 'your token here'
 # OpenWeatherMap API token 오픈웨더맵 API 토큰
-WEATHER_TOKEN = 'your openweathermap token'
+WEATHER_TOKEN = 'your token here'
 
 # Settings 설정
 
 # Global 전역 설정
 
-CHROME_DRIVER_PATH = 'your chrome driver path'  # Chrome driver path (like '/usr/lib/chromium-browser/chromedriver')
+CHROME_DRIVER_PATH = 'your path here'  # Chrome driver path (like '/usr/lib/chromium-browser/chromedriver')
 
 # Bad word detector 나쁜말 감지기
 

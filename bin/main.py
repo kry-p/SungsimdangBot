@@ -19,6 +19,7 @@ from config import config
 from resources import strings
 import telebot
 import threading
+import re
 from time import sleep
 
 BOT_INTERVAL = 3
@@ -112,11 +113,28 @@ class MessageProvider:
 
     @sungsimdangBot.message_handler(commands=['search'])
     def handle_message(message):
-        botFeatures.daum_search(message, None)
+        result = botFeatures.webManager.daum_search(message, None)
+        result_contents = ""
+
+        if len(result['documents']) > 4:
+            for i in range(5):
+                result_contents += re.sub('<.+?>', '', "*" + result['documents'][i]['title']
+                                          + "*\n" + result['documents'][i]['contents']
+                                          + "\n" + "[더 보기](" + result['documents'][i]['url']
+                                          + ")\n\n", 0, re.I | re.S)
+        else:
+            for i in result['documents']:
+                result_contents += re.sub('<.+?>', '', "*" + i['title'] + "*\n"
+                                          + i['contents'] + "\n" + "[더 보기]("
+                                          + i['url'] + ")\n\n", 0, re.I | re.S)
+        text = "검색 결과입니다.\n\n" + re.sub('<.+?>', '', result_contents, 0, re.I | re.S)
+        sungsimdangBot.reply_to(message, text, parse_mode="Markdown")
 
     @sungsimdangBot.message_handler(commands=['namu'])
     def handle_message(message):
-        botFeatures.webManager.get_from_namuwiki(message)
+        sungsimdangBot.reply_to(message,
+                                botFeatures.webManager.namuwiki_search(message),
+                                parse_mode="Markdown")
 
     # calculator
     @sungsimdangBot.message_handler(commands=['calc'])

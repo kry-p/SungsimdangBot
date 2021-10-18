@@ -19,7 +19,6 @@ from resources import strings
 from resources import users
 
 MAP_BASE_URL = 'https://dapi.kakao.com/v2/local/geo/coord2address.json?'
-SEARCH_BASE_URL = 'https://dapi.kakao.com/v2/search/web?'
 WEATHER_BASE_URL = 'http://api.openweathermap.org/data/2.5/weather?'
 
 
@@ -141,43 +140,7 @@ class BotFeaturesHub:
 
         self.bot.reply_to(message, result)
 
-    # Search from Daum and returns result by JSON
-    def daum_search(self, message, site):
-        command = message.text.split()
-        keyword = ''
-        for i in range(1, len(command)):
-            if i < len(command) - 1:
-                keyword += command[i] + ' '
-            else:
-                keyword += command[i]
-
-        # Sends request
-        search_args = {'query': keyword if site is None else keyword + ' site:' + site}
-        search_url = SEARCH_BASE_URL + urllib.parse.urlencode(search_args)
-        search_headers = {"Authorization": 'KakaoAK ' + config.KAKAO_TOKEN}
-        search_request = requests.get(search_url, headers=search_headers)
-
-        return json.loads(search_request.text)
-
-    # def get_from_namuwiki(self, message):
-    #     command = message.text.split()
-    #     keyword = ''
-    #     site = 'namu.wiki'
-    #     for i in range(1, len(command)):
-    #         if i < len(command) - 1:
-    #             keyword += command[i] + ' '
-    #         else:
-    #             keyword += command[i]
-    #
-    #     # Sends request
-    #     search_args = {'query': keyword + ' site:' + site}
-    #     search_url = SEARCH_BASE_URL + urllib.parse.urlencode(search_args)
-    #     search_headers = {"Authorization": 'KakaoAK ' + config.KAKAO_TOKEN}
-    #     search_request = requests.get(search_url, headers=search_headers)
-    #
-    #     result = json.loads(search_request.text)
-    #     print(result)
-
+    # Calculator 계산기
     def calculator_handler(self, message):
         # cut command string
         command = message.text.split()[0]
