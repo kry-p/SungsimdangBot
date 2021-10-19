@@ -185,4 +185,7 @@ $RECYCLE.BIN/
 # DB
 common_data.db
 
+# Log file
+/log
+
 # End of https://www.toptal.com/developers/gitignore/api/linux,windows,python

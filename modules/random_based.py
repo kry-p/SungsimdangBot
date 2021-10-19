@@ -52,7 +52,6 @@ class RandomBasedFeatures:
                 for n in range(int(message.split()[2])):
                     self.Bullet[n] = True
                 random.shuffle(self.Bullet)
-                print(self.Bullet)
                 return '{}발이 장전되었습니다.'.format(len(self.Bullet))
         except IndexError:
             return strings.rouletteErrorMsg
