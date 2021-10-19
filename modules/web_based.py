@@ -12,7 +12,6 @@ from bs4 import BeautifulSoup
 from selenium import webdriver
 from config import config
 
-# TEMPERATURE_BASE_URL = 'http://www.koreawqi.go.kr/index_web.jsp'
 TEMPERATURE_BASE_URL = 'http://water.nier.go.kr/'
 NAMUWIKI_BASE_URL = 'https://namu.wiki/w/'
 SEARCH_BASE_URL = 'https://dapi.kakao.com/v2/search/web?'
