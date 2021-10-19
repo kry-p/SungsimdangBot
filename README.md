@@ -21,8 +21,8 @@
 
 + Telegram Bot API   
   https://core.telegram.org/bots
-+ Kakaomap REST API (좌표로 주소 변환하기)   
-  https://developers.kakao.com/docs/latest/ko/local/dev-guide#coord-to-address
++ Kakao REST API (좌표로 주소 변환하기, 검색)   
+  https://developers.kakao.com/docs
 + OpenWeatherMap API (Current weather data)   
   https://openweathermap.org/current
 
@@ -78,6 +78,10 @@
 + 🧮 계산기   
    수식을 입력하면 해당 수식의 결과를 반환합니다.  
    예) ```sin ( pi / 2 )``` → ```1.0```
+   
++ 🔎 검색 (Beta)   
+   검색어에 대한 결과를 링크와 함께 마크다운으로 반환합니다.  
+   예) ```/search 집가고싶다``` → ```(검색 결과)```
 
 ## 사용자 정보 기입 방법
 
@@ -103,7 +107,7 @@ user = [['user_id', 'user_name', 'river_measure', 'river_alias', 'meme_list']]
 
 + river_measure   
   실시간수질정보시스템이 제공하는 측정소 이름입니다.   
-  http://www.koreawqi.go.kr/index_web.jsp 에서 사용자와 가깝거나 찾고자 하는 측정소 이름을 찾으시면 됩니다.
+  http://water.nier.go.kr/ 에서 사용자와 가깝거나 찾고자 하는 측정소 이름을 찾으시면 됩니다.
 
 + river_alias   
   측정소 이름에 대응하는 강 이름(별명)입니다.   
@@ -129,17 +133,17 @@ API 토큰을 제외하면 수정하지 않아도 사용에 오류가 발생하�
 # PLEASE be careful about handling API Keys!
 
 # Telegram bot token 텔레그램 봇 토큰
-BOT_TOKEN = 'your telegram bot token'
-# Kakaomap REST API token 카카오맵 REST API 토큰
-MAP_TOKEN = 'your kakaomap api token'
+BOT_TOKEN = 'your token here'
+# Kakao REST API token 카카오 REST API 토큰
+KAKAO_TOKEN = 'your token here'
 # OpenWeatherMap API token 오픈웨더맵 API 토큰
-WEATHER_TOKEN = 'your openweathermap api token'
+WEATHER_TOKEN = 'your token here'
 
 # Settings 설정
 
 # Global 전역 설정
 
-CHROME_DRIVER_PATH = 'your chrome driver path'  # Chrome driver path (like '/usr/lib/chromium-browser/chromedriver')
+CHROME_DRIVER_PATH = 'your path here'  # Chrome driver path (like '/usr/lib/chromium-browser/chromedriver')
 
 # Bad word detector 나쁜말 감지기
 
@@ -152,16 +156,14 @@ DETECTOR_COUNT = 10  # Number to detect (sending a message if exceeded this valu
 + BOT_TOKEN ⭐️   
   텔레그램 봇 API 토큰입니다.
 
-+ MAP_TOKEN   
-  카카오맵 REST API 토큰입니다. 현재 위치 관련 정보를 제공받으려면 필요합니다.
++ KAKAO_TOKEN   
+  카카오 REST API 토큰입니다. 현재 위치 관련 정보 및 검색 기능을 제공받으려면 필요합니다.
 
 + WEATHER_TOKEN   
   OpenWeatherMap API 토큰입니다. 현재 위치 관련 정보를 제공받으려면 필요합니다.
 
-
 + CHROME_DRIVER_PATH ⭐️  
   웹 페이지 처리를 위한 ChromeDriver 경로입니다. 드라이버 설치 후 경로를 입력해 주세요.
-
 
 + DETECTOR_TIMEOUT ⭐️   
   나쁜말 감지기의 초 단위 시간제한입니다. 첫 번째 감지 이후 이 시간이 지나면 카운트가 초기화됩니다.
@@ -190,3 +192,4 @@ DETECTOR_COUNT = 10  # Number to detect (sending a message if exceeded this valu
 ## 알려진 문제점
 
 + 하나의 봇 세션을 여러 그룹에서 함께 운용할 때 러시안 룰렛의 상태가 공유됨
++ 검색 결과를 마크다운으로 출력 시 괄호가 포함된 텍스트가 검색 결과에 포함되면 형식 오류 발생
