@@ -147,9 +147,9 @@ class Calculator:
     def infix_to_postfix(self):
         stack = list()
         result = list()
+        count = 0
 
         for i in self.tokenized_notation:
-            count = 0
 
             # 숫자는 그대로 내보냄
             if type(i) is int or type(i) is float \
