@@ -149,11 +149,14 @@ class Calculator:
         result = list()
 
         for i in self.tokenized_notation:
+            count = 0
 
             # 숫자는 그대로 내보냄
             if type(i) is int or type(i) is float \
                     or i in self.library["constant"]:
                 result.append(i)
+                if count > 0 and self.tokenized_notation[count-1] == ')':
+                    stack.append('*')
 
             # 연산자 처리하기
             else:
@@ -183,6 +186,7 @@ class Calculator:
                         else:
                             result.append(stack.pop())
                             stack.append(i)
+            count += 1
 
         for i in range(len(stack)):
             result.append(stack.pop())
