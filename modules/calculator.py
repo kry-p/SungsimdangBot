@@ -166,6 +166,7 @@ class Calculator:
                     for j in range(len(stack)):
                         if stack[-1] == '(':
                             stack.pop()
+                            result.append('*')
                             break
                         else:
                             result.append(stack.pop())
