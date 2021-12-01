@@ -5,12 +5,15 @@ import re
 class NewCalculator:
     def __init__(self):
         self.library = {
-            "operator": ['+', '-', '*', '/', '^', '(', ')'],
+            "operator": ['(', ')', '^', '*', '/', '+', '-'],  # 편의를 위해 우선순위 순서로 원소 정렬
             "function": ['exp', 'log', 'ln', 'sqrt',
                          'sin', 'cos', 'tan',
                          'asin', 'acos', 'atan'],
-            "constant":['pi', 'e']
+            "constant": ['pi', 'e']
         }
+        self.expression = None
+        self.tokenized_notation = None
+        self.temp_log = None
         self.result = None
 
     def operation(self, expression):
@@ -74,8 +77,6 @@ class NewCalculator:
             if not checksum:
                 self.result = 'syntax error'
                 break
-
-
 
         self.tokenized_notation = raw_notation
         return self.tokenized_notation
