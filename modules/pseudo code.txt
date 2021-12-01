@@ -28,3 +28,5 @@ in c[priority('*' > '/' > '+' > '-')]
 
 # 괄호 전부 삭제
 delete all op0 and op1
+
+op0~6 --> ( ) ^ * / + -

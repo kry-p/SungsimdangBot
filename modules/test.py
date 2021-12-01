@@ -87,6 +87,8 @@ class NewCalculator:
 
 
 
+
+
     @staticmethod
     def is_number(string):
         try:
