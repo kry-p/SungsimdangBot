@@ -1,0 +1,30 @@
+# 전처리로, 수 다음 수가 오거나 괄호 앞뒤에 숫자가 붙으면 곱셈기호를 미리 넣는다.
+preprocessor:
+if x[next(num or cst or op1)] == op0 or num or cst
+    '*' add next(x)
+
+main:
+# 커서의 종류가 수나 여는괄호일 경우 그대로 결과에 집어넣는다
+num, cst, op0 insert result
+
+# 커서의 종류가 수나 괄호연산자가 아니고 다음이 여는 괄호일때, 연산자를 스택1에 집어넣는다
+if b[!(num or cst or op0 or op1)] is disp and next(disp) is op0
+b insert stack1
+
+# 닫는 괄호를 만나면 스택1을 비우면서 결과에 연산자 삽입
+if disp is op1
+    op1 insert result free stack 1
+
+# 연산순서에 따라, (나눗셈으로 인해 값이 최대한 잘리는 걸 방지한 우선순위로) 후위표기 변환
+in c[priority('*' > '/' > '+' > '-')]
+{
+    if empty(stack2)
+        c insert stack2
+    if last(stack2) < (c)
+        free stack2
+    else
+        stack c
+}
+
+# 괄호 전부 삭제
+delete all op0 and op1
