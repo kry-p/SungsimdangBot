@@ -8,7 +8,6 @@
 # 봇이 정지된 동안의 메시지를 한꺼번에 받아서 처리하는 문제가 있습니다.
 # 정지된 동안에 수신된 메시지를 무시하도록 관련 처리가 필요합니다.
 # 여러 목적으로 활용하기 위한 로그를 작성할 예정입니다.
-import datetime
 import os
 import sys
 import logging
@@ -17,6 +16,7 @@ import logging.handlers
 sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 
 from modules import features_hub
+from modules import log
 from config import config
 from resources import strings
 import telebot
@@ -27,44 +27,27 @@ from time import sleep
 BOT_INTERVAL = 3
 BOT_TIMEOUT = 30
 
-LOG_DIRECTORY = '../log'
 
 # Initialize bot
 sungsimdangBot = telebot.TeleBot(config.BOT_TOKEN, parse_mode=None)
 botFeatures = features_hub.BotFeaturesHub(sungsimdangBot)
 
 # Initialize logger module
-logger = logging.getLogger(__name__)
-logging.basicConfig(level=logging.INFO)
-formatter = logging.Formatter('%(asctime)s %(name)s %(levelname)s %(message)s')
-fileHandler = logging.FileHandler("{}/logfile_{:%Y%m%d}.log".format(LOG_DIRECTORY, datetime.datetime.now()),
-                                  encoding="utf-8")
-streamHandler = logging.StreamHandler()
-streamHandler.setFormatter(formatter)
-logger.addHandler(streamHandler)
-
-timedFileHandler = logging.handlers.TimedRotatingFileHandler(filename='logfile',
-                                                             when='midnight',
-                                                             interval=1,
-                                                             encoding='utf-8')
-timedFileHandler.setFormatter(formatter)
-timedFileHandler.suffix = "%Y%m%d"
-logger.addHandler(timedFileHandler)
-
+logger = log.Logger()
 
 def bot_polling():
     logging.info("Starts polling")
     while True:
         try:
-            logging.info("Bot instance is running")
+            logger.log_info("Bot instance is running")
             sungsimdangBot.polling(none_stop=True, interval=BOT_INTERVAL, timeout=BOT_TIMEOUT)
         except Exception as ex:  # Error in polling
-            logging.error("Polling has failed. Retry in {} sec.\n Error : {}\n".format(BOT_TIMEOUT, ex))
+            logger.log_error("Polling has failed. Retry in {} sec.\n Error : {}\n".format(BOT_TIMEOUT, ex))
             sungsimdangBot.stop_polling()
             sleep(BOT_TIMEOUT)
         else:  # Clean exit
             sungsimdangBot.stop_polling()
-            logging.info("Polling stopped")
+            logger.log_info("Polling stopped")
             break  # End loop
 
 
@@ -181,8 +164,8 @@ class MessageProvider:
         if message.text.startswith('/'):
             return
         else:
-            logging.info('Ordinary message handler working...')
-            logging.info('Message: {}'.format(message))
+            logger.log_info('Ordinary message handler working...')
+            logger.log_info('Message: {}'.format(message))
             botFeatures.ordinary_message(message)
 
 
