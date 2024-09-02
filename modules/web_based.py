@@ -10,6 +10,8 @@ import urllib.parse
 import re
 from bs4 import BeautifulSoup
 from selenium import webdriver
+from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.chrome.options import Options
 from config import config
 
 TEMPERATURE_BASE_URL = 'http://water.nier.go.kr/'
@@ -21,10 +23,10 @@ SEARCH_BASE_URL = 'https://dapi.kakao.com/v2/search/web?'
 class WebManager:
     # init
     def __init__(self):
-        chrome_options = webdriver.ChromeOptions()
-        chrome_options.add_argument('headless')
+        chrome_options = Options()
+        chrome_options.add_argument('--headless')
         chrome_options.add_argument("--disable-gpu")
-
+        
         self.session = requests.session()
         self.headers = {
             "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) "
@@ -32,7 +34,7 @@ class WebManager:
             "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8"
         }
         self.cloudscraper = cloudscraper.create_scraper()
-        self.driver = webdriver.Chrome(config.CHROME_DRIVER_PATH, chrome_options=chrome_options)
+        self.driver = webdriver.Chrome(service=Service(config.CHROME_DRIVER_PATH), options=chrome_options)
         self.suon = list()
         self.site = list()
         self.suon_temp = None
