@@ -69,6 +69,11 @@ class Calculator:
         index = -1
         temp = notation.replace(" ", "")
 
+        # 만약 괄호앞이 숫자일 경우 곱셈연산자 삽입
+        for i in temp:
+            if i == '(' and temp.find(i) != 0:
+                temp.insert(temp.find(i), "*")
+
         # 모든 연산자에 대해 공백 재삽입
         for i in self.library["operator"]:
             while True:
