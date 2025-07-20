@@ -8,16 +8,19 @@ import cloudscraper
 import json
 import urllib.parse
 import re
+from modules import log
 from bs4 import BeautifulSoup
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.options import Options
 from config import config
 
-TEMPERATURE_BASE_URL = 'http://water.nier.go.kr/'
-NAMUWIKI_BASE_URL = 'https://namu.wiki/w/'
-SEARCH_BASE_URL = 'https://dapi.kakao.com/v2/search/web?'
+# Initialize logger module
+logger = log.Logger()
 
+TEMPERATURE_BASE_URL = config.TEMPERATURE_BASE_URL
+NAMUWIKI_BASE_URL = config.NAMUWIKI_BASE_URL
+SEARCH_BASE_URL = config.SEARCH_BASE_URL
 
 # 강물 온도 조회
 class WebManager:
@@ -37,6 +40,7 @@ class WebManager:
         self.driver = webdriver.Chrome(service=Service(config.CHROME_DRIVER_PATH), options=chrome_options)
         self.suon = list()
         self.site = list()
+        self.suonV2 = None
         self.suon_temp = None
         self.site_temp = None
         self.html = None
@@ -79,6 +83,15 @@ class WebManager:
                 self.site.append(i.text.strip().replace("\t", "").split("\n")[0])
             for i in suon_list:
                 self.suon.append(i.text.strip())
+
+            try:
+                search_request = requests.get(config.SEOUL_HANGANG_WATER_URL)
+                result = json.loads(search_request.text)
+                self.suonV2 = result["WPOSInformationTime"]["row"][0]["W_TEMP"]
+            except:
+                logger.log_error("Retreiving water information of Hangang failed. Please check API Status.")
+                self.suonV2 = None
+
 
     # Search from Daum and returns result by JSON
     def daum_search(self, message, site):
@@ -131,5 +144,12 @@ class WebManager:
         try:
             position = self.site.index(site)
             return self.suon[position]
+        except ValueError:
+            return 'error'
+
+    # Provide temperature data to other methods (V2, 한강으로 고정)
+    def provide_suon_v2(self):
+        try:
+            return self.suonV2
         except ValueError:
             return 'error'
