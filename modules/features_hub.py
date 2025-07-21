@@ -47,23 +47,28 @@ class BotFeaturesHub:
         except IndexError:
             pass
 
-        result = self.webManager.provide_suon(site)
-        result_if_error = self.webManager.provide_suon('구리')
-        # Default : Hangang(Guri) 잘못된 값이 입력된 경우 기본값으로 한강 구리 측정소 정보를 반환
-        try:
-            if result == 'error':
-                if result_if_error == 'error':
-                    return '현재 한강 수온 정보를 가져올 수 없습니다.'
-                else:
-                    return '현재 한강 수온은 ' + self.webManager.provide_suon('구리') + '도입니다.'
-            else:
-                return '현재 ' + alias + ' 수온은 ' + self.webManager.provide_suon(site) + '도입니다.'
-        except AttributeError:
-            if result == 'error':
-                if result_if_error == 'error':
-                    return '현재 한강 수온 정보를 가져올 수 없습니다.'
-                else:
-                    return '현재 한강 수온은 ' + self.webManager.provide_suon('구리') + '도입니다.'
+        provided_suon = self.webManager.provide_suon_v2()
+
+        if provided_suon == "점검중":
+            return "현재 한강 수온 정보를 가져올 수 없습니다. (사유: 정보 미제공)"
+        return f"현재 한강 수온은 {provided_suon} 도입니다."
+        # result = self.webManager.provide_suon(site)
+        # result_if_error = self.webManager.provide_suon('구리')
+        # # Default : Hangang(Guri) 잘못된 값이 입력된 경우 기본값으로 한강 구리 측정소 정보를 반환
+        # try:
+        #     if result == 'error':
+        #         if result_if_error == 'error':
+        #             return '현재 한강 수온 정보를 가져올 수 없습니다.'
+        #         else:
+        #             return '현재 한강 수온은 ' + self.webManager.provide_suon('구리') + '도입니다.'
+        #     else:
+        #         return '현재 ' + alias + ' 수온은 ' + self.webManager.provide_suon(site) + '도입니다.'
+        # except AttributeError:
+        #     if result == 'error':
+        #         if result_if_error == 'error':
+        #             return '현재 한강 수온 정보를 가져올 수 없습니다.'
+        #         else:
+        #             return '현재 한강 수온은 ' + self.webManager.provide_suon('구리') + '도입니다.'
 
     # Bad word detector 나쁜말 감지기
     def bad_word_detector(self, message, word_type):

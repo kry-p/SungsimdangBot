@@ -190,3 +190,6 @@ common_data.db
 logfile
 
 # End of https://www.toptal.com/developers/gitignore/api/linux,windows,python
+
+# Environment
+.env
