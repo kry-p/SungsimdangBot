@@ -13,12 +13,12 @@ jobs:
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
-      # - name: Build and push Docker image
-      #   uses: docker/build-and-push-action@v4
-      #   with:
-      #     context: .
-      #     push: true
-      #     tags: ${{ secrets.DOCKERHUB_USERNAME }}/sungsimdangbot
+      - name: Build and push Docker image
+        uses: docker/build-and-push-action@v4
+        with:
+          context: .
+          push: true
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/sungsimdangbot
   deploy:
     runs-on: ubuntu-latest
     needs: build-and-push
