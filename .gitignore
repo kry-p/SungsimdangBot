@@ -193,3 +193,6 @@ logfile
 
 # Environment
 .env
+
+# Visual Studio
+.vs/
