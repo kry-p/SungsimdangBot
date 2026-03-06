@@ -40,6 +40,17 @@ pytest -v                      # 테스트 실행
 - 자동 수정 가능한 이슈는 fix 후 커밋이 차단되므로, 수정된 파일을 `git add`한 뒤 다시 커밋하면 됩니다.
 - **gitleaks**: 비밀 키(API 토큰, `.env` 파일 등)가 커밋에 포함되면 차단합니다. 의도적으로 허용이 필요한 경우 `#gitleaks:allow` 인라인 주석을 사용합니다.
 
+## CI
+
+GitHub Actions (`ci.yml`) — `master` push 및 모든 PR에서 실행.
+
+| Job | 내용 |
+|-----|------|
+| `ci` | Python 3.9 + 3.12 매트릭스: ruff check → ruff format --check → pytest |
+| `secrets` | gitleaks 시크릿 스캔 (전체 히스토리) |
+
+워크플로우 파일: `.github/workflows/ci.yml`
+
 ## 알려진 이슈
 
 - `Calculator.tokenize()` 75번째 줄 버그: `str.insert()` — 함수 호출 문법(`sqrt(4)`, `sin(0)` 등)이 작동하지 않음. 테스트에서 `xfail`로 표시.
