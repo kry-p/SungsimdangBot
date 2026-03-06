@@ -35,9 +35,10 @@ pytest -v                      # 테스트 실행
 
 ## Pre-commit 훅
 
-`git commit` 시 자동으로 ruff check + ruff format이 실행됩니다.
+`git commit` 시 자동으로 ruff check + ruff format + gitleaks가 실행됩니다.
 - 린팅 에러가 있으면 커밋이 차단됩니다.
 - 자동 수정 가능한 이슈는 fix 후 커밋이 차단되므로, 수정된 파일을 `git add`한 뒤 다시 커밋하면 됩니다.
+- **gitleaks**: 비밀 키(API 토큰, `.env` 파일 등)가 커밋에 포함되면 차단합니다. 의도적으로 허용이 필요한 경우 `#gitleaks:allow` 인라인 주석을 사용합니다.
 
 ## 알려진 이슈
 
