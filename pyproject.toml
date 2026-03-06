@@ -24,8 +24,6 @@ line-length = 120
 exclude = [".venv", "__pycache__", ".git"]
 
 [tool.ruff.lint]
-# N816: resources/strings.py의 camelCase 모듈 변수 허용
-ignore = ["N816"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

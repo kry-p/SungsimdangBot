@@ -1,6 +1,7 @@
 # module for random based features
 import os
 import sys
+
 sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 
 import random
@@ -16,12 +17,12 @@ class RandomBasedFeatures:
     def picker(msg):
         random.seed()
         split = msg.split()
-        split = [item for item in split if '/pick' not in item]
+        split = [item for item in split if "/pick" not in item]
 
         try:
             choice = random.choice(split)
         except IndexError:
-            return strings.pickerErrorMsg
+            return strings.picker_error_msg
 
         return choice
 
@@ -29,15 +30,16 @@ class RandomBasedFeatures:
     @staticmethod
     def coin_toss():
         random.seed()
-        return '동전뒤집기 결과 : ' + random.choice(strings.coinTossResult)
+        return "동전뒤집기 결과 : " + random.choice(strings.coin_toss_result)
 
     # Spongebob SquarePants magic conch 마법의 소라고동
     @staticmethod
     def magic_conch():
         random.seed()
         init_rand = random.randrange(0, 3)
-        return strings.magicConchSentence[init_rand][
-            random.randrange(0, len(strings.magicConchSentence[init_rand]))]
+        return strings.magic_conch_sentence[init_rand][
+            random.randrange(0, len(strings.magic_conch_sentence[init_rand]))
+        ]
 
     # Russian roulette 러시안 룰렛
     def russian_roulette(self, message):
@@ -52,16 +54,16 @@ class RandomBasedFeatures:
                 for n in range(int(message.split()[2])):
                     self.Bullet[n] = True
                 random.shuffle(self.Bullet)
-                return '{}발이 장전되었습니다.'.format(len(self.Bullet))
+                return "{}발이 장전되었습니다.".format(len(self.Bullet))
         except IndexError:
-            return strings.rouletteErrorMsg
+            return strings.roulette_error_msg
 
     # Launch roulette 러시안 룰렛 격발
     def trig_bullet(self):
         if len(self.Bullet) == 0:
-            return strings.shotErrorMsg
+            return strings.shot_error_msg
         check = self.Bullet.pop()
         if check:
-            return strings.shotRealMsg
+            return strings.shot_real_msg
         else:
-            return strings.shotBlindMsg
+            return strings.shot_blind_msg

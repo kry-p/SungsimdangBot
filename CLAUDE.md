@@ -71,7 +71,7 @@ Conventional Commits 형식을 따릅니다.
 
 - **클래스**: PascalCase (`Calculator`, `BotFeaturesHub`, `WebManager`)
 - **메서드/함수**: snake_case (`coin_toss`, `bad_word_detector`)
-- **인스턴스 변수**: camelCase (레거시 컨벤션) 허용 (`badWordCount`, `suonV2`)
+- **인스턴스 변수**: camelCase (레거시 컨벤션, 점진적으로 snake_case 전환 중) (`badWordCount`, `suonV2`)
 - **상수**: UPPER_SNAKE_CASE (`BOT_TOKEN`, `DETECTOR_TIMEOUT`)
 - **모듈 파일**: snake_case (`random_based.py`, `features_hub.py`)
 - **언어**: 코드는 영문, 사용자 대상 메시지는 한국어
@@ -88,8 +88,8 @@ Conventional Commits 형식을 따릅니다.
 ### 문자열 관리
 
 - 모든 사용자 대상 메시지(한국어)는 `resources/strings.py`에 정의
-- 모듈 코드에 사용자 대상 문자열을 하드코딩하지 않음 — `strings.xxxMsg` 참조
-- 도움말 메시지 패턴: `strings.xxxHelpMsg` / 에러 메시지 패턴: `strings.xxxErrorMsg`
+- 모듈 코드에 사용자 대상 문자열을 하드코딩하지 않음 — `strings.xxx_msg` 참조
+- 도움말 메시지 패턴: `strings.xxx_help_msg` / 에러 메시지 패턴: `strings.xxx_error_msg`
 
 ### 에러 처리
 

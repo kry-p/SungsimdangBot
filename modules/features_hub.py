@@ -69,9 +69,9 @@ class BotFeaturesHub:
             (time.time() - self.firstBadWordTimestamp) <= config.DETECTOR_TIMEOUT
         ) and self.badWordCount >= config.DETECTOR_COUNT:
             if word_type == "f_word":
-                self.bot.send_message(message.chat.id, random.choice(strings.stopFWord))
+                self.bot.send_message(message.chat.id, random.choice(strings.stop_f_word))
             elif word_type == "anitiation":
-                self.bot.send_message(message.chat.id, random.choice(strings.stopAnitiation))
+                self.bot.send_message(message.chat.id, random.choice(strings.stop_anitiation))
         elif (
             (time.time() - self.firstBadWordTimestamp) >= config.DETECTOR_TIMEOUT
         ) and self.badWordCount <= config.DETECTOR_COUNT:
@@ -93,14 +93,14 @@ class BotFeaturesHub:
             result = (dest - today).days
 
             if result == 0:
-                self.bot.reply_to(message, strings.dayDestMsg)
+                self.bot.reply_to(message, strings.day_dest_msg)
             elif result > 0:
-                self.bot.reply_to(message, str(result) + strings.dayLeftMsg)
+                self.bot.reply_to(message, str(result) + strings.day_left_msg)
             elif result < 0:
-                self.bot.reply_to(message, str(-1 * result) + strings.dayPassedMsg)
+                self.bot.reply_to(message, str(-1 * result) + strings.day_passed_msg)
 
         except ValueError and IndexError:  # wrong input
-            self.bot.reply_to(message, strings.dayOutOfRangeMsg)
+            self.bot.reply_to(message, strings.day_out_of_range_msg)
 
     # Geolocation information　위치 기반 정보 제공
     def geolocation_info(self, message, latitude, longitude):
@@ -148,9 +148,9 @@ class BotFeaturesHub:
 
             # error handling
             if result == "syntax error":
-                self.bot.reply_to(message, strings.calcSyntaxErrorMsg)
+                self.bot.reply_to(message, strings.calc_syntax_error_msg)
             elif result == "division by zero error":
-                self.bot.reply_to(message, strings.calcDivisionByZeroErrorMsg)
+                self.bot.reply_to(message, strings.calc_division_by_zero_error_msg)
             else:
                 self.bot.reply_to(message, result)
 
@@ -159,13 +159,13 @@ class BotFeaturesHub:
         # print(message)
 
         # Bad word detector 나쁜말 감지기
-        for n in range(len(strings.koreanFWord)):
-            if strings.koreanFWord[n] in message.text:
+        for n in range(len(strings.korean_f_word)):
+            if strings.korean_f_word[n] in message.text:
                 self.bad_word_detector(message, "f_word")
 
         # 아니시에이션 감지기
-        for n in range(len(strings.anitiationWord)):
-            if strings.anitiationWord[n] in message.text:
+        for n in range(len(strings.anitiation_word)):
+            if strings.anitiation_word[n] in message.text:
                 self.bad_word_detector(message, "anitiation")
 
         # location-based message if user sent message that includes '수온' or '자살'

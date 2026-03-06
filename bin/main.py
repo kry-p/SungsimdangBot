@@ -54,14 +54,14 @@ def bot_polling():
 
 # Callback query strings
 query_string = {
-    "get_nearby_temp": strings.temperatureHelpMsg,
-    "random_picker": strings.pickerHelpMsg,
-    "russian_roulette": strings.rouletteHelpMsg,
-    "coin_toss": strings.coinTossHelpMsg,
-    "bad_word_detector": strings.badWordDetectorHelpMsg,
-    "geolocation": strings.geolocationHelpMsg,
-    "dday": strings.dayHelpMsg,
-    "calc": strings.calcHelpMsg,
+    "get_nearby_temp": strings.temperature_help_msg,
+    "random_picker": strings.picker_help_msg,
+    "russian_roulette": strings.roulette_help_msg,
+    "coin_toss": strings.coin_toss_help_msg,
+    "bad_word_detector": strings.bad_word_detector_help_msg,
+    "geolocation": strings.geolocation_help_msg,
+    "dday": strings.day_help_msg,
+    "calc": strings.calc_help_msg,
 }
 
 
@@ -87,12 +87,12 @@ class MessageProvider:
     # check bot status
     @bot.message_handler(commands=["ping"])
     def start_command(message):
-        bot.send_message(message.chat.id, strings.workingMsg)
+        bot.send_message(message.chat.id, strings.working_msg)
 
     # message for /start
     @bot.message_handler(commands=["start", "help"])
     def exchange_command(message):
-        bot.send_message(message.chat.id, strings.startMsg, reply_markup=strings.mainKeyboard)
+        bot.send_message(message.chat.id, strings.start_msg, reply_markup=strings.main_keyboard)
 
     # randomly select one word between 1 or more words
     @bot.message_handler(commands=["pick"])
