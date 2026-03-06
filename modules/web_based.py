@@ -1,14 +1,17 @@
 import os
 import sys
+
 sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 
 import datetime
 import requests
+
 # import cloudscraper
 import json
 import urllib.parse
 import re
 from modules import log
+
 # from bs4 import BeautifulSoup
 # from selenium import webdriver
 # from selenium.webdriver.chrome.service import Service
@@ -22,6 +25,7 @@ TEMPERATURE_BASE_URL = config.TEMPERATURE_BASE_URL
 NAMUWIKI_BASE_URL = config.NAMUWIKI_BASE_URL
 SEARCH_BASE_URL = config.SEARCH_BASE_URL
 
+
 # 강물 온도 조회
 class WebManager:
     # init
@@ -29,7 +33,7 @@ class WebManager:
         # chrome_options = Options()
         # chrome_options.add_argument('--headless')
         # chrome_options.add_argument("--disable-gpu")
-        
+
         # self.session = requests.session()
         # self.headers = {
         #     "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) "
@@ -47,11 +51,9 @@ class WebManager:
         self.soup = None
         # Records current time and latest update 현재 시간과 마지막 업데이트 시점을 기록
         self.currentTime = datetime.datetime.now()
-        self.lastUpdateTime = datetime.datetime(self.currentTime.year,
-                                                self.currentTime.month,
-                                                self.currentTime.day,
-                                                self.currentTime.hour,
-                                                1)
+        self.lastUpdateTime = datetime.datetime(
+            self.currentTime.year, self.currentTime.month, self.currentTime.day, self.currentTime.hour, 1
+        )
         if self.currentTime.minute == 0:
             self.lastUpdateTime -= datetime.timedelta(hours=1)
 
@@ -89,55 +91,54 @@ class WebManager:
                 search_request = requests.get(config.SEOUL_HANGANG_WATER_URL)
                 result = json.loads(search_request.text)
                 self.suonV2 = result["WPOSInformationTime"]["row"][0]["W_TEMP"]
-            except:
+            except Exception:
                 logger.log_error("Retreiving water information of Hangang failed. Please check API Status.")
                 self.suonV2 = None
-
 
     # Search from Daum and returns result by JSON
     def daum_search(self, message, site):
         command = message.text.split()
-        keyword = ''
+        keyword = ""
         for i in range(1, len(command)):
             if i < len(command) - 1:
-                keyword += command[i] + ' '
+                keyword += command[i] + " "
             else:
                 keyword += command[i]
 
         # Sends request
-        search_args = {'query': keyword if site is None else keyword + ' site:' + site}
+        search_args = {"query": keyword if site is None else keyword + " site:" + site}
         search_url = SEARCH_BASE_URL + urllib.parse.urlencode(search_args)
-        search_headers = {"Authorization": 'KakaoAK ' + config.KAKAO_TOKEN}
+        search_headers = {"Authorization": "KakaoAK " + config.KAKAO_TOKEN}
         search_request = requests.get(search_url, headers=search_headers)
 
         result = json.loads(search_request.text)
 
-        for i in result['documents']:
-            urlinfo = urllib.parse.urlsplit(i['url'])
-            i['url'] = f'{urlinfo.scheme}://{urlinfo.netloc}{urllib.parse.quote(urlinfo.path)}'
+        for i in result["documents"]:
+            urlinfo = urllib.parse.urlsplit(i["url"])
+            i["url"] = f"{urlinfo.scheme}://{urlinfo.netloc}{urllib.parse.quote(urlinfo.path)}"
 
         return result
 
     # Search from Namu.wiki
     def namuwiki_search(self, message):
         command = message.text.split()
-        keyword = ''
+        keyword = ""
         for i in range(1, len(command)):
             if i < len(command) - 1:
-                keyword += command[i] + ' '
+                keyword += command[i] + " "
             else:
                 keyword += command[i]
 
         url = NAMUWIKI_BASE_URL + urllib.parse.quote(keyword)
 
-        result = self.daum_search(message, "namu.wiki")['documents'][0]
-        result_contents = result['contents']
-        result_url = result['url']
+        result = self.daum_search(message, "namu.wiki")["documents"][0]
+        result_contents = result["contents"]
+        result_url = result["url"]
 
         if result_url != url:
             return "[" + keyword + " - 나무위키](" + url + ")"
         else:
-            text = re.sub('<.+?>', '', result_contents, 0, re.I | re.S)
+            text = re.sub("<.+?>", "", result_contents, 0, re.I | re.S)
             return "[" + keyword + " - 나무위키](" + url + ")\n\n" + text
 
     # Provide temperature data to other methods 다른 메소드로 온도 정보 전달
@@ -153,4 +154,4 @@ class WebManager:
         try:
             return self.suonV2
         except ValueError:
-            return 'error'
+            return "error"

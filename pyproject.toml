@@ -24,16 +24,8 @@ line-length = 120
 exclude = [".venv", "__pycache__", ".git"]
 
 [tool.ruff.lint]
-ignore = ["N802", "N806", "N815", "N816"]
-
-[tool.ruff.lint.per-file-ignores]
-# F811: pyTelegramBotAPI decorator pattern reuses handler function names
-"bin/main.py" = ["F811"]
-# Pre-existing issues in legacy code
-"modules/db_manager.py" = ["F841"]
-"modules/features_hub.py" = ["F841"]
-"modules/log.py" = ["E712"]
-"modules/web_based.py" = ["E722"]
+# N816: resources/strings.py의 camelCase 모듈 변수 허용
+ignore = ["N816"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
