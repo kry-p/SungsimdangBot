@@ -196,3 +196,9 @@ logfile
 
 # Visual Studio
 .vs/
+
+# Ruff
+.ruff_cache/
+
+# macOS
+.DS_Store

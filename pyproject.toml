@@ -1,0 +1,40 @@
+[project]
+name = "sungsimdangbot"
+version = "1.0.0"
+description = "Telegram bot with various utility features"
+requires-python = ">=3.9"
+dependencies = [
+    "pyTelegramBotAPI",
+    "requests",
+    "python-dotenv",
+]
+
+[project.optional-dependencies]
+dev = [
+    "ruff",
+    "pytest",
+    "pre-commit",
+]
+
+[tool.setuptools]
+py-modules = []
+
+[tool.ruff]
+line-length = 120
+exclude = [".venv", "__pycache__", ".git"]
+
+[tool.ruff.lint]
+ignore = ["N802", "N806", "N815", "N816"]
+
+[tool.ruff.lint.per-file-ignores]
+# F811: pyTelegramBotAPI decorator pattern reuses handler function names
+"bin/main.py" = ["F811"]
+# Pre-existing issues in legacy code
+"modules/db_manager.py" = ["F841"]
+"modules/features_hub.py" = ["F841"]
+"modules/log.py" = ["E712"]
+"modules/web_based.py" = ["E722"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
