@@ -24,7 +24,7 @@ jobs:
       - name: Format check
         run: ruff format --check .
       - name: Test
-        run: pytest -v || [ $? -eq 5 ]
+        run: pytest -v
   secrets:
     runs-on: ubuntu-latest
     steps:
