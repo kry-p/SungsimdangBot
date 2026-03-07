@@ -8,12 +8,8 @@
 # 봇이 정지된 동안의 메시지를 한꺼번에 받아서 처리하는 문제가 있습니다.
 # 정지된 동안에 수신된 메시지를 무시하도록 관련 처리가 필요합니다.
 # 여러 목적으로 활용하기 위한 로그를 작성할 예정입니다.
-import os
-import sys
 import logging
 import logging.handlers
-
-sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 
 from modules import features_hub
 from modules import log

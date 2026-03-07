@@ -16,8 +16,8 @@ dev = [
     "pre-commit>=3.0",
 ]
 
-[tool.setuptools]
-py-modules = []
+[tool.setuptools.packages.find]
+include = ["config*", "modules*", "resources*"]
 
 [tool.ruff]
 line-length = 120
