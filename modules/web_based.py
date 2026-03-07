@@ -1,17 +1,18 @@
 import datetime
-import requests
 
 # import cloudscraper
 import json
-import urllib.parse
 import re
-from modules import log
+import urllib.parse
+
+import requests
 
 # from bs4 import BeautifulSoup
 # from selenium import webdriver
 # from selenium.webdriver.chrome.service import Service
 # from selenium.webdriver.chrome.options import Options
 from config import config
+from modules import log
 
 # Initialize logger module
 logger = log.Logger()
@@ -83,7 +84,7 @@ class WebManager:
             #     self.suon.append(i.text.strip())
 
             try:
-                search_request = requests.get(config.SEOUL_HANGANG_WATER_URL)
+                search_request = requests.get(config.SEOUL_HANGANG_WATER_URL, timeout=10)
                 result = json.loads(search_request.text)
                 self.suonV2 = result["WPOSInformationTime"]["row"][0]["W_TEMP"]
             except Exception:
@@ -104,7 +105,7 @@ class WebManager:
         search_args = {"query": keyword if site is None else keyword + " site:" + site}
         search_url = SEARCH_BASE_URL + urllib.parse.urlencode(search_args)
         search_headers = {"Authorization": "KakaoAK " + config.KAKAO_TOKEN}
-        search_request = requests.get(search_url, headers=search_headers)
+        search_request = requests.get(search_url, headers=search_headers, timeout=10)
 
         result = json.loads(search_request.text)
 
@@ -133,7 +134,7 @@ class WebManager:
         if result_url != url:
             return "[" + keyword + " - 나무위키](" + url + ")"
         else:
-            text = re.sub("<.+?>", "", result_contents, 0, re.I | re.S)
+            text = re.sub("<.+?>", "", result_contents, count=0, flags=re.IGNORECASE | re.DOTALL)
             return "[" + keyword + " - 나무위키](" + url + ")\n\n" + text
 
     # Provide temperature data to other methods 다른 메소드로 온도 정보 전달

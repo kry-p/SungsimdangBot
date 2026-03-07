@@ -10,15 +10,15 @@
 # 여러 목적으로 활용하기 위한 로그를 작성할 예정입니다.
 import logging
 import logging.handlers
-
-from modules import features_hub
-from modules import log
-from config import config
-from resources import strings
-import telebot
-import threading
 import re
+import threading
 from time import sleep
+
+import telebot
+
+from config import config
+from modules import features_hub, log
+from resources import strings
 
 BOT_INTERVAL = 3
 BOT_TIMEOUT = 30
@@ -39,7 +39,7 @@ def bot_polling():
             logger.log_info("Bot instance is running")
             bot.polling(none_stop=True, interval=BOT_INTERVAL, timeout=BOT_TIMEOUT)
         except Exception as ex:  # Error in polling
-            logger.log_error("Polling has failed. Retry in {} sec.\n Error : {}\n".format(BOT_TIMEOUT, ex))
+            logger.log_error(f"Polling has failed. Retry in {BOT_TIMEOUT} sec.\n Error : {ex}\n")
             bot.stop_polling()
             sleep(BOT_TIMEOUT)
         else:  # Clean exit
@@ -131,8 +131,8 @@ class MessageProvider:
                     + "[더 보기]("
                     + result["documents"][i]["url"]
                     + ")\n\n",
-                    0,
-                    re.I | re.S,
+                    count=0,
+                    flags=re.IGNORECASE | re.DOTALL,
                 )
         else:
             for i in result["documents"]:
@@ -140,10 +140,10 @@ class MessageProvider:
                     "<.+?>",
                     "",
                     "*" + i["title"] + "*\n" + i["contents"] + "\n" + "[더 보기](" + i["url"] + ")\n\n",
-                    0,
-                    re.I | re.S,
+                    count=0,
+                    flags=re.IGNORECASE | re.DOTALL,
                 )
-        text = "검색 결과입니다.\n\n" + re.sub("<.+?>", "", result_contents, 0, re.I | re.S)
+        text = "검색 결과입니다.\n\n" + re.sub("<.+?>", "", result_contents, count=0, flags=re.IGNORECASE | re.DOTALL)
         bot.reply_to(message, text, parse_mode="Markdown")
 
     @bot.message_handler(commands=["namu"])
@@ -174,7 +174,7 @@ class MessageProvider:
             return
         else:
             logger.log_info("Ordinary message handler working...")
-            logger.log_info("Message: {}".format(message))
+            logger.log_info(f"Message: {message}")
             bot_features.ordinary_message(message)
 
 

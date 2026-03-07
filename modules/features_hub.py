@@ -5,6 +5,7 @@ import json
 import random
 import time
 import urllib.parse
+
 import requests
 
 from config import config
@@ -94,7 +95,7 @@ class BotFeaturesHub:
             elif result < 0:
                 self.bot.reply_to(message, str(-1 * result) + strings.day_passed_msg)
 
-        except ValueError and IndexError:  # wrong input
+        except (ValueError, IndexError):  # wrong input
             self.bot.reply_to(message, strings.day_out_of_range_msg)
 
     # Geolocation information　위치 기반 정보 제공
@@ -104,12 +105,12 @@ class BotFeaturesHub:
         map_args = {"x": longitude, "y": latitude}
         map_url = MAP_BASE_URL + urllib.parse.urlencode(map_args)
         map_headers = {"Authorization": "KakaoAK " + config.KAKAO_TOKEN}
-        map_request = requests.get(map_url, headers=map_headers)
+        map_request = requests.get(map_url, headers=map_headers, timeout=10)
 
         # weather info (by OpenWeatherMap)
         weather_args = {"lang": "kr", "appid": config.WEATHER_TOKEN, "lat": latitude, "lon": longitude}
         weather_url = WEATHER_BASE_URL + urllib.parse.urlencode(weather_args)
-        weather_request = requests.get(weather_url)
+        weather_request = requests.get(weather_url, timeout=10)
         weather_json = json.loads(weather_request.text)
 
         # temporarily store weather info

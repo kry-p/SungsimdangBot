@@ -1,7 +1,7 @@
-import os
 import datetime
 import logging
 import logging.handlers
+import os
 
 LOG_DIRECTORY = "../log"
 
@@ -15,7 +15,7 @@ class Logger:
         logging.basicConfig(level=logging.INFO)
         self.formatter = logging.Formatter("%(asctime)s %(name)s %(levelname)s %(message)s")
         self.fileHandler = logging.FileHandler(
-            "{}/logfile_{:%Y%m%d}.log".format(LOG_DIRECTORY, datetime.datetime.now()), encoding="utf-8"
+            f"{LOG_DIRECTORY}/logfile_{datetime.datetime.now():%Y%m%d}.log", encoding="utf-8"
         )
         self.streamHandler = logging.StreamHandler()
         self.streamHandler.setFormatter(self.formatter)

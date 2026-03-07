@@ -1,11 +1,12 @@
 # module for random based features
 import random
+
 from resources import strings
 
 
 class RandomBasedFeatures:
     def __init__(self):
-        self.Bullet = list()
+        self.Bullet = []
 
     # Random picker 랜덤픽
     @staticmethod
@@ -43,13 +44,13 @@ class RandomBasedFeatures:
                 if message.split()[1] == 0 and message.split()[2] == 0:
                     self.Bullet = ()
                     return "약실을 비웠습니다. 사용하려면 다시 장전해주세요."
-                self.Bullet = list()
-                for n in range(int(message.split()[1])):
+                self.Bullet = []
+                for _n in range(int(message.split()[1])):
                     self.Bullet.append(False)
                 for n in range(int(message.split()[2])):
                     self.Bullet[n] = True
                 random.shuffle(self.Bullet)
-                return "{}발이 장전되었습니다.".format(len(self.Bullet))
+                return f"{len(self.Bullet)}발이 장전되었습니다."
         except IndexError:
             return strings.roulette_error_msg
 

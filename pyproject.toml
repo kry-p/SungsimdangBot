@@ -24,6 +24,7 @@ line-length = 120
 exclude = [".venv", "__pycache__", ".git"]
 
 [tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "S113", "FURB", "C4"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
