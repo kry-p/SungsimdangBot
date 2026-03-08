@@ -103,6 +103,43 @@ class TestErrors:
     def test_double_operator(self, calc):
         assert calc.operation(" 2 ++ 3") == "syntax error"
 
+    @pytest.mark.xfail(reason="ValueError not caught in operation()", strict=True)
+    def test_sqrt_negative(self, calc):
+        assert calc.operation(" sqrt(-1)") == "syntax error"
+
+    @pytest.mark.xfail(reason="ValueError not caught in operation()", strict=True)
+    def test_ln_zero(self, calc):
+        assert calc.operation(" ln(0)") == "syntax error"
+
+    @pytest.mark.xfail(reason="ValueError not caught in operation()", strict=True)
+    def test_ln_negative(self, calc):
+        assert calc.operation(" ln(-1)") == "syntax error"
+
+    @pytest.mark.xfail(reason="ValueError not caught in operation()", strict=True)
+    def test_log_negative(self, calc):
+        assert calc.operation(" log(-1)") == "syntax error"
+
+    @pytest.mark.xfail(reason="ValueError not caught in operation()", strict=True)
+    def test_asin_out_of_domain(self, calc):
+        assert calc.operation(" asin(2)") == "syntax error"
+
+    @pytest.mark.xfail(reason="ValueError not caught in operation()", strict=True)
+    def test_acos_out_of_domain(self, calc):
+        assert calc.operation(" acos(2)") == "syntax error"
+
+    @pytest.mark.xfail(reason="OverflowError not caught in operation()", strict=True)
+    def test_exp_overflow(self, calc):
+        assert calc.operation(" exp(1000)") == "syntax error"
+
+    def test_leading_operator(self, calc):
+        assert calc.operation(" * 2") == "syntax error"
+
+    def test_empty_parentheses(self, calc):
+        assert calc.operation(" ()") == "syntax error"
+
+    def test_leading_dot_decimal(self, calc):
+        assert calc.operation(" .5 + 1") == "syntax error"
+
 
 class TestStringToNumber:
     def test_integer(self, calc):
@@ -251,3 +288,11 @@ class TestFunctionCalls:
 
     def test_negative_function(self, calc):
         assert calc.operation(" -sqrt(4)") == -2.0
+
+
+class TestOperationPowerEdgeCases:
+    def test_zero_power_zero(self, calc):
+        assert calc.operation(" 0 ^ 0") == 1
+
+    def test_power_zero(self, calc):
+        assert calc.operation(" 2 ^ 0") == 1
