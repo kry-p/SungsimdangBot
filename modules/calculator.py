@@ -27,6 +27,9 @@ class Calculator:
     # 계산 작업
     def operation(self, expression):
         try:
+            check = self.wrong_syntax_checker(expression)
+            if check == "syntax error":
+                return "syntax error"
             self.tokenize(expression)
             self.infix_to_postfix()
 
@@ -43,7 +46,7 @@ class Calculator:
 
     # 정해진 연산자나 함수 이외의 텍스트가 있는지 체크
     def wrong_syntax_checker(self, expression):
-        for i in self.library["function"]:
+        for i in sorted(self.library["function"], key=len, reverse=True):
             expression = re.sub(i, "", expression)
 
         for i in self.library["constant"]:
