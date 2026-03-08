@@ -59,14 +59,16 @@ class Calculator:
     def priority(self, operator):
         if operator in self.library["function"]:
             return 0
-        elif operator == "*" or operator == "/" or operator == "^":
+        elif operator == "^":
             return 1
-        elif operator == "+" or operator == "-":
+        elif operator == "*" or operator == "/":
             return 2
-        elif operator == "(" or operator == ")":
+        elif operator == "+" or operator == "-":
             return 3
-        else:
+        elif operator == "(" or operator == ")":
             return 4
+        else:
+            return 5
 
     # 입력받은 수식을 토큰화
     def tokenize(self, notation):

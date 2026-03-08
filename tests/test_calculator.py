@@ -135,25 +135,26 @@ class TestPriority:
         assert calc.priority("sqrt") == 0
         assert calc.priority("sin") == 0
 
-    def test_mul_div_pow_priority(self, calc):
-        assert calc.priority("*") == 1
-        assert calc.priority("/") == 1
+    def test_power_priority(self, calc):
         assert calc.priority("^") == 1
 
+    def test_mul_div_priority(self, calc):
+        assert calc.priority("*") == 2
+        assert calc.priority("/") == 2
+
     def test_add_sub_priority(self, calc):
-        assert calc.priority("+") == 2
-        assert calc.priority("-") == 2
+        assert calc.priority("+") == 3
+        assert calc.priority("-") == 3
 
     def test_parentheses_priority(self, calc):
-        assert calc.priority("(") == 3
-        assert calc.priority(")") == 3
+        assert calc.priority("(") == 4
+        assert calc.priority(")") == 4
 
-    @pytest.mark.xfail(reason="^ should have higher priority than * /", strict=True)
     def test_power_higher_than_mul_div(self, calc):
         assert calc.priority("^") < calc.priority("*")
 
     def test_unknown_priority(self, calc):
-        assert calc.priority("xyz") == 4
+        assert calc.priority("xyz") == 5
 
 
 class TestOperationEdgeCases:
