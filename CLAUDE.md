@@ -6,8 +6,11 @@
 
 ```
 bin/main.py              # 진입점 — 봇 폴링 및 메시지 핸들러
-config/config.py         # 환경 변수(.env) 로더
+config/
+  __init__.py
+  config.py              # 환경 변수(.env) 로더
 modules/
+  __init__.py
   features_hub.py        # BotFeaturesHub — 모든 기능 오케스트레이션
   calculator.py          # Calculator — 중위→후위 변환 수식 계산기
   random_based.py        # RandomBasedFeatures — 선택봇, 동전 던지기, 룰렛, 마법의 소라고동
@@ -16,9 +19,14 @@ modules/
   db_manager.py          # DatabaseManager (스텁)
   gaechu_info.py         # GaechuInfo (스텁)
 resources/
+  __init__.py
   strings.py             # 모든 봇 메시지 문자열 및 인라인 키보드 (telebot import)
   users.py               # 사용자 정보 배열
-tests/                   # pytest 테스트
+tests/
+  __init__.py
+  test_calculator.py     # Calculator 단위 테스트 (84 cases)
+  test_features_hub.py   # BotFeaturesHub 통합 테스트 (mock bot)
+  test_random_based.py   # RandomBasedFeatures 단위 테스트
 ```
 
 ## 개발 명령어
@@ -53,7 +61,7 @@ GitHub Actions (`ci.yml`) — `master` push 및 모든 PR에서 실행.
 
 ## 알려진 이슈
 
-- `Calculator.tokenize()` 75번째 줄 버그: `str.insert()` — 함수 호출 문법(`sqrt(4)`, `sin(0)` 등)이 작동하지 않음. 테스트에서 `xfail`로 표시.
+- `RandomBasedFeatures.russian_roulette()`: `flush_bullet` 분기에서 `message.split()[1] == 0` — 문자열과 정수 비교 버그. 테스트에서 `xfail`로 표시.
 
 ## 커밋 컨벤션
 
@@ -90,11 +98,8 @@ Conventional Commits 형식을 따릅니다.
 
 ### import 패턴
 
-- 크로스 패키지 import는 `sys.path.append()` 사용:
-  ```python
-  import os, sys
-  sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
-  ```
+- 각 디렉토리에 `__init__.py`가 있어 패키지로 인식됨
+- `from modules.calculator import Calculator` 형태의 절대 import 사용
 - 표준 라이브러리 → 서드파티 → 프로젝트 모듈 순서로 import
 
 ### 문자열 관리
