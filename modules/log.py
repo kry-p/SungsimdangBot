@@ -1,28 +1,29 @@
-import os
 import datetime
 import logging
 import logging.handlers
+import os
 
-LOG_DIRECTORY = '../log'
+LOG_DIRECTORY = "../log"
 
-class Logger: 
+
+class Logger:
     def __init__(self):
-        isSuccess = self.create_directory(LOG_DIRECTORY)
-        if isSuccess != True:
+        is_success = self.create_directory(LOG_DIRECTORY)
+        if not is_success:
             return
         self.logger = logging.getLogger(__name__)
         logging.basicConfig(level=logging.INFO)
-        self.formatter = logging.Formatter('%(asctime)s %(name)s %(levelname)s %(message)s')
-        self.fileHandler = logging.FileHandler("{}/logfile_{:%Y%m%d}.log".format(LOG_DIRECTORY, datetime.datetime.now()),
-                                            encoding="utf-8")
+        self.formatter = logging.Formatter("%(asctime)s %(name)s %(levelname)s %(message)s")
+        self.fileHandler = logging.FileHandler(
+            f"{LOG_DIRECTORY}/logfile_{datetime.datetime.now():%Y%m%d}.log", encoding="utf-8"
+        )
         self.streamHandler = logging.StreamHandler()
         self.streamHandler.setFormatter(self.formatter)
         self.logger.addHandler(self.streamHandler)
 
-        self.timedFileHandler = logging.handlers.TimedRotatingFileHandler(filename='logfile',
-                                                                        when='midnight',
-                                                                        interval=1,
-                                                                        encoding='utf-8')
+        self.timedFileHandler = logging.handlers.TimedRotatingFileHandler(
+            filename="logfile", when="midnight", interval=1, encoding="utf-8"
+        )
         self.timedFileHandler.setFormatter(self.formatter)
         self.timedFileHandler.suffix = "%Y%m%d"
         self.logger.addHandler(self.timedFileHandler)
