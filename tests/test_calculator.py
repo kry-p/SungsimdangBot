@@ -41,7 +41,6 @@ class TestPrecedence:
     def test_nested_parentheses(self, calc):
         assert calc.operation(" ((1 + 2) * (3 + 4))") == 21
 
-    @pytest.mark.xfail(reason="^ treated as left-associative", strict=True)
     def test_power_right_associative(self, calc):
         assert calc.operation(" 2 ^ 3 ^ 2") == 512
 

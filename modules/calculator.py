@@ -179,18 +179,16 @@ class Calculator:
                         else:
                             result.append(stack.pop())
                 else:
-                    # 괄호를 제외한 일반 연산자 처리
-                    # 스택이 비었으면 추가
-                    if not stack:
-                        stack.append(i)
-                    else:
-                        # 현재 연산자가 스택의 연산자보다 우선순위가 높으면 스택에 추가
-                        # 그렇지 않으면 스택에서 pop 하고 현재 연산자를 스택에 추가
-                        if self.priority(i) < self.priority(stack[-1]):
-                            stack.append(i)
-                        else:
-                            result.append(stack.pop())
-                            stack.append(i)
+                    while (
+                        stack
+                        and stack[-1] != "("
+                        and (
+                            self.priority(stack[-1]) < self.priority(i)
+                            or (self.priority(stack[-1]) == self.priority(i) and i != "^")
+                        )
+                    ):
+                        result.append(stack.pop())
+                    stack.append(i)
 
         for _i in range(len(stack)):
             result.append(stack.pop())
