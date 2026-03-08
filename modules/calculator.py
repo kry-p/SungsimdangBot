@@ -72,68 +72,46 @@ class Calculator:
 
     # 입력받은 수식을 토큰화
     def tokenize(self, notation):
-        # 잘못 처리된 공백까지 올바르게 전처리하기 위해 모든 공백을 삭제
-        index = -1
-        temp = notation.replace(" ", "")
+        text = notation.replace(" ", "")
+        if not text:
+            raise SyntaxError
 
-        # 만약 괄호앞이 숫자일 경우 곱셈연산자 삽입
-        for i in temp:
-            if i == "(" and temp.find(i) != 0:
-                temp.insert(temp.find(i), "*")
+        # 정규식으로 토큰 추출 (함수명은 길이 역순으로 매칭)
+        func_pattern = "|".join(sorted(self.library["function"], key=len, reverse=True))
+        const_pattern = "|".join(sorted(self.library["constant"], key=len, reverse=True))
+        pattern = rf"({func_pattern}|{const_pattern}|\d+\.?\d*|[+\-*/^()])"
+        tokens = re.findall(pattern, text)
 
-        # 모든 연산자에 대해 공백 재삽입
-        for i in self.library["operator"]:
-            while True:
-                index = temp.find(i, index + 1)
+        if "".join(tokens) != text:
+            raise SyntaxError
 
-                if index == -1:
-                    break
-                else:
-                    if index == 0:
-                        temp = i + " " + temp[index + 1 :]
-                    else:
-                        temp = temp[:index] + " " + i + " " + temp[index + 1 :]
-                    index += 2
+        # 값 토큰: 숫자, 상수, 닫는 괄호
+        def is_value(tok):
+            return tok == ")" or tok in self.library["constant"] or re.fullmatch(r"\d+\.?\d*", tok)
 
-        for i in self.library["function"]:
-            while True:
-                index = temp.find(i, index + 1)
+        # 암시적 곱셈 삽입 및 단항 마이너스 처리
+        result = []
+        for tok in tokens:
+            # 암시적 곱셈: 값 토큰 뒤에 (, 함수, 상수, 숫자가 오면 * 삽입
+            if (
+                result
+                and is_value(result[-1])
+                and (
+                    tok == "("
+                    or tok in self.library["function"]
+                    or tok in self.library["constant"]
+                    or re.fullmatch(r"\d+\.?\d*", tok)
+                )
+            ):
+                result.append("*")
 
-                if index == -1:
-                    break
-                else:
-                    if index == 0:
-                        temp = i + " " + temp[index + len(i) :]
-                    else:
-                        temp = temp[:index] + " " + i + " " + temp[index + len(i) :]
-                    index += 2
+            # 단항 마이너스: 이전 토큰이 없거나 ( 또는 연산자이면 -1 * 로 변환
+            if tok == "-" and (not result or result[-1] == "(" or result[-1] in "+-*/^"):
+                result.extend(["-1", "*"])
+            else:
+                result.append(tok)
 
-        # 입력받은 값을 바로 리스트로 변환하여 숫자는 여전히 String 임
-        # 이를 연산에 바로 사용할 수 있도록 숫자로(int, float) 변환
-
-        self.tokenized_notation = list(map(self.string_to_number, temp.replace("  ", " ").split()))
-
-        # 음의 상수배 처리
-        prod = ["+", -1, "*"]
-        prod_first = [-1, "*"]
-
-        while True:
-            try:
-                index = self.tokenized_notation.index("-")
-
-                previous_notation = self.tokenized_notation[index - 1]
-                del self.tokenized_notation[index]
-
-                if index == 0 or previous_notation == "(":
-                    for i in prod_first:
-                        self.tokenized_notation.insert(index, i)
-                        index += 1
-                else:
-                    for i in prod:
-                        self.tokenized_notation.insert(index, i)
-                        index += 1
-            except ValueError:
-                break
+        self.tokenized_notation = list(map(self.string_to_number, result))
 
     # String 형태의 숫자를 정수와 실수로 변환
     @staticmethod
