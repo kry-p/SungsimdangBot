@@ -41,6 +41,23 @@ class TestPrecedence:
     def test_nested_parentheses(self, calc):
         assert calc.operation(" ((1 + 2) * (3 + 4))") == 21
 
+    @pytest.mark.xfail(reason="^ treated as left-associative", strict=True)
+    def test_power_right_associative(self, calc):
+        assert calc.operation(" 2 ^ 3 ^ 2") == 512
+
+    def test_left_associative_division(self, calc):
+        assert calc.operation(" 6 / 2 * 3") == 9.0
+
+    def test_left_associative_subtraction(self, calc):
+        assert calc.operation(" 10 - 3 - 2") == 5
+
+    def test_deeply_nested_parentheses(self, calc):
+        assert calc.operation(" (((2 + 3)))") == 5
+
+    @pytest.mark.xfail(reason="implicit multiplication not supported", strict=True)
+    def test_adjacent_parentheses_implicit_mul(self, calc):
+        assert calc.operation(" (2 + 3)(4 + 1)") == 25
+
 
 class TestNegativeNumbers:
     def test_negative_result(self, calc):
@@ -48,6 +65,13 @@ class TestNegativeNumbers:
 
     def test_leading_negative(self, calc):
         assert calc.operation(" -3 + 5") == 2
+
+    @pytest.mark.xfail(reason="negative after operator not handled", strict=True)
+    def test_negative_after_operator(self, calc):
+        assert calc.operation(" 5 * -3") == -15
+
+    def test_negative_in_parentheses(self, calc):
+        assert calc.operation(" (-3) + 5") == 2
 
 
 class TestConstants:
@@ -124,6 +148,10 @@ class TestPriority:
         assert calc.priority("(") == 3
         assert calc.priority(")") == 3
 
+    @pytest.mark.xfail(reason="^ should have higher priority than * /", strict=True)
+    def test_power_higher_than_mul_div(self, calc):
+        assert calc.priority("^") < calc.priority("*")
+
     def test_unknown_priority(self, calc):
         assert calc.priority("xyz") == 4
 
@@ -157,3 +185,15 @@ class TestFunctionCalls:
     @pytest.mark.xfail(reason="str.insert() bug in tokenize() line 80", strict=True)
     def test_sin_zero(self, calc):
         assert calc.operation(" sin(0)") == 0.0
+
+    @pytest.mark.xfail(reason="str.insert() bug in tokenize() line 80", strict=True)
+    def test_cos_zero(self, calc):
+        assert calc.operation(" cos(0)") == 1.0
+
+    @pytest.mark.xfail(reason="str.insert() bug in tokenize() line 80", strict=True)
+    def test_log_ten(self, calc):
+        assert calc.operation(" log(10)") == 1.0
+
+    @pytest.mark.xfail(reason="str.insert() bug in tokenize() line 80", strict=True)
+    def test_function_in_expression(self, calc):
+        assert calc.operation(" 1 + sqrt(9)") == 4.0
