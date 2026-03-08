@@ -39,7 +39,7 @@ class Calculator:
                 return result
             else:
                 return round(result, 4)
-        except (TypeError, UnboundLocalError, IndexError, SyntaxError):
+        except (TypeError, UnboundLocalError, IndexError, SyntaxError, ValueError, OverflowError):
             return "syntax error"
         except ZeroDivisionError:
             return "division by zero error"

@@ -103,31 +103,24 @@ class TestErrors:
     def test_double_operator(self, calc):
         assert calc.operation(" 2 ++ 3") == "syntax error"
 
-    @pytest.mark.xfail(reason="ValueError not caught in operation()", strict=True)
     def test_sqrt_negative(self, calc):
         assert calc.operation(" sqrt(-1)") == "syntax error"
 
-    @pytest.mark.xfail(reason="ValueError not caught in operation()", strict=True)
     def test_ln_zero(self, calc):
         assert calc.operation(" ln(0)") == "syntax error"
 
-    @pytest.mark.xfail(reason="ValueError not caught in operation()", strict=True)
     def test_ln_negative(self, calc):
         assert calc.operation(" ln(-1)") == "syntax error"
 
-    @pytest.mark.xfail(reason="ValueError not caught in operation()", strict=True)
     def test_log_negative(self, calc):
         assert calc.operation(" log(-1)") == "syntax error"
 
-    @pytest.mark.xfail(reason="ValueError not caught in operation()", strict=True)
     def test_asin_out_of_domain(self, calc):
         assert calc.operation(" asin(2)") == "syntax error"
 
-    @pytest.mark.xfail(reason="ValueError not caught in operation()", strict=True)
     def test_acos_out_of_domain(self, calc):
         assert calc.operation(" acos(2)") == "syntax error"
 
-    @pytest.mark.xfail(reason="OverflowError not caught in operation()", strict=True)
     def test_exp_overflow(self, calc):
         assert calc.operation(" exp(1000)") == "syntax error"
 
