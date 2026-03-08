@@ -7,7 +7,6 @@ import telebot
 
 # Message for checking bot status
 working_msg = "성심당봇이 정상 작동 중입니다."
-not_working_msg = "성심당봇에 이상이 있습니다. 문제를 확인해 주세요."
 
 # Guideline message
 start_msg = (
@@ -100,11 +99,6 @@ calc_syntax_error_msg = (
 )
 calc_division_by_zero_error_msg = "0으로 나눌 수 없습니다."
 
-# # recommend info message
-# gaechuInfoHelpMsg = "* 추천 및 비추천 글 정보 도움말 \n\n" \
-#                     "명령어 형식\n준비 중\n\n" \
-#                     "설명\n준비 중입니다."
-
 # Resources
 
 # Customized keyboards (inline)
@@ -127,9 +121,6 @@ main_keyboard.row(
     telebot.types.InlineKeyboardButton("D-day", callback_data="dday"),
     telebot.types.InlineKeyboardButton("계산기", callback_data="calc"),
 )
-# main_keyboard.row(
-#     telebot.types.InlineKeyboardButton('추천 및 비추천 글 정보', callback_data='gaechu_info'),
-# )
 
 
 # Magic conch reaction
@@ -167,9 +158,6 @@ coin_toss_result = [
     "뒷면",
     "수직으로 섰음",
 ]
-
-# Meme reaction list
-meme_reaction = []
 
 # K-Fword list
 korean_f_word = [

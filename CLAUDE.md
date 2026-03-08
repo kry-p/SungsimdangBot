@@ -16,12 +16,9 @@ modules/
   random_based.py        # RandomBasedFeatures — 선택봇, 동전 던지기, 룰렛, 마법의 소라고동
   web_based.py           # WebManager — 수온, 카카오/나무위키 검색
   log.py                 # Logger — 파일 + 콘솔 로깅
-  db_manager.py          # DatabaseManager (스텁)
-  gaechu_info.py         # GaechuInfo (스텁)
 resources/
   __init__.py
   strings.py             # 모든 봇 메시지 문자열 및 인라인 키보드 (telebot import)
-  users.py               # 사용자 정보 배열
 tests/
   __init__.py
   test_calculator.py     # Calculator 단위 테스트 (84 cases)
