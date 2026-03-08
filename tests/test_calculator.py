@@ -82,11 +82,26 @@ class TestErrors:
     def test_division_by_zero(self, calc):
         assert calc.operation(" 1 / 0") == "division by zero error"
 
+    def test_division_by_zero_expression(self, calc):
+        assert calc.operation(" 1 / (2 - 2)") == "division by zero error"
+
     def test_syntax_error_letters(self, calc):
         assert calc.operation(" abc") == "syntax error"
 
     def test_empty_expression(self, calc):
         assert calc.operation("") == "syntax error"
+
+    def test_unbalanced_open_paren(self, calc):
+        assert calc.operation(" (2 + 3") == "syntax error"
+
+    def test_unbalanced_close_paren(self, calc):
+        assert calc.operation(" 2 + 3)") == "syntax error"
+
+    def test_trailing_operator(self, calc):
+        assert calc.operation(" 2 +") == "syntax error"
+
+    def test_double_operator(self, calc):
+        assert calc.operation(" 2 ++ 3") == "syntax error"
 
 
 class TestStringToNumber:
@@ -125,6 +140,9 @@ class TestWrongSyntaxChecker:
     def test_invalid_single_letter(self, calc):
         assert calc.wrong_syntax_checker("x") == "syntax error"
 
+    def test_asin_not_confused_with_sin(self, calc):
+        assert calc.wrong_syntax_checker("asin(0.5)") is None
+
 
 class TestPriority:
     def test_function_priority(self, calc):
@@ -154,11 +172,23 @@ class TestPriority:
 
 
 class TestOperationEdgeCases:
+    def test_single_number(self, calc):
+        assert calc.operation(" 5") == 5
+
+    def test_single_float(self, calc):
+        assert calc.operation(" 3.14") == 3.14
+
     def test_decimal_arithmetic(self, calc):
         assert calc.operation(" 0.1 + 0.2") == round(0.1 + 0.2, 4)
 
     def test_constants_combination(self, calc):
         assert calc.operation(" pi + e") == round(math.pi + math.e, 4)
+
+    def test_implicit_mul_constant(self, calc):
+        assert calc.operation(" 2pi") == round(2 * math.pi, 4)
+
+    def test_implicit_mul_number_paren(self, calc):
+        assert calc.operation(" 3(2 + 1)") == 9
 
     def test_power_precedence(self, calc):
         assert calc.operation(" 2 ^ 3 * 2") == 16
@@ -171,6 +201,9 @@ class TestOperationEdgeCases:
 
     def test_only_whitespace(self, calc):
         assert calc.operation("   ") == "syntax error"
+
+    def test_complex_expression(self, calc):
+        assert calc.operation(" 2 + 3 * 4 - 6 / 2") == 11.0
 
 
 class TestFunctionCalls:
@@ -188,3 +221,33 @@ class TestFunctionCalls:
 
     def test_function_in_expression(self, calc):
         assert calc.operation(" 1 + sqrt(9)") == 4.0
+
+    def test_exp(self, calc):
+        assert calc.operation(" exp(0)") == 1.0
+
+    def test_ln(self, calc):
+        assert calc.operation(" ln(1)") == 0.0
+
+    def test_tan(self, calc):
+        assert calc.operation(" tan(0)") == 0.0
+
+    def test_asin(self, calc):
+        assert calc.operation(" asin(0)") == 0.0
+
+    def test_acos(self, calc):
+        assert calc.operation(" acos(1)") == 0.0
+
+    def test_atan(self, calc):
+        assert calc.operation(" atan(0)") == 0.0
+
+    def test_sin_pi(self, calc):
+        assert calc.operation(" sin(pi)") == 0.0
+
+    def test_nested_function(self, calc):
+        assert calc.operation(" sqrt(sqrt(16))") == 2.0
+
+    def test_function_with_expression(self, calc):
+        assert calc.operation(" sqrt(4 + 5)") == 3.0
+
+    def test_negative_function(self, calc):
+        assert calc.operation(" -sqrt(4)") == -2.0

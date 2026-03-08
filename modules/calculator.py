@@ -114,6 +114,18 @@ class Calculator:
             else:
                 result.append(tok)
 
+        # 괄호 균형 검증
+        depth = 0
+        for tok in result:
+            if tok == "(":
+                depth += 1
+            elif tok == ")":
+                depth -= 1
+            if depth < 0:
+                raise SyntaxError
+        if depth != 0:
+            raise SyntaxError
+
         self.tokenized_notation = list(map(self.string_to_number, result))
 
     # String 형태의 숫자를 정수와 실수로 변환
