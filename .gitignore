@@ -187,5 +187,18 @@ common_data.db
 
 # Log file
 /log
+logfile
 
 # End of https://www.toptal.com/developers/gitignore/api/linux,windows,python
+
+# Environment
+.env
+
+# Visual Studio
+.vs/
+
+# Ruff
+.ruff_cache/
+
+# macOS
+.DS_Store

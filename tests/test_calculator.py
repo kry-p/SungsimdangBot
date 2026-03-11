@@ -1,0 +1,291 @@
+import math
+
+import pytest
+
+from modules.calculator import Calculator
+
+
+@pytest.fixture
+def calc():
+    return Calculator()
+
+
+class TestBasicArithmetic:
+    def test_addition(self, calc):
+        assert calc.operation(" 2 + 3") == 5
+
+    def test_subtraction(self, calc):
+        assert calc.operation(" 10 - 4") == 6
+
+    def test_multiplication(self, calc):
+        assert calc.operation(" 3 * 7") == 21
+
+    def test_division(self, calc):
+        assert calc.operation(" 15 / 3") == 5
+
+    def test_division_float(self, calc):
+        assert calc.operation(" 7 / 2") == 3.5
+
+    def test_power(self, calc):
+        assert calc.operation(" 2 ^ 10") == 1024
+
+
+class TestPrecedence:
+    def test_mul_before_add(self, calc):
+        assert calc.operation(" 2 + 3 * 4") == 14
+
+    def test_parentheses(self, calc):
+        assert calc.operation(" (2 + 3) * 4") == 20
+
+    def test_nested_parentheses(self, calc):
+        assert calc.operation(" ((1 + 2) * (3 + 4))") == 21
+
+    def test_power_right_associative(self, calc):
+        assert calc.operation(" 2 ^ 3 ^ 2") == 512
+
+    def test_left_associative_division(self, calc):
+        assert calc.operation(" 6 / 2 * 3") == 9.0
+
+    def test_left_associative_subtraction(self, calc):
+        assert calc.operation(" 10 - 3 - 2") == 5
+
+    def test_deeply_nested_parentheses(self, calc):
+        assert calc.operation(" (((2 + 3)))") == 5
+
+    def test_adjacent_parentheses_implicit_mul(self, calc):
+        assert calc.operation(" (2 + 3)(4 + 1)") == 25
+
+
+class TestNegativeNumbers:
+    def test_negative_result(self, calc):
+        assert calc.operation(" 3 - 5") == -2
+
+    def test_leading_negative(self, calc):
+        assert calc.operation(" -3 + 5") == 2
+
+    def test_negative_after_operator(self, calc):
+        assert calc.operation(" 5 * -3") == -15
+
+    def test_negative_in_parentheses(self, calc):
+        assert calc.operation(" (-3) + 5") == 2
+
+
+class TestConstants:
+    def test_pi(self, calc):
+        assert calc.operation(" pi") == round(math.pi, 4)
+
+    def test_e(self, calc):
+        assert calc.operation(" e") == round(math.e, 4)
+
+
+class TestErrors:
+    def test_division_by_zero(self, calc):
+        assert calc.operation(" 1 / 0") == "division by zero error"
+
+    def test_division_by_zero_expression(self, calc):
+        assert calc.operation(" 1 / (2 - 2)") == "division by zero error"
+
+    def test_syntax_error_letters(self, calc):
+        assert calc.operation(" abc") == "syntax error"
+
+    def test_empty_expression(self, calc):
+        assert calc.operation("") == "syntax error"
+
+    def test_unbalanced_open_paren(self, calc):
+        assert calc.operation(" (2 + 3") == "syntax error"
+
+    def test_unbalanced_close_paren(self, calc):
+        assert calc.operation(" 2 + 3)") == "syntax error"
+
+    def test_trailing_operator(self, calc):
+        assert calc.operation(" 2 +") == "syntax error"
+
+    def test_double_operator(self, calc):
+        assert calc.operation(" 2 ++ 3") == "syntax error"
+
+    def test_sqrt_negative(self, calc):
+        assert calc.operation(" sqrt(-1)") == "syntax error"
+
+    def test_ln_zero(self, calc):
+        assert calc.operation(" ln(0)") == "syntax error"
+
+    def test_ln_negative(self, calc):
+        assert calc.operation(" ln(-1)") == "syntax error"
+
+    def test_log_negative(self, calc):
+        assert calc.operation(" log(-1)") == "syntax error"
+
+    def test_asin_out_of_domain(self, calc):
+        assert calc.operation(" asin(2)") == "syntax error"
+
+    def test_acos_out_of_domain(self, calc):
+        assert calc.operation(" acos(2)") == "syntax error"
+
+    def test_exp_overflow(self, calc):
+        assert calc.operation(" exp(1000)") == "syntax error"
+
+    def test_leading_operator(self, calc):
+        assert calc.operation(" * 2") == "syntax error"
+
+    def test_empty_parentheses(self, calc):
+        assert calc.operation(" ()") == "syntax error"
+
+    def test_leading_dot_decimal(self, calc):
+        assert calc.operation(" .5 + 1") == "syntax error"
+
+
+class TestStringToNumber:
+    def test_integer(self, calc):
+        assert calc.string_to_number("42") == 42
+        assert isinstance(calc.string_to_number("42"), int)
+
+    def test_float(self, calc):
+        assert calc.string_to_number("3.14") == 3.14
+        assert isinstance(calc.string_to_number("3.14"), float)
+
+    def test_constant_pi(self, calc):
+        assert calc.string_to_number("pi") == math.pi
+
+    def test_constant_e(self, calc):
+        assert calc.string_to_number("e") == math.e
+
+    def test_non_numeric_string(self, calc):
+        assert calc.string_to_number("+") == "+"
+        assert calc.string_to_number("sqrt") == "sqrt"
+
+
+class TestWrongSyntaxChecker:
+    def test_valid_expression(self, calc):
+        assert calc.wrong_syntax_checker("2 + 3 * 4") is None
+
+    def test_valid_with_constants(self, calc):
+        assert calc.wrong_syntax_checker("pi + e") is None
+
+    def test_valid_with_functions(self, calc):
+        assert calc.wrong_syntax_checker("sqrt(4)") is None
+
+    def test_invalid_characters(self, calc):
+        assert calc.wrong_syntax_checker("2 + abc") == "syntax error"
+
+    def test_invalid_single_letter(self, calc):
+        assert calc.wrong_syntax_checker("x") == "syntax error"
+
+    def test_asin_not_confused_with_sin(self, calc):
+        assert calc.wrong_syntax_checker("asin(0.5)") is None
+
+
+class TestPriority:
+    def test_function_priority(self, calc):
+        assert calc.priority("sqrt") == 0
+        assert calc.priority("sin") == 0
+
+    def test_power_priority(self, calc):
+        assert calc.priority("^") == 1
+
+    def test_mul_div_priority(self, calc):
+        assert calc.priority("*") == 2
+        assert calc.priority("/") == 2
+
+    def test_add_sub_priority(self, calc):
+        assert calc.priority("+") == 3
+        assert calc.priority("-") == 3
+
+    def test_parentheses_priority(self, calc):
+        assert calc.priority("(") == 4
+        assert calc.priority(")") == 4
+
+    def test_power_higher_than_mul_div(self, calc):
+        assert calc.priority("^") < calc.priority("*")
+
+    def test_unknown_priority(self, calc):
+        assert calc.priority("xyz") == 5
+
+
+class TestOperationEdgeCases:
+    def test_single_number(self, calc):
+        assert calc.operation(" 5") == 5
+
+    def test_single_float(self, calc):
+        assert calc.operation(" 3.14") == 3.14
+
+    def test_decimal_arithmetic(self, calc):
+        assert calc.operation(" 0.1 + 0.2") == round(0.1 + 0.2, 4)
+
+    def test_constants_combination(self, calc):
+        assert calc.operation(" pi + e") == round(math.pi + math.e, 4)
+
+    def test_implicit_mul_constant(self, calc):
+        assert calc.operation(" 2pi") == round(2 * math.pi, 4)
+
+    def test_implicit_mul_number_paren(self, calc):
+        assert calc.operation(" 3(2 + 1)") == 9
+
+    def test_power_precedence(self, calc):
+        assert calc.operation(" 2 ^ 3 * 2") == 16
+
+    def test_negative_times_negative(self, calc):
+        assert calc.operation(" -2 * -3") == 6
+
+    def test_large_number(self, calc):
+        assert calc.operation(" 999999 * 999999") == 999998000001
+
+    def test_only_whitespace(self, calc):
+        assert calc.operation("   ") == "syntax error"
+
+    def test_complex_expression(self, calc):
+        assert calc.operation(" 2 + 3 * 4 - 6 / 2") == 11.0
+
+
+class TestFunctionCalls:
+    def test_sqrt(self, calc):
+        assert calc.operation(" sqrt(4)") == 2.0
+
+    def test_sin_zero(self, calc):
+        assert calc.operation(" sin(0)") == 0.0
+
+    def test_cos_zero(self, calc):
+        assert calc.operation(" cos(0)") == 1.0
+
+    def test_log_ten(self, calc):
+        assert calc.operation(" log(10)") == 1.0
+
+    def test_function_in_expression(self, calc):
+        assert calc.operation(" 1 + sqrt(9)") == 4.0
+
+    def test_exp(self, calc):
+        assert calc.operation(" exp(0)") == 1.0
+
+    def test_ln(self, calc):
+        assert calc.operation(" ln(1)") == 0.0
+
+    def test_tan(self, calc):
+        assert calc.operation(" tan(0)") == 0.0
+
+    def test_asin(self, calc):
+        assert calc.operation(" asin(0)") == 0.0
+
+    def test_acos(self, calc):
+        assert calc.operation(" acos(1)") == 0.0
+
+    def test_atan(self, calc):
+        assert calc.operation(" atan(0)") == 0.0
+
+    def test_sin_pi(self, calc):
+        assert calc.operation(" sin(pi)") == 0.0
+
+    def test_nested_function(self, calc):
+        assert calc.operation(" sqrt(sqrt(16))") == 2.0
+
+    def test_function_with_expression(self, calc):
+        assert calc.operation(" sqrt(4 + 5)") == 3.0
+
+    def test_negative_function(self, calc):
+        assert calc.operation(" -sqrt(4)") == -2.0
+
+
+class TestOperationPowerEdgeCases:
+    def test_zero_power_zero(self, calc):
+        assert calc.operation(" 0 ^ 0") == 1
+
+    def test_power_zero(self, calc):
+        assert calc.operation(" 2 ^ 0") == 1

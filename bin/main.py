@@ -8,76 +8,56 @@
 # 봇이 정지된 동안의 메시지를 한꺼번에 받아서 처리하는 문제가 있습니다.
 # 정지된 동안에 수신된 메시지를 무시하도록 관련 처리가 필요합니다.
 # 여러 목적으로 활용하기 위한 로그를 작성할 예정입니다.
-import datetime
-import os
-import sys
 import logging
 import logging.handlers
-
-sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
-
-from modules import features_hub
-from config import config
-from resources import strings
-import telebot
-import threading
 import re
+import threading
 from time import sleep
+
+import telebot
+
+from config import config
+from modules import features_hub, log
+from resources import strings
 
 BOT_INTERVAL = 3
 BOT_TIMEOUT = 30
 
-LOG_DIRECTORY = '../log'
 
 # Initialize bot
-sungsimdangBot = telebot.TeleBot(config.BOT_TOKEN, parse_mode=None)
-botFeatures = features_hub.BotFeaturesHub(sungsimdangBot)
+bot = telebot.TeleBot(config.BOT_TOKEN, parse_mode=None)
+bot_features = features_hub.BotFeaturesHub(bot)
 
 # Initialize logger module
-logger = logging.getLogger(__name__)
-logging.basicConfig(level=logging.INFO)
-formatter = logging.Formatter('%(asctime)s %(name)s %(levelname)s %(message)s')
-fileHandler = logging.FileHandler("{}/logfile_{:%Y%m%d}.log".format(LOG_DIRECTORY, datetime.datetime.now()),
-                                  encoding="utf-8")
-streamHandler = logging.StreamHandler()
-streamHandler.setFormatter(formatter)
-logger.addHandler(streamHandler)
-
-timedFileHandler = logging.handlers.TimedRotatingFileHandler(filename='logfile',
-                                                             when='midnight',
-                                                             interval=1,
-                                                             encoding='utf-8')
-timedFileHandler.setFormatter(formatter)
-timedFileHandler.suffix = "%Y%m%d"
-logger.addHandler(timedFileHandler)
+logger = log.Logger()
 
 
 def bot_polling():
     logging.info("Starts polling")
     while True:
         try:
-            logging.info("Bot instance is running")
-            sungsimdangBot.polling(none_stop=True, interval=BOT_INTERVAL, timeout=BOT_TIMEOUT)
+            logger.log_info("Bot instance is running")
+            bot.polling(none_stop=True, interval=BOT_INTERVAL, timeout=BOT_TIMEOUT)
         except Exception as ex:  # Error in polling
-            logging.error("Polling has failed. Retry in {} sec.\n Error : {}\n".format(BOT_TIMEOUT, ex))
-            sungsimdangBot.stop_polling()
+            logger.log_error(f"Polling has failed. Retry in {BOT_TIMEOUT} sec.\n Error : {ex}\n")
+            bot.stop_polling()
             sleep(BOT_TIMEOUT)
         else:  # Clean exit
-            sungsimdangBot.stop_polling()
-            logging.info("Polling stopped")
+            bot.stop_polling()
+            logger.log_info("Polling stopped")
             break  # End loop
 
 
 # Callback query strings
 query_string = {
-    'get_nearby_temp': strings.temperatureHelpMsg,
-    'random_picker': strings.pickerHelpMsg,
-    'russian_roulette': strings.rouletteHelpMsg,
-    'coin_toss': strings.coinTossHelpMsg,
-    'bad_word_detector': strings.badWordDetectorHelpMsg,
-    'geolocation': strings.geolocationHelpMsg,
-    'dday': strings.dayHelpMsg,
-    'calc': strings.calcHelpMsg
+    "get_nearby_temp": strings.temperature_help_msg,
+    "random_picker": strings.picker_help_msg,
+    "russian_roulette": strings.roulette_help_msg,
+    "coin_toss": strings.coin_toss_help_msg,
+    "bad_word_detector": strings.bad_word_detector_help_msg,
+    "geolocation": strings.geolocation_help_msg,
+    "dday": strings.day_help_msg,
+    "calc": strings.calc_help_msg,
 }
 
 
@@ -87,103 +67,115 @@ class MessageProvider:
         pass
 
     # callback query handler
-    @sungsimdangBot.callback_query_handler(func=lambda call: True)
+    @bot.callback_query_handler(func=lambda call: True)
     def iq_callback(query):
         MessageProvider.get_ex_callback(query)
 
     def get_ex_callback(query):
-        sungsimdangBot.answer_callback_query(query.id)
+        bot.answer_callback_query(query.id)
         MessageProvider.send_query_result(query, query.message)
 
     # launch command or show help message
     def send_query_result(query, message):
-        sungsimdangBot.send_chat_action(message.chat.id, 'typing')
-        sungsimdangBot.send_message(message.chat.id, query_string[query.data])
+        bot.send_chat_action(message.chat.id, "typing")
+        bot.send_message(message.chat.id, query_string[query.data])
 
     # check bot status
-    @sungsimdangBot.message_handler(commands=['ping'])
+    @bot.message_handler(commands=["ping"])
     def start_command(message):
-        sungsimdangBot.send_message(message.chat.id, strings.workingMsg)
+        bot.send_message(message.chat.id, strings.working_msg)
 
     # message for /start
-    @sungsimdangBot.message_handler(commands=['start', 'help'])
+    @bot.message_handler(commands=["start", "help"])
     def exchange_command(message):
-        sungsimdangBot.send_message(message.chat.id, strings.startMsg, reply_markup=strings.mainKeyboard)
+        bot.send_message(message.chat.id, strings.start_msg, reply_markup=strings.main_keyboard)
 
     # randomly select one word between 1 or more words
-    @sungsimdangBot.message_handler(commands=['pick'])
-    def handle_message(message):
-        sungsimdangBot.send_message(message.chat.id, botFeatures.randomBasedFeatures.picker(message.text))
+    @bot.message_handler(commands=["pick"])
+    def handle_pick(message):
+        bot.send_message(message.chat.id, bot_features.randomBasedFeatures.picker(message.text))
 
     # randomly select coin heads or tails
-    @sungsimdangBot.message_handler(commands=['coin_toss'])
-    def handle_message(message):
-        sungsimdangBot.send_message(message.chat.id, botFeatures.randomBasedFeatures.coin_toss())
+    @bot.message_handler(commands=["coin_toss"])
+    def handle_coin_toss(message):
+        bot.send_message(message.chat.id, bot_features.randomBasedFeatures.coin_toss())
 
     # Russian roulette
-    @sungsimdangBot.message_handler(commands=['roulette'])
-    def handle_message(message):
-        sungsimdangBot.send_message(message.chat.id, botFeatures.randomBasedFeatures.russian_roulette(message.text))
+    @bot.message_handler(commands=["roulette"])
+    def handle_roulette(message):
+        bot.send_message(message.chat.id, bot_features.randomBasedFeatures.russian_roulette(message.text))
 
-    @sungsimdangBot.message_handler(commands=['shoot'])
-    def handle_message(message):
-        sungsimdangBot.send_message(message.chat.id, botFeatures.randomBasedFeatures.trig_bullet())
+    @bot.message_handler(commands=["shoot"])
+    def handle_shoot(message):
+        bot.send_message(message.chat.id, bot_features.randomBasedFeatures.trig_bullet())
 
-    @sungsimdangBot.message_handler(commands=['flush_bullet'])
-    def handle_message(message):
-        sungsimdangBot.send_message(message.chat.id, botFeatures.randomBasedFeatures.russian_roulette('roulette 0 0'))
+    @bot.message_handler(commands=["flush_bullet"])
+    def handle_flush_bullet(message):
+        bot.send_message(message.chat.id, bot_features.randomBasedFeatures.russian_roulette("roulette 0 0"))
 
-    @sungsimdangBot.message_handler(commands=['search'])
-    def handle_message(message):
-        result = botFeatures.webManager.daum_search(message, None)
+    @bot.message_handler(commands=["search"])
+    def handle_search(message):
+        result = bot_features.webManager.daum_search(message, None)
         result_contents = ""
 
-        if len(result['documents']) > 4:
+        if len(result["documents"]) > 4:
             for i in range(5):
-                result_contents += re.sub('<.+?>', '', "*" + result['documents'][i]['title']
-                                          + "*\n" + result['documents'][i]['contents']
-                                          + "\n" + "[더 보기](" + result['documents'][i]['url']
-                                          + ")\n\n", 0, re.I | re.S)
+                result_contents += re.sub(
+                    "<.+?>",
+                    "",
+                    "*"
+                    + result["documents"][i]["title"]
+                    + "*\n"
+                    + result["documents"][i]["contents"]
+                    + "\n"
+                    + "[더 보기]("
+                    + result["documents"][i]["url"]
+                    + ")\n\n",
+                    count=0,
+                    flags=re.IGNORECASE | re.DOTALL,
+                )
         else:
-            for i in result['documents']:
-                result_contents += re.sub('<.+?>', '', "*" + i['title'] + "*\n"
-                                          + i['contents'] + "\n" + "[더 보기]("
-                                          + i['url'] + ")\n\n", 0, re.I | re.S)
-        text = "검색 결과입니다.\n\n" + re.sub('<.+?>', '', result_contents, 0, re.I | re.S)
-        sungsimdangBot.reply_to(message, text, parse_mode="Markdown")
+            for i in result["documents"]:
+                result_contents += re.sub(
+                    "<.+?>",
+                    "",
+                    "*" + i["title"] + "*\n" + i["contents"] + "\n" + "[더 보기](" + i["url"] + ")\n\n",
+                    count=0,
+                    flags=re.IGNORECASE | re.DOTALL,
+                )
+        text = "검색 결과입니다.\n\n" + re.sub("<.+?>", "", result_contents, count=0, flags=re.IGNORECASE | re.DOTALL)
+        bot.reply_to(message, text, parse_mode="Markdown")
 
-    @sungsimdangBot.message_handler(commands=['namu'])
-    def handle_message(message):
-        sungsimdangBot.reply_to(message,
-                                botFeatures.webManager.namuwiki_search(message),
-                                parse_mode="Markdown")
+    @bot.message_handler(commands=["namu"])
+    def handle_namu(message):
+        bot.reply_to(message, bot_features.webManager.namuwiki_search(message), parse_mode="Markdown")
 
     # calculator
-    @sungsimdangBot.message_handler(commands=['calc'])
-    def handle_message(message):
-        botFeatures.calculator_handler(message)
+    @bot.message_handler(commands=["calc"])
+    def handle_calc(message):
+        bot_features.calculator_handler(message)
 
     # D-day
-    @sungsimdangBot.message_handler(commands=['dday'])
-    def handle_message(message):
-        botFeatures.d_day(message)
+    @bot.message_handler(commands=["dday"])
+    def handle_dday(message):
+        bot_features.d_day(message)
 
     # location
-    @sungsimdangBot.message_handler(content_types=['location'])
+    @bot.message_handler(content_types=["location"])
     def handle_location(message):
         # latitude : 위도, longitude : 경도
-        botFeatures.geolocation_info(message, message.location.latitude, message.location.longitude)
+        bot_features.geolocation_info(message, message.location.latitude, message.location.longitude)
 
     # ordinary message handler
-    @sungsimdangBot.message_handler(content_types=['text'])
-    def handle_message(message):
+    @bot.message_handler(content_types=["text"])
+    def handle_text(message):
         # check if message is command
-        if message.text.startswith('/'):
+        if message.text.startswith("/"):
             return
         else:
-            logging.info('Ordinary message handler working...')
-            logging.info('Message: {}'.format(message))
-            botFeatures.ordinary_message(message)
+            logger.log_info("Ordinary message handler working...")
+            logger.log_info(f"Message: {message}")
+            bot_features.ordinary_message(message)
 
 
 polling_thread = threading.Thread(target=bot_polling)

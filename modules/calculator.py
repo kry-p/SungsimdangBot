@@ -5,23 +5,31 @@ import re
 class Calculator:
     def __init__(self):
         self.library = {
-            "operator": ['+', '-', '*', '/', '^', '(', ')'],
-            "constant": ['pi', 'e'],
-            "function": ['exp', 'log', 'ln', 'sqrt',
-                         'sin', 'cos', 'tan',
-                         'asin', 'acos', 'atan']
+            "operator": ["+", "-", "*", "/", "^", "(", ")"],
+            "constant": ["pi", "e"],
+            "function": ["exp", "log", "ln", "sqrt", "sin", "cos", "tan", "asin", "acos", "atan"],
         }
         self.function = {
-            "exp": math.exp, "log": math.log10, "ln": math.log,
-            "sqrt": math.sqrt, "sin": math.sin, "cos": math.cos,
-            "tan": math.tan, "asin": math.asin, "acos": math.acos, "atan": math.atan
+            "exp": math.exp,
+            "log": math.log10,
+            "ln": math.log,
+            "sqrt": math.sqrt,
+            "sin": math.sin,
+            "cos": math.cos,
+            "tan": math.tan,
+            "asin": math.asin,
+            "acos": math.acos,
+            "atan": math.atan,
         }
-        self.tokenized_notation = list()
-        self.postfix_notation = list()
+        self.tokenized_notation = []
+        self.postfix_notation = []
 
     # 계산 작업
     def operation(self, expression):
         try:
+            check = self.wrong_syntax_checker(expression)
+            if check == "syntax error":
+                return "syntax error"
             self.tokenize(expression)
             self.infix_to_postfix()
 
@@ -31,103 +39,94 @@ class Calculator:
                 return result
             else:
                 return round(result, 4)
-        except (TypeError, UnboundLocalError, IndexError, SyntaxError):
-            return 'syntax error'
+        except (TypeError, UnboundLocalError, IndexError, SyntaxError, ValueError, OverflowError):
+            return "syntax error"
         except ZeroDivisionError:
-            return 'division by zero error'
+            return "division by zero error"
 
     # 정해진 연산자나 함수 이외의 텍스트가 있는지 체크
     def wrong_syntax_checker(self, expression):
-        for i in self.library["function"]:
-            expression = re.sub(i, '', expression)
+        for i in sorted(self.library["function"], key=len, reverse=True):
+            expression = re.sub(i, "", expression)
 
         for i in self.library["constant"]:
-            expression = re.sub(i, '', expression)
+            expression = re.sub(i, "", expression)
 
-        rule = re.compile(r'[0-9\.\+\-\*\/\^\(\)\s]')
-        expression = re.sub(rule, '', expression)
+        rule = re.compile(r"[0-9\.\+\-\*\/\^\(\)\s]")
+        expression = re.sub(rule, "", expression)
 
-        if expression != '':
-            return 'syntax error'
+        if expression != "":
+            return "syntax error"
 
     # 후위 연산 우선순위
     def priority(self, operator):
         if operator in self.library["function"]:
             return 0
-        elif operator == '*' or operator == '/' or operator == '^':
+        elif operator == "^":
             return 1
-        elif operator == '+' or operator == '-':
+        elif operator == "*" or operator == "/":
             return 2
-        elif operator == '(' or operator == ')':
+        elif operator == "+" or operator == "-":
             return 3
-        else:
+        elif operator == "(" or operator == ")":
             return 4
+        else:
+            return 5
 
     # 입력받은 수식을 토큰화
     def tokenize(self, notation):
-        # 잘못 처리된 공백까지 올바르게 전처리하기 위해 모든 공백을 삭제
-        index = -1
-        temp = notation.replace(" ", "")
+        text = notation.replace(" ", "")
+        if not text:
+            raise SyntaxError
 
-        # 만약 괄호앞이 숫자일 경우 곱셈연산자 삽입
-        for i in temp:
-            if i == '(' and temp.find(i) != 0:
-                temp.insert(temp.find(i), "*")
+        # 정규식으로 토큰 추출 (함수명은 길이 역순으로 매칭)
+        func_pattern = "|".join(sorted(self.library["function"], key=len, reverse=True))
+        const_pattern = "|".join(sorted(self.library["constant"], key=len, reverse=True))
+        pattern = rf"({func_pattern}|{const_pattern}|\d+\.?\d*|[+\-*/^()])"
+        tokens = re.findall(pattern, text)
 
-        # 모든 연산자에 대해 공백 재삽입
-        for i in self.library["operator"]:
-            while True:
-                index = temp.find(i, index + 1)
+        if "".join(tokens) != text:
+            raise SyntaxError
 
-                if index == -1:
-                    break
-                else:
-                    if index == 0:
-                        temp = i + ' ' + temp[index + 1:]
-                    else:
-                        temp = temp[:index] + ' ' + i + ' ' + temp[index + 1:]
-                    index += 2
+        # 값 토큰: 숫자, 상수, 닫는 괄호
+        def is_value(tok):
+            return tok == ")" or tok in self.library["constant"] or re.fullmatch(r"\d+\.?\d*", tok)
 
-        for i in self.library["function"]:
-            while True:
-                index = temp.find(i, index + 1)
+        # 암시적 곱셈 삽입 및 단항 마이너스 처리
+        result = []
+        for tok in tokens:
+            # 암시적 곱셈: 값 토큰 뒤에 (, 함수, 상수, 숫자가 오면 * 삽입
+            if (
+                result
+                and is_value(result[-1])
+                and (
+                    tok == "("
+                    or tok in self.library["function"]
+                    or tok in self.library["constant"]
+                    or re.fullmatch(r"\d+\.?\d*", tok)
+                )
+            ):
+                result.append("*")
 
-                if index == -1:
-                    break
-                else:
-                    if index == 0:
-                        temp = i + ' ' + temp[index + len(i):]
-                    else:
-                        temp = temp[:index] + ' ' + i + ' ' + temp[index + len(i):]
-                    index += 2
+            # 단항 마이너스: 이전 토큰이 없거나 ( 또는 연산자이면 -1 * 로 변환
+            if tok == "-" and (not result or result[-1] == "(" or result[-1] in "+-*/^"):
+                result.extend(["-1", "*"])
+            else:
+                result.append(tok)
 
-        # 입력받은 값을 바로 리스트로 변환하여 숫자는 여전히 String 임
-        # 이를 연산에 바로 사용할 수 있도록 숫자로(int, float) 변환
+        # 괄호 균형 검증
+        depth = 0
+        for tok in result:
+            if tok == "(":
+                depth += 1
+            elif tok == ")":
+                depth -= 1
+            if depth < 0:
+                raise SyntaxError
+        if depth != 0:
+            raise SyntaxError
 
-        self.tokenized_notation = list(map(self.string_to_number,
-                                           temp.replace("  ", " ").split()))
-
-        # 음의 상수배 처리
-        prod = ['+', -1, '*']
-        prod_first = [-1, '*']
-
-        while True:
-            try:
-                index = self.tokenized_notation.index('-')
-
-                previous_notation = self.tokenized_notation[index-1]
-                del(self.tokenized_notation[index])
-
-                if index == 0 or previous_notation == '(':
-                    for i in prod_first:
-                        self.tokenized_notation.insert(index, i)
-                        index += 1
-                else:
-                    for i in prod:
-                        self.tokenized_notation.insert(index, i)
-                        index += 1
-            except ValueError:
-                break
+        self.tokenized_notation = list(map(self.string_to_number, result))
 
     # String 형태의 숫자를 정수와 실수로 변환
     @staticmethod
@@ -141,67 +140,61 @@ class Calculator:
                 return result
 
         except ValueError:
-            if string == 'e':
+            if string == "e":
                 return math.e
-            elif string == 'pi':
+            elif string == "pi":
                 return math.pi
             else:
                 return string
 
     # 중위 표현식을 후위 표현식으로 변환
     def infix_to_postfix(self):
-        stack = list()
-        result = list()
+        stack = []
+        result = []
 
         for i in self.tokenized_notation:
-
             # 숫자는 그대로 내보냄
-            if type(i) is int or type(i) is float \
-                    or i in self.library["constant"]:
+            if type(i) is int or type(i) is float or i in self.library["constant"]:
                 result.append(i)
 
             # 연산자 처리하기
             else:
                 # '(' 이면 반드시 스택에 push
-                if i == '(':
+                if i == "(":
                     stack.append(i)
                 # ')' 이면 '(' 가 나올 때까지 모두 pop
                 # stack 은 연산 우선순위의 역순으로 정렬되어 pop 시 우선 순위대로 나오게 됨
-                elif i == ')':
-                    for j in range(len(stack)):
-                        if stack[-1] == '(':
+                elif i == ")":
+                    for _j in range(len(stack)):
+                        if stack[-1] == "(":
                             stack.pop()
                             break
                         else:
                             result.append(stack.pop())
                 else:
-                    # 괄호를 제외한 일반 연산자 처리
-                    # 스택이 비었으면 추가
-                    if not stack:
-                        stack.append(i)
-                    else:
-                        # 현재 연산자가 스택의 연산자보다 우선순위가 높으면 스택에 추가
-                        # 그렇지 않으면 스택에서 pop 하고 현재 연산자를 스택에 추가
-                        if self.priority(i) < self.priority(stack[-1]):
-                            stack.append(i)
-                        else:
-                            result.append(stack.pop())
-                            stack.append(i)
+                    while (
+                        stack
+                        and stack[-1] != "("
+                        and (
+                            self.priority(stack[-1]) < self.priority(i)
+                            or (self.priority(stack[-1]) == self.priority(i) and i != "^")
+                        )
+                    ):
+                        result.append(stack.pop())
+                    stack.append(i)
 
-        for i in range(len(stack)):
+        for _i in range(len(stack)):
             result.append(stack.pop())
 
         self.postfix_notation = result
 
     # 후위 표현식을 계산
     def calculate_postfix(self):
-        stack = list()
+        stack = []
         temp = None
 
         for i in self.postfix_notation:
-
-            if type(i) is int or type(i) is float \
-                    or i in self.library["constant"]:
+            if type(i) is int or type(i) is float or i in self.library["constant"]:
                 stack.append(i)
 
             # 스택에서 차례로 pop 한 뒤 연산
@@ -213,15 +206,15 @@ class Calculator:
                     num1 = stack.pop()
                     num2 = stack.pop()
 
-                    if i == '+':
+                    if i == "+":
                         temp = num2 + num1
-                    elif i == '-':
+                    elif i == "-":
                         temp = num2 - num1
-                    elif i == '*':
+                    elif i == "*":
                         temp = num2 * num1
-                    elif i == '/':
+                    elif i == "/":
                         temp = num2 / num1
-                    elif i == '^':
+                    elif i == "^":
                         temp = pow(num2, num1)
                 # 함수
                 elif i in self.library["function"]:
