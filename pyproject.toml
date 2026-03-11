@@ -13,6 +13,7 @@ dependencies = [
 dev = [
     "ruff>=0.4",
     "pytest>=7.0",
+    "pytest-cov>=4.0",
     "pre-commit>=3.0",
 ]
 
@@ -29,3 +30,10 @@ select = ["E", "F", "W", "I", "UP", "B", "S113", "FURB", "C4"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["."]
+
+[tool.coverage.run]
+source = ["modules", "config", "resources"]
+omit = ["tests/*"]
+
+[tool.coverage.report]
+show_missing = true
