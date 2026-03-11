@@ -53,6 +53,7 @@ jobs:
           host: ${{ secrets.PI_TAILSCALE_IP }}
           username: ${{ secrets.PI_SSH_USER }}
           key: ${{ secrets.PI_SSH_KEY }}
+          port: ${{ secrets.PI_SSH_PORT }}
           script: |
             cd ~/sungsimdangbot
             cat > .env << 'EOF'
