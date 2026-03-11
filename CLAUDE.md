@@ -47,14 +47,59 @@ pytest -v                      # 테스트 실행
 
 ## CI
 
-GitHub Actions (`ci.yml`) — `master` push 및 모든 PR에서 실행.
+GitHub Actions (`ci.yml`) — `master`/`development` push 및 모든 PR에서 실행.
 
 | Job | 내용 |
 |-----|------|
-| `ci` | Python 3.9 + 3.12 매트릭스: ruff check → ruff format --check → pytest |
+| `ci` | Python 3.9 + 3.12 매트릭스: ruff check → ruff format --check → pytest --cov |
 | `secrets` | gitleaks 시크릿 스캔 (전체 히스토리) |
 
+- 테스트는 `pytest-cov`로 커버리지 측정 (`modules`, `config`, `resources` 대상)
+- Python 3.12에서 `coverage.xml` 아티팩트 업로드
+
 워크플로우 파일: `.github/workflows/ci.yml`
+
+## CD
+
+GitHub Actions (`cd.yml`) — CI 성공 후 `master` 브랜치에서 자동 실행.
+
+```
+master push → CI (lint, format, test+coverage)
+                    ↓ (성공 시)
+              CD workflow:
+                1. Docker 이미지 빌드 (ARM64) → GHCR push
+                2. Tailscale VPN 연결
+                3. SSH로 Pi 접속 → .env 갱신 + docker compose pull + up -d
+```
+
+| Job | 내용 |
+|-----|------|
+| `build-and-push` | QEMU + Buildx로 ARM64 이미지 빌드, GHCR에 push |
+| `deploy` | Tailscale VPN 연결 → SSH로 Pi에 .env 배포 + 컨테이너 재시작 |
+
+워크플로우 파일: `.github/workflows/cd.yml`
+
+### Docker
+
+- `Dockerfile`: Python 3.12-slim 기반, `pip install .`로 설치
+- `docker-compose.yml`: GHCR 이미지 pull, `.env` 파일로 환경변수 주입
+- `.dockerignore`: 빌드 컨텍스트에서 불필요 파일 제외
+
+### 필요한 GitHub Secrets
+
+| Secret | 용도 |
+|--------|------|
+| `TS_OAUTH_CLIENT_ID` | Tailscale OAuth 클라이언트 ID |
+| `TS_OAUTH_SECRET` | Tailscale OAuth 시크릿 |
+| `PI_TAILSCALE_IP` | Pi의 Tailscale IP (100.x.y.z) |
+| `PI_SSH_USER` | Pi SSH 사용자명 |
+| `PI_SSH_KEY` | Pi 접속용 SSH 개인키 |
+| `BOT_TOKEN` | 텔레그램 봇 토큰 |
+| `KAKAO_TOKEN` | 카카오 REST API 토큰 |
+| `WEATHER_TOKEN` | OpenWeatherMap 토큰 |
+| `SEOUL_HANGANG_WATER_TOKEN` | 서울 열린데이터 토큰 |
+| `DETECTOR_TIMEOUT` | 나쁜말 감지기 타임아웃 |
+| `DETECTOR_COUNT` | 나쁜말 감지기 횟수 |
 
 ## 알려진 이슈
 

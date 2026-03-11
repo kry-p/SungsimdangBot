@@ -73,6 +73,20 @@ python bin/main.py
 
 가상 환경에서도 제한 없이 실행 가능하며, Raspberry Pi와 같은 환경에서 실행할 경우 Python 버전을 꼭 확인해 주세요.
 
+### Docker로 실행
+
+Docker를 사용하여 컨테이너로 실행할 수 있습니다.
+
+```bash
+# 이미지 빌드
+docker build -t sungsimdangbot .
+
+# 실행 (.env 파일 필요)
+docker compose up -d
+```
+
+`master` 브랜치에 push하면 GitHub Actions CD 파이프라인이 자동으로 ARM64 이미지를 빌드하고 GHCR에 push한 뒤, Raspberry Pi에 배포합니다.
+
 ## 기능 목록
 
 모든 기능은 그룹에서도 사용 가능하나, 봇에게 그룹 입장과 메시지 접근 권한을 부여하셔야 합니다.<br>

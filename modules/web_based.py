@@ -43,7 +43,7 @@ class WebManager:
             try:
                 search_request = requests.get(config.SEOUL_HANGANG_WATER_URL, timeout=10)
                 result = json.loads(search_request.text)
-                self.suonV2 = result["WPOSInformationTime"]["row"][0]["W_TEMP"]
+                self.suonV2 = result["WPOSInformationTime"]["row"][0]["WATT"]
             except Exception:
                 logger.log_error("Retreiving water information of Hangang failed. Please check API Status.")
                 self.suonV2 = None
