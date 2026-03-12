@@ -91,6 +91,13 @@ calc_syntax_error_msg = (
 )
 calc_division_by_zero_error_msg = "0으로 나눌 수 없습니다."
 
+# geolocation error message
+geolocation_error_msg = "위치 정보를 가져오는 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요."
+
+# search error message
+search_error_msg = "검색 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요."
+search_no_result_msg = "검색 결과가 없습니다."
+
 # Resources
 
 # Customized keyboards (inline)

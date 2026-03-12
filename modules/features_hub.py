@@ -60,36 +60,38 @@ class BotFeaturesHub:
 
     # Geolocation information　위치 기반 정보 제공
     def geolocation_info(self, message, latitude, longitude):
+        try:
+            # location info
+            map_args = {"x": longitude, "y": latitude}
+            map_url = MAP_BASE_URL + urllib.parse.urlencode(map_args)
+            map_headers = {"Authorization": "KakaoAK " + config.KAKAO_TOKEN}
+            map_request = requests.get(map_url, headers=map_headers, timeout=10)
 
-        # location info
-        map_args = {"x": longitude, "y": latitude}
-        map_url = MAP_BASE_URL + urllib.parse.urlencode(map_args)
-        map_headers = {"Authorization": "KakaoAK " + config.KAKAO_TOKEN}
-        map_request = requests.get(map_url, headers=map_headers, timeout=10)
+            # weather info (by OpenWeatherMap)
+            weather_args = {"lang": "kr", "appid": config.WEATHER_TOKEN, "lat": latitude, "lon": longitude}
+            weather_url = WEATHER_BASE_URL + urllib.parse.urlencode(weather_args)
+            weather_request = requests.get(weather_url, timeout=10)
+            weather_json = json.loads(weather_request.text)
 
-        # weather info (by OpenWeatherMap)
-        weather_args = {"lang": "kr", "appid": config.WEATHER_TOKEN, "lat": latitude, "lon": longitude}
-        weather_url = WEATHER_BASE_URL + urllib.parse.urlencode(weather_args)
-        weather_request = requests.get(weather_url, timeout=10)
-        weather_json = json.loads(weather_request.text)
+            # temporarily store weather info
+            weather = weather_json["weather"][0]["description"]
+            temp = str(round(weather_json["main"]["temp"] - 273.15)) + "°C"
+            feels_temp = str(round(weather_json["main"]["feels_like"] - 273.15)) + "°C"
+            humidity = str(round(weather_json["main"]["humidity"])) + "%"
 
-        # temporarily store weather info
-        weather = weather_json["weather"][0]["description"]
-        temp = str(round(weather_json["main"]["temp"] - 273.15)) + "°C"
-        feels_temp = str(round(weather_json["main"]["feels_like"] - 273.15)) + "°C"
-        humidity = str(round(weather_json["main"]["humidity"])) + "%"
+            # makes script and sends message
+            weather_result = (
+                "날씨 " + weather + ", " + "기온 " + temp + ", " + "체감온도 " + feels_temp + ", " + "습도 " + humidity
+            )
 
-        # makes script and sends message
-        weather_result = (
-            "날씨 " + weather + ", " + "기온 " + temp + ", " + "체감온도 " + feels_temp + ", " + "습도 " + humidity
-        )
+            map_location = json.loads(map_request.text)["documents"][0]["address"]["address_name"]
+            geo_location = "위도 : " + str(latitude) + ", 경도 : " + str(longitude)
 
-        map_location = json.loads(map_request.text)["documents"][0]["address"]["address_name"]
-        geo_location = "위도 : " + str(latitude) + ", 경도 : " + str(longitude)
+            result = geo_location + "\n" + map_location + "\n\n" + weather_result
 
-        result = geo_location + "\n" + map_location + "\n\n" + weather_result
-
-        self.bot.reply_to(message, result)
+            self.bot.reply_to(message, result)
+        except Exception:
+            self.bot.reply_to(message, strings.geolocation_error_msg)
 
     # Calculator 계산기
     def calculator_handler(self, message):

@@ -76,8 +76,11 @@ class MessageProvider:
 
     # launch command or show help message
     def send_query_result(query, message):
+        result = query_string.get(query.data)
+        if result is None:
+            return
         bot.send_chat_action(message.chat.id, "typing")
-        bot.send_message(message.chat.id, query_string[query.data])
+        bot.send_message(message.chat.id, result)
 
     # check bot status
     @bot.message_handler(commands=["ping"])
@@ -114,36 +117,41 @@ class MessageProvider:
 
     @bot.message_handler(commands=["search"])
     def handle_search(message):
-        result = bot_features.webManager.daum_search(message, None)
-        result_contents = ""
+        try:
+            result = bot_features.webManager.daum_search(message, None)
+            result_contents = ""
 
-        if len(result["documents"]) > 4:
-            for i in range(5):
-                result_contents += re.sub(
-                    "<.+?>",
-                    "",
-                    "*"
-                    + result["documents"][i]["title"]
-                    + "*\n"
-                    + result["documents"][i]["contents"]
-                    + "\n"
-                    + "[더 보기]("
-                    + result["documents"][i]["url"]
-                    + ")\n\n",
-                    count=0,
-                    flags=re.IGNORECASE | re.DOTALL,
-                )
-        else:
-            for i in result["documents"]:
-                result_contents += re.sub(
-                    "<.+?>",
-                    "",
-                    "*" + i["title"] + "*\n" + i["contents"] + "\n" + "[더 보기](" + i["url"] + ")\n\n",
-                    count=0,
-                    flags=re.IGNORECASE | re.DOTALL,
-                )
-        text = "검색 결과입니다.\n\n" + re.sub("<.+?>", "", result_contents, count=0, flags=re.IGNORECASE | re.DOTALL)
-        bot.reply_to(message, text, parse_mode="Markdown")
+            if len(result["documents"]) > 4:
+                for i in range(5):
+                    result_contents += re.sub(
+                        "<.+?>",
+                        "",
+                        "*"
+                        + result["documents"][i]["title"]
+                        + "*\n"
+                        + result["documents"][i]["contents"]
+                        + "\n"
+                        + "[더 보기]("
+                        + result["documents"][i]["url"]
+                        + ")\n\n",
+                        count=0,
+                        flags=re.IGNORECASE | re.DOTALL,
+                    )
+            else:
+                for i in result["documents"]:
+                    result_contents += re.sub(
+                        "<.+?>",
+                        "",
+                        "*" + i["title"] + "*\n" + i["contents"] + "\n" + "[더 보기](" + i["url"] + ")\n\n",
+                        count=0,
+                        flags=re.IGNORECASE | re.DOTALL,
+                    )
+            text = "검색 결과입니다.\n\n" + re.sub(
+                "<.+?>", "", result_contents, count=0, flags=re.IGNORECASE | re.DOTALL
+            )
+            bot.reply_to(message, text, parse_mode="Markdown")
+        except Exception:
+            bot.reply_to(message, strings.search_error_msg)
 
     @bot.message_handler(commands=["namu"])
     def handle_namu(message):

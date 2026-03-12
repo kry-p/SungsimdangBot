@@ -7,6 +7,7 @@ import requests
 
 from config import config
 from modules import log
+from resources import strings
 
 # Initialize logger module
 logger = log.Logger()
@@ -62,9 +63,12 @@ class WebManager:
         search_args = {"query": keyword if site is None else keyword + " site:" + site}
         search_url = SEARCH_BASE_URL + urllib.parse.urlencode(search_args)
         search_headers = {"Authorization": "KakaoAK " + config.KAKAO_TOKEN}
-        search_request = requests.get(search_url, headers=search_headers, timeout=10)
 
-        result = json.loads(search_request.text)
+        try:
+            search_request = requests.get(search_url, headers=search_headers, timeout=10)
+            result = json.loads(search_request.text)
+        except Exception:
+            return {"documents": []}
 
         for i in result["documents"]:
             urlinfo = urllib.parse.urlsplit(i["url"])
@@ -84,7 +88,11 @@ class WebManager:
 
         url = NAMUWIKI_BASE_URL + urllib.parse.quote(keyword)
 
-        result = self.daum_search(message, "namu.wiki")["documents"][0]
+        documents = self.daum_search(message, "namu.wiki")["documents"]
+        if not documents:
+            return strings.search_no_result_msg
+
+        result = documents[0]
         result_contents = result["contents"]
         result_url = result["url"]
 
@@ -96,7 +104,6 @@ class WebManager:
 
     # Provide temperature data to other methods (V2, 한강으로 고정)
     def provide_suon_v2(self):
-        try:
-            return self.suonV2
-        except ValueError:
-            return "error"
+        if self.suonV2 is None:
+            return "점검중"
+        return self.suonV2
