@@ -1,4 +1,5 @@
 import datetime
+import json
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -112,3 +113,37 @@ class TestOrdinaryMessage:
         hub.ordinary_message(msg)
         hub.bot.reply_to.assert_not_called()
         hub.bot.send_message.assert_not_called()
+
+
+class TestGeolocationInfo:
+    @patch("modules.features_hub.config.WEATHER_TOKEN", "test_weather")
+    @patch("modules.features_hub.config.KAKAO_TOKEN", "test_kakao")
+    @patch("modules.features_hub.requests.get")
+    def test_success(self, mock_get, hub):
+        map_response = MagicMock()
+        map_response.text = json.dumps({"documents": [{"address": {"address_name": "서울특별시 중구"}}]})
+
+        weather_response = MagicMock()
+        weather_response.text = json.dumps(
+            {
+                "weather": [{"description": "맑음"}],
+                "main": {"temp": 293.15, "feels_like": 291.15, "humidity": 50},
+            }
+        )
+
+        mock_get.side_effect = [map_response, weather_response]
+        msg = make_message("location")
+        hub.geolocation_info(msg, 37.5, 127.0)
+
+        hub.bot.reply_to.assert_called_once()
+        result = hub.bot.reply_to.call_args[0][1]
+        assert "서울특별시 중구" in result
+        assert "맑음" in result
+
+    @patch("modules.features_hub.requests.get")
+    def test_api_error(self, mock_get, hub):
+        mock_get.side_effect = Exception("connection error")
+        msg = make_message("location")
+        hub.geolocation_info(msg, 37.5, 127.0)
+
+        hub.bot.reply_to.assert_called_once_with(msg, strings.geolocation_error_msg)
