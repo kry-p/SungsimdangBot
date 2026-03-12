@@ -1,5 +1,6 @@
 import datetime
 import json
+import urllib.parse
 from unittest.mock import MagicMock, patch
 
 from modules.web_based import WebManager
@@ -10,6 +11,38 @@ def make_message(text):
     msg = MagicMock()
     msg.text = text
     return msg
+
+
+class TestWebManagerInit:
+    @patch("modules.web_based.requests.get")
+    @patch("modules.web_based.datetime")
+    def test_init_normal_minute(self, mock_dt, mock_get):
+        fixed_now = datetime.datetime(2024, 6, 15, 14, 15, 0)
+        mock_dt.datetime.now.return_value = fixed_now
+        mock_dt.datetime.side_effect = lambda *a, **kw: datetime.datetime(*a, **kw)
+        mock_dt.timedelta = datetime.timedelta
+
+        response = MagicMock()
+        response.text = json.dumps({"WPOSInformationTime": {"row": [{"WATT": "22.0"}]}})
+        mock_get.return_value = response
+
+        wm = WebManager()
+        assert wm.last_update_time == datetime.datetime(2024, 6, 15, 14, 1)
+
+    @patch("modules.web_based.requests.get")
+    @patch("modules.web_based.datetime")
+    def test_init_minute_zero(self, mock_dt, mock_get):
+        fixed_now = datetime.datetime(2024, 6, 15, 14, 0, 0)
+        mock_dt.datetime.now.return_value = fixed_now
+        mock_dt.datetime.side_effect = lambda *a, **kw: datetime.datetime(*a, **kw)
+        mock_dt.timedelta = datetime.timedelta
+
+        response = MagicMock()
+        response.text = json.dumps({"WPOSInformationTime": {"row": [{"WATT": "22.0"}]}})
+        mock_get.return_value = response
+
+        wm = WebManager()
+        assert wm.last_update_time == datetime.datetime(2024, 6, 15, 13, 1)
 
 
 class TestUpdateSuon:
@@ -88,6 +121,25 @@ class TestDaumSearch:
             assert result == {"documents": []}
 
 
+class TestDaumSearchMultiWord:
+    @patch("modules.web_based.config.KAKAO_TOKEN", "test_token")
+    @patch("modules.web_based.requests.get")
+    def test_multi_word_keyword(self, mock_get):
+        response = MagicMock()
+        response.text = json.dumps(
+            {"documents": [{"title": "result", "contents": "content", "url": "https://example.com/path"}]}
+        )
+        mock_get.return_value = response
+
+        with patch.object(WebManager, "__init__", lambda self: None):
+            wm = WebManager()
+            msg = make_message("/search hello world today")
+            wm.daum_search(msg, None)
+
+            call_url = mock_get.call_args[0][0]
+            assert "hello+world+today" in call_url or "hello%20world%20today" in call_url
+
+
 class TestNamuwikiSearch:
     @patch.object(WebManager, "daum_search")
     def test_normal_result(self, mock_daum):
@@ -116,6 +168,50 @@ class TestNamuwikiSearch:
             msg = make_message("/namu nothing")
             result = wm.namuwiki_search(msg)
             assert result == strings.search_no_result_msg
+
+
+class TestNamuwikiSearchMultiWord:
+    @patch.object(WebManager, "daum_search")
+    def test_multi_word_keyword(self, mock_daum):
+        encoded = urllib.parse.quote("hello world")
+        mock_daum.return_value = {
+            "documents": [
+                {
+                    "title": "hello world",
+                    "contents": "<b>some content</b>",
+                    "url": "https://namu.wiki/w/" + encoded,
+                }
+            ]
+        }
+
+        with patch.object(WebManager, "__init__", lambda self: None):
+            wm = WebManager()
+            msg = make_message("/namu hello world")
+            result = wm.namuwiki_search(msg)
+            assert "hello world" in result
+            assert "나무위키" in result
+
+
+class TestNamuwikiSearchUrlMismatch:
+    @patch.object(WebManager, "daum_search")
+    def test_url_mismatch_returns_direct_link(self, mock_daum):
+        mock_daum.return_value = {
+            "documents": [
+                {
+                    "title": "test",
+                    "contents": "<b>content</b>",
+                    "url": "https://namu.wiki/w/different_page",
+                }
+            ]
+        }
+
+        with patch.object(WebManager, "__init__", lambda self: None):
+            wm = WebManager()
+            msg = make_message("/namu test")
+            result = wm.namuwiki_search(msg)
+            expected_url = "https://namu.wiki/w/" + urllib.parse.quote("test")
+            assert expected_url in result
+            assert "content" not in result
 
 
 class TestProvideSuonV2:
