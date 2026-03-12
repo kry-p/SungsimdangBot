@@ -16,17 +16,6 @@ WEATHER_TOKEN = os.getenv("WEATHER_TOKEN")
 # see: https://data.seoul.go.kr/dataList/OA-15488/S/1/datasetView.do
 SEOUL_HANGANG_WATER_TOKEN = os.getenv("SEOUL_HANGANG_WATER_TOKEN", "")
 
-# Settings 설정
-
-# Global 전역 설정
-# Bad word detector 나쁜말 감지기
-DETECTOR_TIMEOUT = int(
-    os.getenv("DETECTOR_TIMEOUT", "10")
-)  # Time to detect from the first word sent 첫 단어로부터 감지할 시간(초 단위)
-DETECTOR_COUNT = int(
-    os.getenv("DETECTOR_COUNT", "5")
-)  # Number to detect (sending a message if exceeded this value) 감지할 개수 (이 횟수를 넘으면 메시지 전송)
-
 # External endpoints
 NAMUWIKI_BASE_URL = "https://namu.wiki/w/"
 SEARCH_BASE_URL = "https://dapi.kakao.com/v2/search/web?"

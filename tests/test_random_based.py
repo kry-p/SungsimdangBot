@@ -1,5 +1,3 @@
-import pytest
-
 from modules.random_based import RandomBasedFeatures
 from resources import strings
 
@@ -19,8 +17,8 @@ class TestPicker:
 class TestCoinToss:
     def test_returns_valid_result(self):
         result = RandomBasedFeatures.coin_toss()
-        assert result.startswith("동전뒤집기 결과 : ")
-        value = result.replace("동전뒤집기 결과 : ", "")
+        assert result.startswith(strings.coin_toss_prefix_msg)
+        value = result.replace(strings.coin_toss_prefix_msg, "")
         assert value in strings.coin_toss_result
 
 
@@ -35,9 +33,9 @@ class TestRussianRoulette:
     def test_load_bullets(self):
         feat = RandomBasedFeatures()
         result = feat.russian_roulette("/roulette 6 1")
-        assert result == "6발이 장전되었습니다."
-        assert len(feat.Bullet) == 6
-        assert feat.Bullet.count(True) == 1
+        assert result == strings.roulette_loaded_msg.format(6)
+        assert len(feat.bullet) == 6
+        assert feat.bullet.count(True) == 1
 
     def test_shoot_without_loading(self):
         feat = RandomBasedFeatures()
@@ -62,15 +60,16 @@ class TestRussianRoulette:
         # after all exhausted, should return error
         assert feat.trig_bullet() == strings.shot_error_msg
 
-    @pytest.mark.xfail(
-        reason="flush_bullet compares str with int: message.split()[1] == 0",
-        strict=True,
-    )
     def test_flush_bullet(self):
         feat = RandomBasedFeatures()
         feat.russian_roulette("/roulette 3 1")
         result = feat.russian_roulette("/roulette 0 0")
-        assert result == "약실을 비웠습니다. 사용하려면 다시 장전해주세요."
+        assert result == strings.roulette_flush_msg
+
+    def test_bullet_overflow(self):
+        feat = RandomBasedFeatures()
+        result = feat.russian_roulette("/roulette 3 5")
+        assert result == strings.roulette_bullet_overflow_msg
 
 
 class TestPickerEdgeCases:

@@ -61,8 +61,6 @@ jobs:
             KAKAO_TOKEN=${{ secrets.KAKAO_TOKEN }}
             WEATHER_TOKEN=${{ secrets.WEATHER_TOKEN }}
             SEOUL_HANGANG_WATER_TOKEN=${{ secrets.SEOUL_HANGANG_WATER_TOKEN }}
-            DETECTOR_TIMEOUT=${{ secrets.DETECTOR_TIMEOUT }}
-            DETECTOR_COUNT=${{ secrets.DETECTOR_COUNT }}
             EOF
             docker compose pull
             docker compose up -d

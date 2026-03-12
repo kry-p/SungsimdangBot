@@ -6,7 +6,7 @@ from resources import strings
 
 class RandomBasedFeatures:
     def __init__(self):
-        self.Bullet = []
+        self.bullet = []
 
     # Random picker 랜덤픽
     @staticmethod
@@ -26,7 +26,7 @@ class RandomBasedFeatures:
     @staticmethod
     def coin_toss():
         random.seed()
-        return "동전뒤집기 결과 : " + random.choice(strings.coin_toss_result)
+        return strings.coin_toss_prefix_msg + random.choice(strings.coin_toss_result)
 
     # Spongebob SquarePants magic conch 마법의 소라고동
     @staticmethod
@@ -41,24 +41,28 @@ class RandomBasedFeatures:
     def russian_roulette(self, message):
         try:
             if message.split()[1].isdigit() and message.split()[2].isdigit():
-                if message.split()[1] == 0 and message.split()[2] == 0:
-                    self.Bullet = ()
-                    return "약실을 비웠습니다. 사용하려면 다시 장전해주세요."
-                self.Bullet = []
-                for _n in range(int(message.split()[1])):
-                    self.Bullet.append(False)
-                for n in range(int(message.split()[2])):
-                    self.Bullet[n] = True
-                random.shuffle(self.Bullet)
-                return f"{len(self.Bullet)}발이 장전되었습니다."
+                if message.split()[1] == "0" and message.split()[2] == "0":
+                    self.bullet = ()
+                    return strings.roulette_flush_msg
+                total = int(message.split()[1])
+                bullets = int(message.split()[2])
+                if bullets > total:
+                    return strings.roulette_bullet_overflow_msg
+                self.bullet = []
+                for _n in range(total):
+                    self.bullet.append(False)
+                for n in range(bullets):
+                    self.bullet[n] = True
+                random.shuffle(self.bullet)
+                return strings.roulette_loaded_msg.format(len(self.bullet))
         except IndexError:
             return strings.roulette_error_msg
 
     # Launch roulette 러시안 룰렛 격발
     def trig_bullet(self):
-        if len(self.Bullet) == 0:
+        if len(self.bullet) == 0:
             return strings.shot_error_msg
-        check = self.Bullet.pop()
+        check = self.bullet.pop()
         if check:
             return strings.shot_real_msg
         else:

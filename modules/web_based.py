@@ -7,26 +7,28 @@ import requests
 
 from config import config
 from modules import log
+from resources import strings
 
 # Initialize logger module
 logger = log.Logger()
 
 NAMUWIKI_BASE_URL = config.NAMUWIKI_BASE_URL
 SEARCH_BASE_URL = config.SEARCH_BASE_URL
+SUON_REFRESH_INTERVAL = 600  # seconds
 
 
 # 강물 온도 조회
 class WebManager:
     # init
     def __init__(self):
-        self.suonV2 = None
+        self.suon_v2 = None
         # Records current time and latest update 현재 시간과 마지막 업데이트 시점을 기록
-        self.currentTime = datetime.datetime.now()
-        self.lastUpdateTime = datetime.datetime(
-            self.currentTime.year, self.currentTime.month, self.currentTime.day, self.currentTime.hour, 1
+        self.current_time = datetime.datetime.now()
+        self.last_update_time = datetime.datetime(
+            self.current_time.year, self.current_time.month, self.current_time.day, self.current_time.hour, 1
         )
-        if self.currentTime.minute == 0:
-            self.lastUpdateTime -= datetime.timedelta(hours=1)
+        if self.current_time.minute == 0:
+            self.last_update_time -= datetime.timedelta(hours=1)
 
         # Initialize current temperature information 현재 온도 정보를 최초 설정
         self.update_suon()
@@ -34,19 +36,19 @@ class WebManager:
     # Update current temperature data 현재 온도 정보를 업데이트
     def update_suon(self):
         # check recently update temperature info 최근에 업데이트하였는지 확인
-        self.currentTime = datetime.datetime.now()
-        interval = (self.currentTime - self.lastUpdateTime).seconds
+        self.current_time = datetime.datetime.now()
+        interval = (self.current_time - self.last_update_time).seconds
 
-        if self.suonV2 and interval < 600:  # refresh rate: 10 min.
+        if self.suon_v2 and interval < SUON_REFRESH_INTERVAL:
             return
         else:
             try:
                 search_request = requests.get(config.SEOUL_HANGANG_WATER_URL, timeout=10)
                 result = json.loads(search_request.text)
-                self.suonV2 = result["WPOSInformationTime"]["row"][0]["WATT"]
+                self.suon_v2 = result["WPOSInformationTime"]["row"][0]["WATT"]
             except Exception:
                 logger.log_error("Retreiving water information of Hangang failed. Please check API Status.")
-                self.suonV2 = None
+                self.suon_v2 = None
 
     # Search from Daum and returns result by JSON
     def daum_search(self, message, site):
@@ -62,13 +64,16 @@ class WebManager:
         search_args = {"query": keyword if site is None else keyword + " site:" + site}
         search_url = SEARCH_BASE_URL + urllib.parse.urlencode(search_args)
         search_headers = {"Authorization": "KakaoAK " + config.KAKAO_TOKEN}
-        search_request = requests.get(search_url, headers=search_headers, timeout=10)
 
-        result = json.loads(search_request.text)
+        try:
+            search_request = requests.get(search_url, headers=search_headers, timeout=10)
+            result = json.loads(search_request.text)
+        except Exception:
+            return {"documents": []}
 
         for i in result["documents"]:
             urlinfo = urllib.parse.urlsplit(i["url"])
-            i["url"] = f"{urlinfo.scheme}://{urlinfo.netloc}{urllib.parse.quote(urlinfo.path)}"
+            i["url"] = f"{urlinfo.scheme}://{urlinfo.netloc}{urllib.parse.quote(urlinfo.path, safe='/:@!$&()*+,;=%')}"
 
         return result
 
@@ -84,19 +89,32 @@ class WebManager:
 
         url = NAMUWIKI_BASE_URL + urllib.parse.quote(keyword)
 
-        result = self.daum_search(message, "namu.wiki")["documents"][0]
+        documents = self.daum_search(message, "namu.wiki")["documents"]
+        if not documents:
+            return strings.search_no_result_msg
+
+        result = documents[0]
         result_contents = result["contents"]
         result_url = result["url"]
 
+        text = re.sub("<.+?>", "", result_contents, count=0, flags=re.IGNORECASE | re.DOTALL)
+
         if result_url != url:
-            return "[" + keyword + " - 나무위키](" + url + ")"
+            result_title = re.sub("<.+?>", "", result["title"], count=0, flags=re.IGNORECASE | re.DOTALL)
+            return (
+                strings.search_mismatch_msg.format(keyword=keyword)
+                + "["
+                + result_title
+                + "]("
+                + result_url
+                + ")\n\n"
+                + text
+            )
         else:
-            text = re.sub("<.+?>", "", result_contents, count=0, flags=re.IGNORECASE | re.DOTALL)
             return "[" + keyword + " - 나무위키](" + url + ")\n\n" + text
 
     # Provide temperature data to other methods (V2, 한강으로 고정)
     def provide_suon_v2(self):
-        try:
-            return self.suonV2
-        except ValueError:
-            return "error"
+        if self.suon_v2 is None:
+            return "점검중"
+        return self.suon_v2

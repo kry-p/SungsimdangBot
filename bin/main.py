@@ -54,7 +54,6 @@ query_string = {
     "random_picker": strings.picker_help_msg,
     "russian_roulette": strings.roulette_help_msg,
     "coin_toss": strings.coin_toss_help_msg,
-    "bad_word_detector": strings.bad_word_detector_help_msg,
     "geolocation": strings.geolocation_help_msg,
     "dday": strings.day_help_msg,
     "calc": strings.calc_help_msg,
@@ -77,8 +76,11 @@ class MessageProvider:
 
     # launch command or show help message
     def send_query_result(query, message):
+        result = query_string.get(query.data)
+        if result is None:
+            return
         bot.send_chat_action(message.chat.id, "typing")
-        bot.send_message(message.chat.id, query_string[query.data])
+        bot.send_message(message.chat.id, result)
 
     # check bot status
     @bot.message_handler(commands=["ping"])
@@ -93,62 +95,50 @@ class MessageProvider:
     # randomly select one word between 1 or more words
     @bot.message_handler(commands=["pick"])
     def handle_pick(message):
-        bot.send_message(message.chat.id, bot_features.randomBasedFeatures.picker(message.text))
+        bot.send_message(message.chat.id, bot_features.random_based_features.picker(message.text))
 
     # randomly select coin heads or tails
     @bot.message_handler(commands=["coin_toss"])
     def handle_coin_toss(message):
-        bot.send_message(message.chat.id, bot_features.randomBasedFeatures.coin_toss())
+        bot.send_message(message.chat.id, bot_features.random_based_features.coin_toss())
 
     # Russian roulette
     @bot.message_handler(commands=["roulette"])
     def handle_roulette(message):
-        bot.send_message(message.chat.id, bot_features.randomBasedFeatures.russian_roulette(message.text))
+        bot.send_message(message.chat.id, bot_features.random_based_features.russian_roulette(message.text))
 
     @bot.message_handler(commands=["shoot"])
     def handle_shoot(message):
-        bot.send_message(message.chat.id, bot_features.randomBasedFeatures.trig_bullet())
+        bot.send_message(message.chat.id, bot_features.random_based_features.trig_bullet())
 
     @bot.message_handler(commands=["flush_bullet"])
     def handle_flush_bullet(message):
-        bot.send_message(message.chat.id, bot_features.randomBasedFeatures.russian_roulette("roulette 0 0"))
+        bot.send_message(message.chat.id, bot_features.random_based_features.russian_roulette("roulette 0 0"))
 
     @bot.message_handler(commands=["search"])
     def handle_search(message):
-        result = bot_features.webManager.daum_search(message, None)
-        result_contents = ""
+        try:
+            result = bot_features.web_manager.daum_search(message, None)
+            result_contents = ""
 
-        if len(result["documents"]) > 4:
-            for i in range(5):
+            for doc in result["documents"][:5]:
                 result_contents += re.sub(
                     "<.+?>",
                     "",
-                    "*"
-                    + result["documents"][i]["title"]
-                    + "*\n"
-                    + result["documents"][i]["contents"]
-                    + "\n"
-                    + "[더 보기]("
-                    + result["documents"][i]["url"]
-                    + ")\n\n",
+                    "*" + doc["title"] + "*\n" + doc["contents"] + "\n" + "[더 보기](" + doc["url"] + ")\n\n",
                     count=0,
                     flags=re.IGNORECASE | re.DOTALL,
                 )
-        else:
-            for i in result["documents"]:
-                result_contents += re.sub(
-                    "<.+?>",
-                    "",
-                    "*" + i["title"] + "*\n" + i["contents"] + "\n" + "[더 보기](" + i["url"] + ")\n\n",
-                    count=0,
-                    flags=re.IGNORECASE | re.DOTALL,
-                )
-        text = "검색 결과입니다.\n\n" + re.sub("<.+?>", "", result_contents, count=0, flags=re.IGNORECASE | re.DOTALL)
-        bot.reply_to(message, text, parse_mode="Markdown")
+            text = strings.search_result_header_msg + re.sub(
+                "<.+?>", "", result_contents, count=0, flags=re.IGNORECASE | re.DOTALL
+            )
+            bot.reply_to(message, text, parse_mode="Markdown")
+        except Exception:
+            bot.reply_to(message, strings.search_error_msg)
 
     @bot.message_handler(commands=["namu"])
     def handle_namu(message):
-        bot.reply_to(message, bot_features.webManager.namuwiki_search(message), parse_mode="Markdown")
+        bot.reply_to(message, bot_features.web_manager.namuwiki_search(message), parse_mode="Markdown")
 
     # calculator
     @bot.message_handler(commands=["calc"])

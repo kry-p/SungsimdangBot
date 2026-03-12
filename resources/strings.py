@@ -15,10 +15,9 @@ start_msg = (
     "2. ✅ 선택봇  \n"
     "3. 🔫 러시안 룰렛 게임 \n"
     "4. 🪙 동전뒤집기  \n"
-    "5. 🤬 나쁜말 감지기  \n"
-    "6. 📍 현재 위치 정보  \n"
-    "7. 📅 D-day \n"
-    "8. 🧮 계산기 \n\n"
+    "5. 📍 현재 위치 정보  \n"
+    "6. 📅 D-day \n"
+    "7. 🧮 계산기 \n\n"
     "이외에도 많은 기능이 업데이트로 추가 제공될 예정입니다."
 )
 
@@ -51,25 +50,28 @@ roulette_help_msg = (
     "룰렛 초기화는 /flush_bullet 명령어나 /roulette 0 0를 입력해 주세요."
 )
 roulette_error_msg = "명령어를 형식에 맞게 입력해 주세요.\n\n예) /roulette 7 3"
+roulette_bullet_overflow_msg = "실탄 수가 총 회전 수보다 많습니다. 확인 후 다시 입력해 주세요."
+
+roulette_flush_msg = "약실을 비웠습니다. 사용하려면 다시 장전해주세요."
+roulette_loaded_msg = "{}발이 장전되었습니다."
 
 shot_error_msg = "/roulette 명령어를 사용해 먼저 장전해 주세요."
 shot_real_msg = "이번 격발 결과는 실탄입니다."
 shot_blind_msg = "이번 격발 결과는 공포탄입니다."
 
 # coin toss message
+coin_toss_prefix_msg = "동전뒤집기 결과 : "
+
+# suon (river temperature) message
+suon_unavailable_msg = "현재 한강 수온 정보를 가져올 수 없습니다. (사유: 정보 미제공)"
+suon_result_msg = "현재 한강 수온은 {} 도입니다."
+
+# search result header
 coin_toss_help_msg = (
     "🪙 동전 던지기 도움말 \n\n"
     "명령어 형식\n/coin_toss\n\n"
     "설명\n동전을 던진 결과를 제공합니다. 따로 입력할 사항은 없으며, "
     "가끔 특이한 결과가 나올 수도 있습니다."
-)
-
-# bad word detector message
-bad_word_detector_help_msg = (
-    "🤬 나쁜말 감지기 도움말 \n\n"
-    "명령어 형식\n/없음\n\n"
-    "설명\n설정된 시간 제한 이내에 다수의 나쁜말이 감지된 경우 자제할 것을 촉구하는 메시지를 보냅니다.\n"
-    "차후 감지기를 고도화할 예정에 있습니다."
 )
 
 # geolocation message
@@ -99,6 +101,15 @@ calc_syntax_error_msg = (
 )
 calc_division_by_zero_error_msg = "0으로 나눌 수 없습니다."
 
+# geolocation error message
+geolocation_error_msg = "위치 정보를 가져오는 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요."
+
+# search error message
+search_error_msg = "검색 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요."
+search_mismatch_msg = "'{keyword}' 문서를 찾지 못했습니다. 이 문서를 찾으셨나요?\n\n"
+search_no_result_msg = "검색 결과가 없습니다."
+search_result_header_msg = "검색 결과입니다.\n\n"
+
 # Resources
 
 # Customized keyboards (inline)
@@ -114,7 +125,6 @@ main_keyboard.row(
     telebot.types.InlineKeyboardButton("동전 뒤집기", callback_data="coin_toss"),
 )
 main_keyboard.row(
-    telebot.types.InlineKeyboardButton("나쁜말 감지기", callback_data="bad_word_detector"),
     telebot.types.InlineKeyboardButton("현재 위치 정보", callback_data="geolocation"),
 )
 main_keyboard.row(
@@ -158,29 +168,3 @@ coin_toss_result = [
     "뒷면",
     "수직으로 섰음",
 ]
-
-# K-Fword list
-korean_f_word = [
-    "시발",
-    "씨발",
-    "병신",
-    "지랄",
-    "개새끼",
-    "색갸",
-    "새꺄",
-    "시바",
-    "새끼",
-    "tq",
-    "tlqkf",
-    "ㅅㅂ",
-    "좆",
-    "좃",
-    "등신",
-    "씹",
-    "염병",
-    "호로",
-    "간나새끼",
-]
-anitiation_word = ["아니", "않이"]
-stop_f_word = ["좀 진정해", "왜 욕해", "나쁜말 그만해"]
-stop_anitiation = ["제발 진정해", "왜 화났어", "너도 한국인이구나"]
