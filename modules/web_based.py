@@ -14,6 +14,7 @@ logger = log.Logger()
 
 NAMUWIKI_BASE_URL = config.NAMUWIKI_BASE_URL
 SEARCH_BASE_URL = config.SEARCH_BASE_URL
+SUON_REFRESH_INTERVAL = 600  # seconds
 
 
 # 강물 온도 조회
@@ -38,7 +39,7 @@ class WebManager:
         self.currentTime = datetime.datetime.now()
         interval = (self.currentTime - self.lastUpdateTime).seconds
 
-        if self.suonV2 and interval < 600:  # refresh rate: 10 min.
+        if self.suonV2 and interval < SUON_REFRESH_INTERVAL:
             return
         else:
             try:

@@ -121,31 +121,14 @@ class MessageProvider:
             result = bot_features.webManager.daum_search(message, None)
             result_contents = ""
 
-            if len(result["documents"]) > 4:
-                for i in range(5):
-                    result_contents += re.sub(
-                        "<.+?>",
-                        "",
-                        "*"
-                        + result["documents"][i]["title"]
-                        + "*\n"
-                        + result["documents"][i]["contents"]
-                        + "\n"
-                        + "[더 보기]("
-                        + result["documents"][i]["url"]
-                        + ")\n\n",
-                        count=0,
-                        flags=re.IGNORECASE | re.DOTALL,
-                    )
-            else:
-                for i in result["documents"]:
-                    result_contents += re.sub(
-                        "<.+?>",
-                        "",
-                        "*" + i["title"] + "*\n" + i["contents"] + "\n" + "[더 보기](" + i["url"] + ")\n\n",
-                        count=0,
-                        flags=re.IGNORECASE | re.DOTALL,
-                    )
+            for doc in result["documents"][:5]:
+                result_contents += re.sub(
+                    "<.+?>",
+                    "",
+                    "*" + doc["title"] + "*\n" + doc["contents"] + "\n" + "[더 보기](" + doc["url"] + ")\n\n",
+                    count=0,
+                    flags=re.IGNORECASE | re.DOTALL,
+                )
             text = "검색 결과입니다.\n\n" + re.sub(
                 "<.+?>", "", result_contents, count=0, flags=re.IGNORECASE | re.DOTALL
             )
