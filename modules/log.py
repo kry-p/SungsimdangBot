@@ -3,24 +3,26 @@ import logging
 import logging.handlers
 import os
 
-LOG_DIRECTORY = "../log"
+LOG_DIRECTORY = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "log")
 
 
 class Logger:
     def __init__(self):
-        is_success = self.create_directory(LOG_DIRECTORY)
-        if not is_success:
-            return
         self.logger = logging.getLogger(__name__)
         logging.basicConfig(level=logging.INFO)
         self.formatter = logging.Formatter("%(asctime)s %(name)s %(levelname)s %(message)s")
-        self.fileHandler = logging.FileHandler(
-            f"{LOG_DIRECTORY}/logfile_{datetime.datetime.now():%Y%m%d}.log", encoding="utf-8"
-        )
+
         self.streamHandler = logging.StreamHandler()
         self.streamHandler.setFormatter(self.formatter)
         self.logger.addHandler(self.streamHandler)
 
+        is_success = self.create_directory(LOG_DIRECTORY)
+        if not is_success:
+            return
+
+        self.fileHandler = logging.FileHandler(
+            f"{LOG_DIRECTORY}/logfile_{datetime.datetime.now():%Y%m%d}.log", encoding="utf-8"
+        )
         self.timedFileHandler = logging.handlers.TimedRotatingFileHandler(
             filename="logfile", when="midnight", interval=1, encoding="utf-8"
         )
@@ -38,7 +40,7 @@ class Logger:
             return False
 
     def log_info(self, message):
-        logging.info(message)
+        self.logger.info(message)
 
     def log_error(self, message):
-        logging.error(message)
+        self.logger.error(message)
