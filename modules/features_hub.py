@@ -31,8 +31,8 @@ class BotFeaturesHub:
         provided_suon = self.webManager.provide_suon_v2()
 
         if provided_suon == "점검중":
-            return "현재 한강 수온 정보를 가져올 수 없습니다. (사유: 정보 미제공)"
-        return f"현재 한강 수온은 {provided_suon} 도입니다."
+            return strings.suon_unavailable_msg
+        return strings.suon_result_msg.format(provided_suon)
 
     # D-day
     def d_day(self, message):

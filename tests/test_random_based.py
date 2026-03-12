@@ -17,8 +17,8 @@ class TestPicker:
 class TestCoinToss:
     def test_returns_valid_result(self):
         result = RandomBasedFeatures.coin_toss()
-        assert result.startswith("동전뒤집기 결과 : ")
-        value = result.replace("동전뒤집기 결과 : ", "")
+        assert result.startswith(strings.coin_toss_prefix_msg)
+        value = result.replace(strings.coin_toss_prefix_msg, "")
         assert value in strings.coin_toss_result
 
 
@@ -33,7 +33,7 @@ class TestRussianRoulette:
     def test_load_bullets(self):
         feat = RandomBasedFeatures()
         result = feat.russian_roulette("/roulette 6 1")
-        assert result == "6발이 장전되었습니다."
+        assert result == strings.roulette_loaded_msg.format(6)
         assert len(feat.Bullet) == 6
         assert feat.Bullet.count(True) == 1
 
@@ -64,7 +64,7 @@ class TestRussianRoulette:
         feat = RandomBasedFeatures()
         feat.russian_roulette("/roulette 3 1")
         result = feat.russian_roulette("/roulette 0 0")
-        assert result == "약실을 비웠습니다. 사용하려면 다시 장전해주세요."
+        assert result == strings.roulette_flush_msg
 
     def test_bullet_overflow(self):
         feat = RandomBasedFeatures()

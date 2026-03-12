@@ -63,12 +63,12 @@ class TestGetTemp:
     def test_normal_temperature(self, hub):
         hub.webManager.provide_suon_v2.return_value = "23.5"
         result = hub.get_temp(1)
-        assert result == "현재 한강 수온은 23.5 도입니다."
+        assert result == strings.suon_result_msg.format("23.5")
 
     def test_maintenance(self, hub):
         hub.webManager.provide_suon_v2.return_value = "점검중"
         result = hub.get_temp(1)
-        assert "가져올 수 없습니다" in result
+        assert result == strings.suon_unavailable_msg
 
 
 class TestCalculatorHandler:

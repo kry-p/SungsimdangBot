@@ -26,7 +26,7 @@ class RandomBasedFeatures:
     @staticmethod
     def coin_toss():
         random.seed()
-        return "동전뒤집기 결과 : " + random.choice(strings.coin_toss_result)
+        return strings.coin_toss_prefix_msg + random.choice(strings.coin_toss_result)
 
     # Spongebob SquarePants magic conch 마법의 소라고동
     @staticmethod
@@ -43,7 +43,7 @@ class RandomBasedFeatures:
             if message.split()[1].isdigit() and message.split()[2].isdigit():
                 if message.split()[1] == "0" and message.split()[2] == "0":
                     self.Bullet = ()
-                    return "약실을 비웠습니다. 사용하려면 다시 장전해주세요."
+                    return strings.roulette_flush_msg
                 total = int(message.split()[1])
                 bullets = int(message.split()[2])
                 if bullets > total:
@@ -54,7 +54,7 @@ class RandomBasedFeatures:
                 for n in range(bullets):
                     self.Bullet[n] = True
                 random.shuffle(self.Bullet)
-                return f"{len(self.Bullet)}발이 장전되었습니다."
+                return strings.roulette_loaded_msg.format(len(self.Bullet))
         except IndexError:
             return strings.roulette_error_msg
 

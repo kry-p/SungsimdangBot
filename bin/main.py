@@ -129,7 +129,7 @@ class MessageProvider:
                     count=0,
                     flags=re.IGNORECASE | re.DOTALL,
                 )
-            text = "검색 결과입니다.\n\n" + re.sub(
+            text = strings.search_result_header_msg + re.sub(
                 "<.+?>", "", result_contents, count=0, flags=re.IGNORECASE | re.DOTALL
             )
             bot.reply_to(message, text, parse_mode="Markdown")
