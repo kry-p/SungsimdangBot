@@ -2,8 +2,6 @@
 
 import datetime
 import json
-import random
-import time
 import urllib.parse
 
 import requests
@@ -21,8 +19,6 @@ WEATHER_BASE_URL = "http://api.openweathermap.org/data/2.5/weather?"
 class BotFeaturesHub:
     # init
     def __init__(self, bot):
-        self.badWordCount = 0  # 나쁜 말 카운트
-        self.firstBadWordTimestamp = 0  # 나쁜 말 감지기가 최초 활성화된 시점
         self.bot = bot
 
         self.randomBasedFeatures = RandomBasedFeatures()
@@ -37,25 +33,6 @@ class BotFeaturesHub:
         if provided_suon == "점검중":
             return "현재 한강 수온 정보를 가져올 수 없습니다. (사유: 정보 미제공)"
         return f"현재 한강 수온은 {provided_suon} 도입니다."
-
-    # Bad word detector 나쁜말 감지기
-    def bad_word_detector(self, message, word_type):
-        if not self.firstBadWordTimestamp:
-            self.firstBadWordTimestamp = time.time()
-        self.badWordCount += 1
-
-        if (
-            (time.time() - self.firstBadWordTimestamp) <= config.DETECTOR_TIMEOUT
-        ) and self.badWordCount >= config.DETECTOR_COUNT:
-            if word_type == "f_word":
-                self.bot.send_message(message.chat.id, random.choice(strings.stop_f_word))
-            elif word_type == "anitiation":
-                self.bot.send_message(message.chat.id, random.choice(strings.stop_anitiation))
-        elif (
-            (time.time() - self.firstBadWordTimestamp) >= config.DETECTOR_TIMEOUT
-        ) and self.badWordCount <= config.DETECTOR_COUNT:
-            self.firstBadWordTimestamp = 0
-            self.badWordCount = 0
 
     # D-day
     def d_day(self, message):
@@ -135,18 +112,6 @@ class BotFeaturesHub:
 
     # Handling ordinary message 일반 메시지 처리
     def ordinary_message(self, message):
-        # print(message)
-
-        # Bad word detector 나쁜말 감지기
-        for n in range(len(strings.korean_f_word)):
-            if strings.korean_f_word[n] in message.text:
-                self.bad_word_detector(message, "f_word")
-
-        # 아니시에이션 감지기
-        for n in range(len(strings.anitiation_word)):
-            if strings.anitiation_word[n] in message.text:
-                self.bad_word_detector(message, "anitiation")
-
         # location-based message if user sent message that includes '수온' or '자살'
         if ("수온" in message.text) or ("자살" in message.text):
             self.bot.reply_to(message, self.get_temp(message.from_user.id))

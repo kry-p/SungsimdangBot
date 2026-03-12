@@ -54,7 +54,6 @@ query_string = {
     "random_picker": strings.picker_help_msg,
     "russian_roulette": strings.roulette_help_msg,
     "coin_toss": strings.coin_toss_help_msg,
-    "bad_word_detector": strings.bad_word_detector_help_msg,
     "geolocation": strings.geolocation_help_msg,
     "dday": strings.day_help_msg,
     "calc": strings.calc_help_msg,

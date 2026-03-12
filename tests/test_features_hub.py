@@ -1,5 +1,4 @@
 import datetime
-import time
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -60,35 +59,6 @@ class TestDDay:
         hub.bot.reply_to.assert_called_once_with(msg, strings.day_out_of_range_msg)
 
 
-class TestBadWordDetector:
-    def test_count_exceeds_within_timeout(self, hub):
-        msg = make_message("test")
-        hub.firstBadWordTimestamp = time.time()
-        hub.badWordCount = 4  # one more will reach DETECTOR_COUNT (default 5)
-        hub.bad_word_detector(msg, "f_word")
-        hub.bot.send_message.assert_called_once()
-        call_args = hub.bot.send_message.call_args
-        assert call_args[0][0] == msg.chat.id
-        assert call_args[0][1] in strings.stop_f_word
-
-    def test_anitiation_message(self, hub):
-        msg = make_message("test")
-        hub.firstBadWordTimestamp = time.time()
-        hub.badWordCount = 4
-        hub.bad_word_detector(msg, "anitiation")
-        hub.bot.send_message.assert_called_once()
-        assert hub.bot.send_message.call_args[0][1] in strings.stop_anitiation
-
-    def test_resets_after_timeout(self, hub):
-        msg = make_message("test")
-        hub.firstBadWordTimestamp = time.time() - 100  # well past timeout
-        hub.badWordCount = 2
-        hub.bad_word_detector(msg, "f_word")
-        assert hub.badWordCount == 0
-        assert hub.firstBadWordTimestamp == 0
-        hub.bot.send_message.assert_not_called()
-
-
 class TestGetTemp:
     def test_normal_temperature(self, hub):
         hub.webManager.provide_suon_v2.return_value = "23.5"
@@ -137,11 +107,6 @@ class TestOrdinaryMessage:
         hub.bot.reply_to.assert_called_once()
         all_sentences = [s for group in strings.magic_conch_sentence for s in group]
         assert hub.bot.reply_to.call_args[0][1] in all_sentences
-
-    def test_bad_word_increments_count(self, hub):
-        msg = make_message(strings.korean_f_word[0])
-        hub.ordinary_message(msg)
-        assert hub.badWordCount >= 1
 
     def test_normal_message_no_action(self, hub):
         msg = make_message("안녕하세요")

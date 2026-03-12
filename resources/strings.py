@@ -15,10 +15,9 @@ start_msg = (
     "2. ✅ 선택봇  \n"
     "3. 🔫 러시안 룰렛 게임 \n"
     "4. 🪙 동전뒤집기  \n"
-    "5. 🤬 나쁜말 감지기  \n"
-    "6. 📍 현재 위치 정보  \n"
-    "7. 📅 D-day \n"
-    "8. 🧮 계산기 \n\n"
+    "5. 📍 현재 위치 정보  \n"
+    "6. 📅 D-day \n"
+    "7. 🧮 계산기 \n\n"
     "이외에도 많은 기능이 업데이트로 추가 제공될 예정입니다."
 )
 
@@ -64,14 +63,6 @@ coin_toss_help_msg = (
     "가끔 특이한 결과가 나올 수도 있습니다."
 )
 
-# bad word detector message
-bad_word_detector_help_msg = (
-    "🤬 나쁜말 감지기 도움말 \n\n"
-    "명령어 형식\n/없음\n\n"
-    "설명\n설정된 시간 제한 이내에 다수의 나쁜말이 감지된 경우 자제할 것을 촉구하는 메시지를 보냅니다.\n"
-    "차후 감지기를 고도화할 예정에 있습니다."
-)
-
 # geolocation message
 geolocation_help_msg = (
     "📍 현재 위치 정보 도움말 \n\n"
@@ -114,7 +105,6 @@ main_keyboard.row(
     telebot.types.InlineKeyboardButton("동전 뒤집기", callback_data="coin_toss"),
 )
 main_keyboard.row(
-    telebot.types.InlineKeyboardButton("나쁜말 감지기", callback_data="bad_word_detector"),
     telebot.types.InlineKeyboardButton("현재 위치 정보", callback_data="geolocation"),
 )
 main_keyboard.row(
@@ -158,29 +148,3 @@ coin_toss_result = [
     "뒷면",
     "수직으로 섰음",
 ]
-
-# K-Fword list
-korean_f_word = [
-    "시발",
-    "씨발",
-    "병신",
-    "지랄",
-    "개새끼",
-    "색갸",
-    "새꺄",
-    "시바",
-    "새끼",
-    "tq",
-    "tlqkf",
-    "ㅅㅂ",
-    "좆",
-    "좃",
-    "등신",
-    "씹",
-    "염병",
-    "호로",
-    "간나새끼",
-]
-anitiation_word = ["아니", "않이"]
-stop_f_word = ["좀 진정해", "왜 욕해", "나쁜말 그만해"]
-stop_anitiation = ["제발 진정해", "왜 화났어", "너도 한국인이구나"]
