@@ -61,12 +61,12 @@ class TestDDay:
 
 class TestGetTemp:
     def test_normal_temperature(self, hub):
-        hub.webManager.provide_suon_v2.return_value = "23.5"
+        hub.web_manager.provide_suon_v2.return_value = "23.5"
         result = hub.get_temp(1)
         assert result == strings.suon_result_msg.format("23.5")
 
     def test_maintenance(self, hub):
-        hub.webManager.provide_suon_v2.return_value = "점검중"
+        hub.web_manager.provide_suon_v2.return_value = "점검중"
         result = hub.get_temp(1)
         assert result == strings.suon_unavailable_msg
 
@@ -95,7 +95,7 @@ class TestCalculatorHandler:
 
 class TestOrdinaryMessage:
     def test_suon_keyword_triggers_temp(self, hub):
-        hub.webManager.provide_suon_v2.return_value = "20.0"
+        hub.web_manager.provide_suon_v2.return_value = "20.0"
         msg = make_message("오늘 수온 어때?")
         hub.ordinary_message(msg)
         hub.bot.reply_to.assert_called_once()

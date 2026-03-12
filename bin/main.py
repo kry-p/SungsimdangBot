@@ -95,30 +95,30 @@ class MessageProvider:
     # randomly select one word between 1 or more words
     @bot.message_handler(commands=["pick"])
     def handle_pick(message):
-        bot.send_message(message.chat.id, bot_features.randomBasedFeatures.picker(message.text))
+        bot.send_message(message.chat.id, bot_features.random_based_features.picker(message.text))
 
     # randomly select coin heads or tails
     @bot.message_handler(commands=["coin_toss"])
     def handle_coin_toss(message):
-        bot.send_message(message.chat.id, bot_features.randomBasedFeatures.coin_toss())
+        bot.send_message(message.chat.id, bot_features.random_based_features.coin_toss())
 
     # Russian roulette
     @bot.message_handler(commands=["roulette"])
     def handle_roulette(message):
-        bot.send_message(message.chat.id, bot_features.randomBasedFeatures.russian_roulette(message.text))
+        bot.send_message(message.chat.id, bot_features.random_based_features.russian_roulette(message.text))
 
     @bot.message_handler(commands=["shoot"])
     def handle_shoot(message):
-        bot.send_message(message.chat.id, bot_features.randomBasedFeatures.trig_bullet())
+        bot.send_message(message.chat.id, bot_features.random_based_features.trig_bullet())
 
     @bot.message_handler(commands=["flush_bullet"])
     def handle_flush_bullet(message):
-        bot.send_message(message.chat.id, bot_features.randomBasedFeatures.russian_roulette("roulette 0 0"))
+        bot.send_message(message.chat.id, bot_features.random_based_features.russian_roulette("roulette 0 0"))
 
     @bot.message_handler(commands=["search"])
     def handle_search(message):
         try:
-            result = bot_features.webManager.daum_search(message, None)
+            result = bot_features.web_manager.daum_search(message, None)
             result_contents = ""
 
             for doc in result["documents"][:5]:
@@ -138,7 +138,7 @@ class MessageProvider:
 
     @bot.message_handler(commands=["namu"])
     def handle_namu(message):
-        bot.reply_to(message, bot_features.webManager.namuwiki_search(message), parse_mode="Markdown")
+        bot.reply_to(message, bot_features.web_manager.namuwiki_search(message), parse_mode="Markdown")
 
     # calculator
     @bot.message_handler(commands=["calc"])

@@ -21,14 +21,14 @@ class BotFeaturesHub:
     def __init__(self, bot):
         self.bot = bot
 
-        self.randomBasedFeatures = RandomBasedFeatures()
-        self.webManager = WebManager()
+        self.random_based_features = RandomBasedFeatures()
+        self.web_manager = WebManager()
         self.calculator = Calculator()
 
     # Get current river temperature 현재 강물 온도 정보 획득
     def get_temp(self, user_id):
-        self.webManager.update_suon()
-        provided_suon = self.webManager.provide_suon_v2()
+        self.web_manager.update_suon()
+        provided_suon = self.web_manager.provide_suon_v2()
 
         if provided_suon == "점검중":
             return strings.suon_unavailable_msg
@@ -120,4 +120,4 @@ class BotFeaturesHub:
 
         # randomly select magic conch message if user sent message that includes '마법의 소라고둥/동'
         if ("마법의 소라고둥" in message.text) or ("마법의 소라고동" in message.text):
-            self.bot.reply_to(message, self.randomBasedFeatures.magic_conch())
+            self.bot.reply_to(message, self.random_based_features.magic_conch())

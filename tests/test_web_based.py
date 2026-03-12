@@ -21,10 +21,10 @@ class TestUpdateSuon:
 
         with patch.object(WebManager, "__init__", lambda self: None):
             wm = WebManager()
-            wm.suonV2 = None
-            wm.lastUpdateTime = datetime.datetime(2020, 1, 1)
+            wm.suon_v2 = None
+            wm.last_update_time = datetime.datetime(2020, 1, 1)
             wm.update_suon()
-            assert wm.suonV2 == "22.5"
+            assert wm.suon_v2 == "22.5"
 
     @patch("modules.web_based.requests.get")
     def test_api_failure(self, mock_get):
@@ -32,17 +32,17 @@ class TestUpdateSuon:
 
         with patch.object(WebManager, "__init__", lambda self: None):
             wm = WebManager()
-            wm.suonV2 = None
-            wm.lastUpdateTime = datetime.datetime(2020, 1, 1)
+            wm.suon_v2 = None
+            wm.last_update_time = datetime.datetime(2020, 1, 1)
             wm.update_suon()
-            assert wm.suonV2 is None
+            assert wm.suon_v2 is None
 
     @patch("modules.web_based.requests.get")
     def test_skip_when_recently_updated(self, mock_get):
         with patch.object(WebManager, "__init__", lambda self: None):
             wm = WebManager()
-            wm.suonV2 = "20.0"
-            wm.lastUpdateTime = datetime.datetime.now() - datetime.timedelta(seconds=100)
+            wm.suon_v2 = "20.0"
+            wm.last_update_time = datetime.datetime.now() - datetime.timedelta(seconds=100)
             wm.update_suon()
             mock_get.assert_not_called()
 
@@ -122,11 +122,11 @@ class TestProvideSuonV2:
     def test_none_returns_maintenance(self):
         with patch.object(WebManager, "__init__", lambda self: None):
             wm = WebManager()
-            wm.suonV2 = None
+            wm.suon_v2 = None
             assert wm.provide_suon_v2() == "점검중"
 
     def test_normal_value(self):
         with patch.object(WebManager, "__init__", lambda self: None):
             wm = WebManager()
-            wm.suonV2 = "23.5"
+            wm.suon_v2 = "23.5"
             assert wm.provide_suon_v2() == "23.5"

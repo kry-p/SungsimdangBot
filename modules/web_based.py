@@ -21,14 +21,14 @@ SUON_REFRESH_INTERVAL = 600  # seconds
 class WebManager:
     # init
     def __init__(self):
-        self.suonV2 = None
+        self.suon_v2 = None
         # Records current time and latest update 현재 시간과 마지막 업데이트 시점을 기록
-        self.currentTime = datetime.datetime.now()
-        self.lastUpdateTime = datetime.datetime(
-            self.currentTime.year, self.currentTime.month, self.currentTime.day, self.currentTime.hour, 1
+        self.current_time = datetime.datetime.now()
+        self.last_update_time = datetime.datetime(
+            self.current_time.year, self.current_time.month, self.current_time.day, self.current_time.hour, 1
         )
-        if self.currentTime.minute == 0:
-            self.lastUpdateTime -= datetime.timedelta(hours=1)
+        if self.current_time.minute == 0:
+            self.last_update_time -= datetime.timedelta(hours=1)
 
         # Initialize current temperature information 현재 온도 정보를 최초 설정
         self.update_suon()
@@ -36,19 +36,19 @@ class WebManager:
     # Update current temperature data 현재 온도 정보를 업데이트
     def update_suon(self):
         # check recently update temperature info 최근에 업데이트하였는지 확인
-        self.currentTime = datetime.datetime.now()
-        interval = (self.currentTime - self.lastUpdateTime).seconds
+        self.current_time = datetime.datetime.now()
+        interval = (self.current_time - self.last_update_time).seconds
 
-        if self.suonV2 and interval < SUON_REFRESH_INTERVAL:
+        if self.suon_v2 and interval < SUON_REFRESH_INTERVAL:
             return
         else:
             try:
                 search_request = requests.get(config.SEOUL_HANGANG_WATER_URL, timeout=10)
                 result = json.loads(search_request.text)
-                self.suonV2 = result["WPOSInformationTime"]["row"][0]["WATT"]
+                self.suon_v2 = result["WPOSInformationTime"]["row"][0]["WATT"]
             except Exception:
                 logger.log_error("Retreiving water information of Hangang failed. Please check API Status.")
-                self.suonV2 = None
+                self.suon_v2 = None
 
     # Search from Daum and returns result by JSON
     def daum_search(self, message, site):
@@ -105,6 +105,6 @@ class WebManager:
 
     # Provide temperature data to other methods (V2, 한강으로 고정)
     def provide_suon_v2(self):
-        if self.suonV2 is None:
+        if self.suon_v2 is None:
             return "점검중"
-        return self.suonV2
+        return self.suon_v2

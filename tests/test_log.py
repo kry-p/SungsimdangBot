@@ -9,7 +9,7 @@ class TestLoggerInit:
     def test_normal_init(self, _mock_exists, _mock_makedirs):
         logger = Logger()
         assert hasattr(logger, "logger")
-        assert hasattr(logger, "streamHandler")
+        assert hasattr(logger, "stream_handler")
 
 
 class TestLoggerInitFallback:
@@ -17,8 +17,8 @@ class TestLoggerInitFallback:
     def test_fallback_console_only(self, _mock_create):
         logger = Logger()
         assert hasattr(logger, "logger")
-        assert hasattr(logger, "streamHandler")
-        assert not hasattr(logger, "timedFileHandler")
+        assert hasattr(logger, "stream_handler")
+        assert not hasattr(logger, "timed_file_handler")
 
 
 class TestLogMethods:

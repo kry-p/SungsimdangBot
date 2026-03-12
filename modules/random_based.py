@@ -6,7 +6,7 @@ from resources import strings
 
 class RandomBasedFeatures:
     def __init__(self):
-        self.Bullet = []
+        self.bullet = []
 
     # Random picker 랜덤픽
     @staticmethod
@@ -42,27 +42,27 @@ class RandomBasedFeatures:
         try:
             if message.split()[1].isdigit() and message.split()[2].isdigit():
                 if message.split()[1] == "0" and message.split()[2] == "0":
-                    self.Bullet = ()
+                    self.bullet = ()
                     return strings.roulette_flush_msg
                 total = int(message.split()[1])
                 bullets = int(message.split()[2])
                 if bullets > total:
                     return strings.roulette_bullet_overflow_msg
-                self.Bullet = []
+                self.bullet = []
                 for _n in range(total):
-                    self.Bullet.append(False)
+                    self.bullet.append(False)
                 for n in range(bullets):
-                    self.Bullet[n] = True
-                random.shuffle(self.Bullet)
-                return strings.roulette_loaded_msg.format(len(self.Bullet))
+                    self.bullet[n] = True
+                random.shuffle(self.bullet)
+                return strings.roulette_loaded_msg.format(len(self.bullet))
         except IndexError:
             return strings.roulette_error_msg
 
     # Launch roulette 러시안 룰렛 격발
     def trig_bullet(self):
-        if len(self.Bullet) == 0:
+        if len(self.bullet) == 0:
             return strings.shot_error_msg
-        check = self.Bullet.pop()
+        check = self.bullet.pop()
         if check:
             return strings.shot_real_msg
         else:

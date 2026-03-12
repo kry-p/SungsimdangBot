@@ -34,8 +34,8 @@ class TestRussianRoulette:
         feat = RandomBasedFeatures()
         result = feat.russian_roulette("/roulette 6 1")
         assert result == strings.roulette_loaded_msg.format(6)
-        assert len(feat.Bullet) == 6
-        assert feat.Bullet.count(True) == 1
+        assert len(feat.bullet) == 6
+        assert feat.bullet.count(True) == 1
 
     def test_shoot_without_loading(self):
         feat = RandomBasedFeatures()
