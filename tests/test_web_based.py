@@ -194,12 +194,12 @@ class TestNamuwikiSearchMultiWord:
 
 class TestNamuwikiSearchUrlMismatch:
     @patch.object(WebManager, "daum_search")
-    def test_url_mismatch_returns_direct_link(self, mock_daum):
+    def test_url_mismatch_shows_actual_result(self, mock_daum):
         mock_daum.return_value = {
             "documents": [
                 {
-                    "title": "test",
-                    "contents": "<b>content</b>",
+                    "title": "<b>Different</b> Page",
+                    "contents": "<b>content</b> here",
                     "url": "https://namu.wiki/w/different_page",
                 }
             ]
@@ -209,9 +209,10 @@ class TestNamuwikiSearchUrlMismatch:
             wm = WebManager()
             msg = make_message("/namu test")
             result = wm.namuwiki_search(msg)
-            expected_url = "https://namu.wiki/w/" + urllib.parse.quote("test")
-            assert expected_url in result
-            assert "content" not in result
+            assert strings.search_mismatch_msg.format(keyword="test") in result
+            assert "https://namu.wiki/w/different_page" in result
+            assert "Different Page" in result
+            assert "content here" in result
 
 
 class TestProvideSuonV2:

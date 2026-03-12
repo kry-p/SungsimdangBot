@@ -73,7 +73,7 @@ class WebManager:
 
         for i in result["documents"]:
             urlinfo = urllib.parse.urlsplit(i["url"])
-            i["url"] = f"{urlinfo.scheme}://{urlinfo.netloc}{urllib.parse.quote(urlinfo.path)}"
+            i["url"] = f"{urlinfo.scheme}://{urlinfo.netloc}{urllib.parse.quote(urlinfo.path, safe='/:@!$&()*+,;=%')}"
 
         return result
 
@@ -97,10 +97,20 @@ class WebManager:
         result_contents = result["contents"]
         result_url = result["url"]
 
+        text = re.sub("<.+?>", "", result_contents, count=0, flags=re.IGNORECASE | re.DOTALL)
+
         if result_url != url:
-            return "[" + keyword + " - 나무위키](" + url + ")"
+            result_title = re.sub("<.+?>", "", result["title"], count=0, flags=re.IGNORECASE | re.DOTALL)
+            return (
+                strings.search_mismatch_msg.format(keyword=keyword)
+                + "["
+                + result_title
+                + "]("
+                + result_url
+                + ")\n\n"
+                + text
+            )
         else:
-            text = re.sub("<.+?>", "", result_contents, count=0, flags=re.IGNORECASE | re.DOTALL)
             return "[" + keyword + " - 나무위키](" + url + ")\n\n" + text
 
     # Provide temperature data to other methods (V2, 한강으로 고정)
