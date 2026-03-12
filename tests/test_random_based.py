@@ -1,5 +1,3 @@
-import pytest
-
 from modules.random_based import RandomBasedFeatures
 from resources import strings
 
@@ -62,15 +60,16 @@ class TestRussianRoulette:
         # after all exhausted, should return error
         assert feat.trig_bullet() == strings.shot_error_msg
 
-    @pytest.mark.xfail(
-        reason="flush_bullet compares str with int: message.split()[1] == 0",
-        strict=True,
-    )
     def test_flush_bullet(self):
         feat = RandomBasedFeatures()
         feat.russian_roulette("/roulette 3 1")
         result = feat.russian_roulette("/roulette 0 0")
         assert result == "약실을 비웠습니다. 사용하려면 다시 장전해주세요."
+
+    def test_bullet_overflow(self):
+        feat = RandomBasedFeatures()
+        result = feat.russian_roulette("/roulette 3 5")
+        assert result == strings.roulette_bullet_overflow_msg
 
 
 class TestPickerEdgeCases:

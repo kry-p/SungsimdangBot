@@ -41,9 +41,9 @@ class BotFeaturesHub:
 
         split = message.text.split()
         split = [item for item in split if "/dday" not in item]
-        split = list(map(int, split))  # String to calculable integer values
 
         try:
+            split = list(map(int, split))  # String to calculable integer values
             dest = datetime.date(split[0], split[1], split[2])  # date that user entered
 
             result = (dest - today).days

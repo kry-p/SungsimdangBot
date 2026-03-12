@@ -50,6 +50,7 @@ roulette_help_msg = (
     "룰렛 초기화는 /flush_bullet 명령어나 /roulette 0 0를 입력해 주세요."
 )
 roulette_error_msg = "명령어를 형식에 맞게 입력해 주세요.\n\n예) /roulette 7 3"
+roulette_bullet_overflow_msg = "실탄 수가 총 회전 수보다 많습니다. 확인 후 다시 입력해 주세요."
 
 shot_error_msg = "/roulette 명령어를 사용해 먼저 장전해 주세요."
 shot_real_msg = "이번 격발 결과는 실탄입니다."

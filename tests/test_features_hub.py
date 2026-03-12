@@ -43,10 +43,9 @@ class TestDDay:
         hub.bot.reply_to.assert_called_once_with(msg, strings.day_dest_msg)
 
     def test_invalid_input_non_numeric(self, hub):
-        """Non-numeric input raises ValueError before the try block (bug in d_day)."""
         msg = make_message("/dday abc")
-        with pytest.raises(ValueError):
-            hub.d_day(msg)
+        hub.d_day(msg)
+        hub.bot.reply_to.assert_called_once_with(msg, strings.day_out_of_range_msg)
 
     def test_invalid_input_out_of_range(self, hub):
         msg = make_message("/dday 2020 13 32")

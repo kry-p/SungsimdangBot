@@ -41,13 +41,17 @@ class RandomBasedFeatures:
     def russian_roulette(self, message):
         try:
             if message.split()[1].isdigit() and message.split()[2].isdigit():
-                if message.split()[1] == 0 and message.split()[2] == 0:
+                if message.split()[1] == "0" and message.split()[2] == "0":
                     self.Bullet = ()
                     return "약실을 비웠습니다. 사용하려면 다시 장전해주세요."
+                total = int(message.split()[1])
+                bullets = int(message.split()[2])
+                if bullets > total:
+                    return strings.roulette_bullet_overflow_msg
                 self.Bullet = []
-                for _n in range(int(message.split()[1])):
+                for _n in range(total):
                     self.Bullet.append(False)
-                for n in range(int(message.split()[2])):
+                for n in range(bullets):
                     self.Bullet[n] = True
                 random.shuffle(self.Bullet)
                 return f"{len(self.Bullet)}발이 장전되었습니다."
