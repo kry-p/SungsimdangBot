@@ -73,7 +73,7 @@ class WebManager:
 
         for i in result["documents"]:
             urlinfo = urllib.parse.urlsplit(i["url"])
-            i["url"] = f"{urlinfo.scheme}://{urlinfo.netloc}{urllib.parse.quote(urlinfo.path, safe='/:@!$&()*+,;=%')}"
+            i["url"] = f"{urlinfo.scheme}://{urlinfo.netloc}{urllib.parse.quote(urlinfo.path, safe='/:@!$&*+,;=%')}"
 
         return result
 
