@@ -35,7 +35,7 @@ bin/
 config/
   config.py            # 환경변수 기반 설정 (API 토큰, 외부 URL 등)
 modules/
-  features_hub.py      # 핵심 기능 허브 (수온, 날씨, D-day, 계산기, 나쁜말 감지기)
+  features_hub.py      # 핵심 기능 허브 (수온, 날씨, D-day, 계산기)
   web_based.py         # 웹 기반 기능 (수온 조회, 검색)
   random_based.py      # 랜덤 기반 기능 (선택봇, 동전뒤집기, 러시안 룰렛)
   calculator.py        # 수식 계산기
@@ -61,8 +61,6 @@ BOT_TOKEN=your_telegram_bot_token
 KAKAO_TOKEN=your_kakao_rest_api_token
 WEATHER_TOKEN=your_openweathermap_api_token
 SEOUL_HANGANG_WATER_TOKEN=your_seoul_open_api_token
-DETECTOR_TIMEOUT=600
-DETECTOR_COUNT=10
 ```
 
 ### 3. 실행
@@ -109,9 +107,6 @@ docker compose up -d
    결과는 앞면과 뒷면입니다.<br>
    예) `/coin_toss` → `동전뒤집기 결과 : 앞면`
 
-+ 🤬 나쁜말 감지기<br>
-   설정된 시간 제한 이내에 다수의 나쁜말이 감지된 경우 자제할 것을 촉구하는 메시지를 보냅니다.
-
 + 📍 현재 위치 정보<br>
    텔레그램의 위치 기능을 사용하여 현재 위치를 메시지로 보낸 경우 그 상세 정보를 메시지로 보냅니다.<br>
    제공하는 정보는 주소, 경위도, 날씨입니다.
@@ -128,6 +123,10 @@ docker compose up -d
    검색어에 대한 결과를 링크와 함께 마크다운으로 반환합니다.<br>
    예) `/search 집가고싶다` → `(검색 결과)`
 
++ 📚 나무위키 검색<br>
+   나무위키에서 검색한 결과를 마크다운으로 반환합니다.<br>
+   예) `/namu 성심당` → `(나무위키 검색 결과)`
+
 + 🐚 마법의 소라고동<br>
    `마법의 소라고둥` 또는 `마법의 소라고동`이 포함된 메시지를 보내면 마법의 소라고동이 답변합니다.
 
@@ -141,8 +140,6 @@ docker compose up -d
 | `KAKAO_TOKEN` | | 카카오 REST API 토큰 (위치 정보, 검색 기능) |
 | `WEATHER_TOKEN` | | OpenWeatherMap API 토큰 (위치 기반 날씨 정보) |
 | `SEOUL_HANGANG_WATER_TOKEN` | | 서울 열린데이터 광장 API 토큰 (한강 수온 정보) |
-| `DETECTOR_TIMEOUT` | | 나쁜말 감지기 시간제한 (초 단위, 기본값 600) |
-| `DETECTOR_COUNT` | | 나쁜말 감지기 감지 횟수 (기본값 10) |
 
 ## 기여자
 
@@ -157,4 +154,3 @@ docker compose up -d
 ## 알려진 문제점
 
 + 하나의 봇 세션을 여러 그룹에서 함께 운용할 때 러시안 룰렛의 상태가 공유됨
-+ 검색 결과를 마크다운으로 출력 시 괄호가 포함된 텍스트가 검색 결과에 포함되면 형식 오류 발생
