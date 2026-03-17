@@ -11,7 +11,7 @@ from resources import strings
 @pytest.fixture
 def hub():
     bot = MagicMock()
-    with patch("modules.features_hub.WebManager"):
+    with patch("modules.features_hub.WebManager"), patch("modules.features_hub.GeminiChat"):
         h = BotFeaturesHub(bot)
     return h
 
@@ -147,3 +147,110 @@ class TestGeolocationInfo:
         hub.geolocation_info(msg, 37.5, 127.0)
 
         hub.bot.reply_to.assert_called_once_with(msg, strings.geolocation_error_msg)
+
+
+class TestAskHandler:
+    def test_empty_question(self, hub):
+        msg = make_message("/ask")
+        hub.ask_handler(msg)
+        hub.bot.reply_to.assert_called_once_with(msg, strings.ask_empty_msg)
+
+    def test_normal_question(self, hub):
+        hub.gemini_chat.ask.return_value = "답변입니다"
+        msg = make_message("/ask 질문", user_id=1)
+        msg.from_user.language_code = "ko"
+        hub.ask_handler(msg)
+        hub.bot.reply_to.assert_called_once_with(msg, "답변입니다")
+
+    def test_split_response(self, hub):
+        hub.gemini_chat.ask.return_value = ["part1", "part2"]
+        msg = make_message("/ask 긴 질문", user_id=1)
+        msg.from_user.language_code = "ko"
+        hub.ask_handler(msg)
+        assert hub.bot.reply_to.call_count == 2
+
+    def test_not_allowed(self, hub):
+        hub.gemini_chat.ask.return_value = strings.ask_not_allowed_msg
+        msg = make_message("/ask 질문", user_id=1)
+        msg.from_user.language_code = "ko"
+        hub.ask_handler(msg)
+        hub.bot.reply_to.assert_called_once_with(msg, strings.ask_not_allowed_msg)
+
+
+class TestClearChatHandler:
+    def test_clear(self, hub):
+        msg = make_message("/clear_chat")
+        hub.clear_chat_handler(msg)
+        hub.gemini_chat.clear_session.assert_called_once_with(1)
+        hub.bot.reply_to.assert_called_once_with(msg, strings.ask_clear_msg)
+
+
+class TestAllowChatHandler:
+    @patch("modules.features_hub.config.ADMIN_USER_ID", 100)
+    def test_admin_allow_current_chat(self, hub):
+        msg = make_message("/allow_chat", chat_id=42, user_id=100)
+        hub.allow_chat_handler(msg)
+        hub.gemini_chat.allow_chat.assert_called_once_with(42)
+        hub.bot.reply_to.assert_called_once_with(msg, strings.admin_allow_chat_msg.format(42))
+
+    @patch("modules.features_hub.config.ADMIN_USER_ID", 100)
+    def test_admin_allow_specific_chat(self, hub):
+        msg = make_message("/allow_chat -360634409", user_id=100)
+        hub.allow_chat_handler(msg)
+        hub.gemini_chat.allow_chat.assert_called_once_with(-360634409)
+
+    @patch("modules.features_hub.config.ADMIN_USER_ID", 100)
+    def test_non_admin_rejected(self, hub):
+        msg = make_message("/allow_chat", user_id=999)
+        hub.allow_chat_handler(msg)
+        hub.bot.reply_to.assert_called_once_with(msg, strings.admin_only_msg)
+
+    @patch("modules.features_hub.config.ADMIN_USER_ID", 100)
+    def test_invalid_argument(self, hub):
+        msg = make_message("/allow_chat abc", user_id=100)
+        hub.allow_chat_handler(msg)
+        hub.bot.reply_to.assert_called_once_with(msg, strings.admin_allow_usage_msg)
+
+
+class TestDenyChatHandler:
+    @patch("modules.features_hub.config.ADMIN_USER_ID", 100)
+    def test_admin_deny(self, hub):
+        hub.gemini_chat.allowlist = {42}
+        msg = make_message("/deny_chat 42", user_id=100)
+        hub.deny_chat_handler(msg)
+        hub.gemini_chat.deny_chat.assert_called_once_with(42)
+
+    @patch("modules.features_hub.config.ADMIN_USER_ID", 100)
+    def test_deny_not_in_list(self, hub):
+        hub.gemini_chat.allowlist = set()
+        msg = make_message("/deny_chat 42", user_id=100)
+        hub.deny_chat_handler(msg)
+        hub.bot.reply_to.assert_called_once_with(msg, strings.admin_deny_chat_not_found_msg.format(42))
+
+    @patch("modules.features_hub.config.ADMIN_USER_ID", 100)
+    def test_non_admin_rejected(self, hub):
+        msg = make_message("/deny_chat 42", user_id=999)
+        hub.deny_chat_handler(msg)
+        hub.bot.reply_to.assert_called_once_with(msg, strings.admin_only_msg)
+
+
+class TestListChatsHandler:
+    @patch("modules.features_hub.config.ADMIN_USER_ID", 100)
+    def test_admin_with_chats(self, hub):
+        hub.gemini_chat.list_allowed_chats.return_value = [1, 2, 3]
+        msg = make_message("/list_chats", user_id=100)
+        hub.list_chats_handler(msg)
+        hub.bot.reply_to.assert_called_once_with(msg, strings.admin_list_chats_msg.format("1\n2\n3"))
+
+    @patch("modules.features_hub.config.ADMIN_USER_ID", 100)
+    def test_admin_empty(self, hub):
+        hub.gemini_chat.list_allowed_chats.return_value = []
+        msg = make_message("/list_chats", user_id=100)
+        hub.list_chats_handler(msg)
+        hub.bot.reply_to.assert_called_once_with(msg, strings.admin_list_chats_empty_msg)
+
+    @patch("modules.features_hub.config.ADMIN_USER_ID", 100)
+    def test_non_admin_rejected(self, hub):
+        msg = make_message("/list_chats", user_id=999)
+        hub.list_chats_handler(msg)
+        hub.bot.reply_to.assert_called_once_with(msg, strings.admin_only_msg)

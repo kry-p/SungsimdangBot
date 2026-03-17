@@ -8,6 +8,7 @@ import requests
 
 from config import config
 from modules.calculator import Calculator
+from modules.gemini_chat import GeminiChat
 from modules.random_based import RandomBasedFeatures
 from modules.web_based import WebManager
 from resources import strings
@@ -24,6 +25,7 @@ class BotFeaturesHub:
         self.random_based_features = RandomBasedFeatures()
         self.web_manager = WebManager()
         self.calculator = Calculator()
+        self.gemini_chat = GeminiChat()
 
     # Get current river temperature 현재 강물 온도 정보 획득
     def get_temp(self, user_id):
@@ -111,6 +113,81 @@ class BotFeaturesHub:
                 self.bot.reply_to(message, strings.calc_division_by_zero_error_msg)
             else:
                 self.bot.reply_to(message, result)
+
+    # Ask handler AI 질문
+    def ask_handler(self, message):
+        command = message.text.split()[0]
+        if len(message.text.strip()) <= len(command):
+            self.bot.reply_to(message, strings.ask_empty_msg)
+            return
+        question = message.text[len(command) :].strip()
+        language_code = getattr(message.from_user, "language_code", None)
+        self.bot.send_chat_action(message.chat.id, "typing")
+        result = self.gemini_chat.ask(message.chat.id, question, language_code)
+        if isinstance(result, list):
+            for chunk in result:
+                self.bot.reply_to(message, chunk)
+        else:
+            self.bot.reply_to(message, result)
+
+    # Clear chat 대화 초기화
+    def clear_chat_handler(self, message):
+        self.gemini_chat.clear_session(message.chat.id)
+        self.bot.reply_to(message, strings.ask_clear_msg)
+
+    # Admin check 관리자 확인
+    @staticmethod
+    def is_admin(user_id):
+        return user_id == config.ADMIN_USER_ID
+
+    # Allow chat 채팅 허용
+    def allow_chat_handler(self, message):
+        if not self.is_admin(message.from_user.id):
+            self.bot.reply_to(message, strings.admin_only_msg)
+            return
+        parts = message.text.split()
+        if len(parts) < 2:
+            chat_id = message.chat.id
+        else:
+            try:
+                chat_id = int(parts[1])
+            except ValueError:
+                self.bot.reply_to(message, strings.admin_allow_usage_msg)
+                return
+        self.gemini_chat.allow_chat(chat_id)
+        self.bot.reply_to(message, strings.admin_allow_chat_msg.format(chat_id))
+
+    # Deny chat 채팅 거부
+    def deny_chat_handler(self, message):
+        if not self.is_admin(message.from_user.id):
+            self.bot.reply_to(message, strings.admin_only_msg)
+            return
+        parts = message.text.split()
+        if len(parts) < 2:
+            chat_id = message.chat.id
+        else:
+            try:
+                chat_id = int(parts[1])
+            except ValueError:
+                self.bot.reply_to(message, strings.admin_deny_usage_msg)
+                return
+        if chat_id in self.gemini_chat.allowlist:
+            self.gemini_chat.deny_chat(chat_id)
+            self.bot.reply_to(message, strings.admin_deny_chat_msg.format(chat_id))
+        else:
+            self.bot.reply_to(message, strings.admin_deny_chat_not_found_msg.format(chat_id))
+
+    # List chats 허용 목록 조회
+    def list_chats_handler(self, message):
+        if not self.is_admin(message.from_user.id):
+            self.bot.reply_to(message, strings.admin_only_msg)
+            return
+        chats = self.gemini_chat.list_allowed_chats()
+        if not chats:
+            self.bot.reply_to(message, strings.admin_list_chats_empty_msg)
+        else:
+            chat_list = "\n".join(str(c) for c in chats)
+            self.bot.reply_to(message, strings.admin_list_chats_msg.format(chat_list))
 
     # Handling ordinary message 일반 메시지 처리
     def ordinary_message(self, message):
