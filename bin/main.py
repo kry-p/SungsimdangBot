@@ -105,15 +105,19 @@ class MessageProvider:
     # Russian roulette
     @bot.message_handler(commands=["roulette"])
     def handle_roulette(message):
-        bot.send_message(message.chat.id, bot_features.random_based_features.russian_roulette(message.text))
+        bot.send_message(
+            message.chat.id, bot_features.random_based_features.russian_roulette(message.chat.id, message.text)
+        )
 
     @bot.message_handler(commands=["shoot"])
     def handle_shoot(message):
-        bot.send_message(message.chat.id, bot_features.random_based_features.trig_bullet())
+        bot.send_message(message.chat.id, bot_features.random_based_features.trig_bullet(message.chat.id))
 
     @bot.message_handler(commands=["flush_bullet"])
     def handle_flush_bullet(message):
-        bot.send_message(message.chat.id, bot_features.random_based_features.russian_roulette("roulette 0 0"))
+        bot.send_message(
+            message.chat.id, bot_features.random_based_features.russian_roulette(message.chat.id, "roulette 0 0")
+        )
 
     @bot.message_handler(commands=["search"])
     def handle_search(message):

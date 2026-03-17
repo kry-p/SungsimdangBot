@@ -6,7 +6,7 @@ from resources import strings
 
 class RandomBasedFeatures:
     def __init__(self):
-        self.bullet = []
+        self.bullet = {}
 
     # Random picker 랜덤픽
     @staticmethod
@@ -38,31 +38,34 @@ class RandomBasedFeatures:
         ]
 
     # Russian roulette 러시안 룰렛
-    def russian_roulette(self, message):
+    def russian_roulette(self, chat_id, message):
         try:
             if message.split()[1].isdigit() and message.split()[2].isdigit():
                 if message.split()[1] == "0" and message.split()[2] == "0":
-                    self.bullet = ()
+                    self.bullet[chat_id] = ()
                     return strings.roulette_flush_msg
                 total = int(message.split()[1])
                 bullets = int(message.split()[2])
                 if bullets > total:
                     return strings.roulette_bullet_overflow_msg
-                self.bullet = []
+                self.bullet[chat_id] = []
                 for _n in range(total):
-                    self.bullet.append(False)
+                    self.bullet[chat_id].append(False)
                 for n in range(bullets):
-                    self.bullet[n] = True
-                random.shuffle(self.bullet)
-                return strings.roulette_loaded_msg.format(len(self.bullet))
+                    self.bullet[chat_id][n] = True
+                random.shuffle(self.bullet[chat_id])
+                return strings.roulette_loaded_msg.format(len(self.bullet[chat_id]))
         except IndexError:
             return strings.roulette_error_msg
 
     # Launch roulette 러시안 룰렛 격발
-    def trig_bullet(self):
-        if len(self.bullet) == 0:
+    def trig_bullet(self, chat_id):
+        bullets = self.bullet.get(chat_id, [])
+        if len(bullets) == 0:
             return strings.shot_error_msg
-        check = self.bullet.pop()
+        check = bullets.pop()
+        if not bullets:
+            del self.bullet[chat_id]
         if check:
             return strings.shot_real_msg
         else:
