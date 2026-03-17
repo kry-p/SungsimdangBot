@@ -57,6 +57,7 @@ query_string = {
     "geolocation": strings.geolocation_help_msg,
     "dday": strings.day_help_msg,
     "calc": strings.calc_help_msg,
+    "ask": strings.ask_help_msg,
 }
 
 
@@ -148,6 +149,28 @@ class MessageProvider:
     @bot.message_handler(commands=["calc"])
     def handle_calc(message):
         bot_features.calculator_handler(message)
+
+    # Gemini Q&A
+    @bot.message_handler(commands=["ask"])
+    def handle_ask(message):
+        bot_features.ask_handler(message)
+
+    @bot.message_handler(commands=["clear_chat"])
+    def handle_clear_chat(message):
+        bot_features.clear_chat_handler(message)
+
+    # Admin commands
+    @bot.message_handler(commands=["allow_chat"])
+    def handle_allow_chat(message):
+        bot_features.allow_chat_handler(message)
+
+    @bot.message_handler(commands=["deny_chat"])
+    def handle_deny_chat(message):
+        bot_features.deny_chat_handler(message)
+
+    @bot.message_handler(commands=["list_chats"])
+    def handle_list_chats(message):
+        bot_features.list_chats_handler(message)
 
     # D-day
     @bot.message_handler(commands=["dday"])
