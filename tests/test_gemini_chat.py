@@ -1,0 +1,266 @@
+import json
+import time
+from unittest.mock import MagicMock, mock_open, patch
+
+from modules.gemini_chat import GeminiChat, ManagedSession
+from resources import strings
+
+
+def make_gemini_chat(**overrides):
+    with patch.object(GeminiChat, "__init__", lambda self: None):
+        gc = GeminiChat()
+        gc.client = MagicMock()
+        gc.sessions = {}
+        gc.request_counts = {}
+        gc.allowlist = set()
+        for k, v in overrides.items():
+            setattr(gc, k, v)
+        return gc
+
+
+class TestAsk:
+    def test_normal_response(self):
+        gc = make_gemini_chat(allowlist={1})
+        mock_chat = MagicMock()
+        mock_chat.send_message.return_value.text = "답변입니다"
+        mock_chat.get_history.return_value = []
+        gc.client.chats.create.return_value = mock_chat
+
+        result = gc.ask(1, "질문", "ko")
+        assert result == "답변입니다"
+
+    def test_not_allowed(self):
+        gc = make_gemini_chat(allowlist=set())
+        result = gc.ask(1, "질문", "ko")
+        assert result == strings.ask_not_allowed_msg
+
+    def test_rate_limited(self):
+        gc = make_gemini_chat(allowlist={1})
+        gc.request_counts = {1: [time.time() for _ in range(5)]}
+        result = gc.ask(1, "질문", "ko")
+        assert result == strings.ask_rate_limit_msg
+
+    def test_api_error(self):
+        gc = make_gemini_chat(allowlist={1})
+        mock_chat = MagicMock()
+        mock_chat.send_message.side_effect = Exception("API error")
+        gc.client.chats.create.return_value = mock_chat
+
+        result = gc.ask(1, "질문", "ko")
+        assert result == strings.ask_error_msg
+
+    def test_long_response_split(self):
+        gc = make_gemini_chat(allowlist={1})
+        long_text = "a" * 5000
+        mock_chat = MagicMock()
+        mock_chat.send_message.return_value.text = long_text
+        mock_chat.get_history.return_value = []
+        gc.client.chats.create.return_value = mock_chat
+
+        result = gc.ask(1, "질문", "ko")
+        assert isinstance(result, list)
+        assert all(len(chunk) <= 4096 for chunk in result)
+        assert "".join(result) == long_text
+
+
+class TestSessionManagement:
+    def test_create_new_session(self):
+        gc = make_gemini_chat()
+        mock_chat = MagicMock()
+        gc.client.chats.create.return_value = mock_chat
+
+        managed = gc._get_or_create_session(1, "ko")
+        assert managed.chat is mock_chat
+        gc.client.chats.create.assert_called_once()
+
+    def test_reuse_existing_session(self):
+        gc = make_gemini_chat()
+        existing = ManagedSession(chat=MagicMock())
+        gc.sessions[1] = existing
+
+        managed = gc._get_or_create_session(1, "ko")
+        assert managed is existing
+        gc.client.chats.create.assert_not_called()
+
+    @patch("modules.gemini_chat.config")
+    def test_expire_after_timeout(self, mock_config):
+        mock_config.GEMINI_SESSION_TIMEOUT = 3600
+        gc = make_gemini_chat()
+        gc.sessions[1] = ManagedSession(chat=MagicMock(), last_active=time.time() - 3601)
+
+        assert gc._expire_session_if_needed(1) is True
+        assert 1 not in gc.sessions
+
+    @patch("modules.gemini_chat.config")
+    def test_no_expire_within_timeout(self, mock_config):
+        mock_config.GEMINI_SESSION_TIMEOUT = 3600
+        gc = make_gemini_chat()
+        gc.sessions[1] = ManagedSession(chat=MagicMock(), last_active=time.time())
+
+        assert gc._expire_session_if_needed(1) is False
+        assert 1 in gc.sessions
+
+    def test_clear_session(self):
+        gc = make_gemini_chat()
+        gc.sessions[1] = ManagedSession(chat=MagicMock())
+        gc.clear_session(1)
+        assert 1 not in gc.sessions
+
+    def test_clear_nonexistent_session(self):
+        gc = make_gemini_chat()
+        gc.clear_session(999)  # should not raise
+
+    @patch("modules.gemini_chat.config")
+    def test_trim_history(self, mock_config):
+        mock_config.GEMINI_MAX_HISTORY = 2
+        mock_config.GEMINI_MODEL = "gemini-2.5-flash"
+        gc = make_gemini_chat()
+        mock_chat = MagicMock()
+        mock_chat.get_history.return_value = ["a", "b", "c", "d", "e", "f"]
+        gc.sessions[1] = ManagedSession(chat=mock_chat)
+
+        new_chat = MagicMock()
+        gc.client.chats.create.return_value = new_chat
+
+        gc._trim_history(1, "ko")
+        gc.client.chats.create.assert_called_once()
+        call_kwargs = gc.client.chats.create.call_args
+        assert call_kwargs.kwargs["history"] == ["c", "d", "e", "f"]
+
+    @patch("modules.gemini_chat.config")
+    def test_no_trim_within_limit(self, mock_config):
+        mock_config.GEMINI_MAX_HISTORY = 10
+        gc = make_gemini_chat()
+        mock_chat = MagicMock()
+        mock_chat.get_history.return_value = ["a", "b"]
+        gc.sessions[1] = ManagedSession(chat=mock_chat)
+
+        gc._trim_history(1, "ko")
+        gc.client.chats.create.assert_not_called()
+
+
+class TestRateLimit:
+    @patch("modules.gemini_chat.config")
+    def test_within_limit(self, mock_config):
+        mock_config.GEMINI_RATE_LIMIT = 5
+        gc = make_gemini_chat()
+        assert gc.check_rate_limit(1) is True
+
+    @patch("modules.gemini_chat.config")
+    def test_at_limit(self, mock_config):
+        mock_config.GEMINI_RATE_LIMIT = 5
+        gc = make_gemini_chat()
+        gc.request_counts = {1: [time.time() for _ in range(5)]}
+        assert gc.check_rate_limit(1) is False
+
+    @patch("modules.gemini_chat.config")
+    def test_expired_timestamps_cleared(self, mock_config):
+        mock_config.GEMINI_RATE_LIMIT = 5
+        gc = make_gemini_chat()
+        gc.request_counts = {1: [time.time() - 61 for _ in range(5)]}
+        assert gc.check_rate_limit(1) is True
+
+
+class TestAllowlist:
+    def test_is_chat_allowed(self):
+        gc = make_gemini_chat(allowlist={1, 2})
+        assert gc.is_chat_allowed(1) is True
+        assert gc.is_chat_allowed(3) is False
+
+    @patch.object(GeminiChat, "_save_allowlist")
+    def test_allow_chat(self, mock_save):
+        gc = make_gemini_chat()
+        gc.allow_chat(1)
+        assert 1 in gc.allowlist
+        mock_save.assert_called_once()
+
+    @patch.object(GeminiChat, "_save_allowlist")
+    def test_deny_chat(self, mock_save):
+        gc = make_gemini_chat(allowlist={1})
+        gc.deny_chat(1)
+        assert 1 not in gc.allowlist
+        mock_save.assert_called_once()
+
+    @patch.object(GeminiChat, "_save_allowlist")
+    def test_deny_nonexistent_chat(self, mock_save):
+        gc = make_gemini_chat()
+        gc.deny_chat(999)  # should not raise
+        mock_save.assert_called_once()
+
+    def test_list_allowed_chats(self):
+        gc = make_gemini_chat(allowlist={3, 1, 2})
+        assert gc.list_allowed_chats() == [1, 2, 3]
+
+
+class TestAllowlistPersistence:
+    @patch("modules.gemini_chat.config")
+    def test_load_success(self, mock_config):
+        mock_config.GEMINI_ALLOWLIST_PATH = "data/allowed_chats.json"
+        gc = make_gemini_chat()
+        with patch("builtins.open", mock_open(read_data="[1, 2, 3]")):
+            gc._load_allowlist()
+        assert gc.allowlist == {1, 2, 3}
+
+    @patch("modules.gemini_chat.config")
+    def test_load_file_not_found(self, mock_config):
+        mock_config.GEMINI_ALLOWLIST_PATH = "data/nonexistent.json"
+        gc = make_gemini_chat()
+        with patch("builtins.open", side_effect=FileNotFoundError):
+            gc._load_allowlist()
+        assert gc.allowlist == set()
+
+    @patch("modules.gemini_chat.shutil.copy2")
+    @patch("modules.gemini_chat.config")
+    def test_load_corrupted_json(self, mock_config, mock_copy):
+        mock_config.GEMINI_ALLOWLIST_PATH = "data/allowed_chats.json"
+        gc = make_gemini_chat()
+        with patch("builtins.open", mock_open(read_data="not json")):
+            gc._load_allowlist()
+        assert gc.allowlist == set()
+        mock_copy.assert_called_once_with("data/allowed_chats.json", "data/allowed_chats.json.bak")
+
+    @patch("modules.gemini_chat.os.makedirs")
+    @patch("modules.gemini_chat.config")
+    def test_save(self, mock_config, mock_makedirs):
+        mock_config.GEMINI_ALLOWLIST_PATH = "data/allowed_chats.json"
+        gc = make_gemini_chat(allowlist={2, 1})
+        m = mock_open()
+        with patch("builtins.open", m):
+            gc._save_allowlist()
+        written = m().write.call_args_list
+        saved = "".join(call.args[0] for call in written)
+        assert json.loads(saved) == [1, 2]
+
+
+class TestSplitResponse:
+    def test_short_text(self):
+        assert GeminiChat.split_response("hello") == "hello"
+
+    def test_exactly_max_len(self):
+        text = "a" * 4096
+        assert GeminiChat.split_response(text) == text
+
+    def test_split_at_newline(self):
+        text = "a" * 4000 + "\n" + "b" * 200
+        result = GeminiChat.split_response(text)
+        assert isinstance(result, list)
+        assert len(result) == 2
+        assert result[0] == "a" * 4000
+        assert result[1] == "b" * 200
+
+    def test_split_no_newline(self):
+        text = "a" * 5000
+        result = GeminiChat.split_response(text)
+        assert isinstance(result, list)
+        assert result[0] == "a" * 4096
+        assert result[1] == "a" * 904
+
+
+class TestBuildSystemPrompt:
+    def test_with_language_code(self):
+        prompt = GeminiChat._build_system_prompt("ko")
+        assert "'ko'" in prompt
+
+    def test_without_language_code(self):
+        prompt = GeminiChat._build_system_prompt(None)
+        assert "same language" in prompt
