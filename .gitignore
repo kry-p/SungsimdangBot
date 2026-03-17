@@ -188,6 +188,7 @@ common_data.db
 # Log file
 /log
 logfile
+logfile.*
 
 # End of https://www.toptal.com/developers/gitignore/api/linux,windows,python
 
