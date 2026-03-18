@@ -22,7 +22,9 @@ class ManagedSession:
 
 class GeminiChat:
     def __init__(self):
-        self.client = genai.Client(api_key=config.GEMINI_API_KEY)
+        self.client = None
+        if config.GEMINI_API_KEY:
+            self.client = genai.Client(api_key=config.GEMINI_API_KEY)
         self.sessions = {}
         self.request_counts = {}
         self.allowlist = set()
@@ -31,6 +33,9 @@ class GeminiChat:
     # --- 핵심 기능 ---
 
     def ask(self, chat_id, question, language_code):
+        if not self.client:
+            return strings.ask_error_msg
+
         if not self.is_chat_allowed(chat_id):
             return strings.ask_not_allowed_msg
 

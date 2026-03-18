@@ -29,6 +29,11 @@ class TestAsk:
         result = gc.ask(1, "질문", "ko")
         assert result == "답변입니다"
 
+    def test_no_client(self):
+        gc = make_gemini_chat(client=None, allowlist={1})
+        result = gc.ask(1, "질문", "ko")
+        assert result == strings.ask_error_msg
+
     def test_not_allowed(self):
         gc = make_gemini_chat(allowlist=set())
         result = gc.ask(1, "질문", "ko")
