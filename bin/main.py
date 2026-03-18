@@ -58,6 +58,8 @@ query_string = {
     "dday": strings.day_help_msg,
     "calc": strings.calc_help_msg,
     "ask": strings.ask_help_msg,
+    "search": strings.search_help_msg,
+    "namu": strings.namu_help_msg,
 }
 
 
