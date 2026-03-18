@@ -135,6 +135,9 @@ admin_list_chats_empty_msg = "허용된 채팅이 없습니다."
 admin_allow_usage_msg = "사용법: /allow_chat [chat_id]"
 admin_deny_usage_msg = "사용법: /deny_chat [chat_id]"
 
+# user info message
+myid_msg = "사용자 ID: {}"
+
 # Resources
 
 # Customized keyboards (inline)

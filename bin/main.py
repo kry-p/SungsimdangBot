@@ -88,6 +88,11 @@ class MessageProvider:
     def start_command(message):
         bot.send_message(message.chat.id, strings.working_msg)
 
+    # get user id
+    @bot.message_handler(commands=["myid"])
+    def handle_myid(message):
+        bot.reply_to(message, strings.myid_msg.format(message.from_user.id))
+
     # message for /start
     @bot.message_handler(commands=["start", "help"])
     def exchange_command(message):
