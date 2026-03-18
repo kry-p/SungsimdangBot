@@ -28,6 +28,26 @@ BOT_TIMEOUT = 30
 bot = telebot.TeleBot(config.BOT_TOKEN, parse_mode=None)
 bot_features = features_hub.BotFeaturesHub(bot)
 
+# Register bot commands
+bot.set_my_commands(
+    [
+        telebot.types.BotCommand("help", "도움말"),
+        telebot.types.BotCommand("pick", "랜덤 선택"),
+        telebot.types.BotCommand("coin_toss", "동전뒤집기"),
+        telebot.types.BotCommand("roulette", "러시안 룰렛 장전"),
+        telebot.types.BotCommand("shoot", "러시안 룰렛 격발"),
+        telebot.types.BotCommand("flush_bullet", "러시안 룰렛 초기화"),
+        telebot.types.BotCommand("calc", "계산기"),
+        telebot.types.BotCommand("dday", "D-day 계산"),
+        telebot.types.BotCommand("search", "검색"),
+        telebot.types.BotCommand("namu", "나무위키 검색"),
+        telebot.types.BotCommand("ask", "AI 질문"),
+        telebot.types.BotCommand("clear_chat", "AI 대화 초기화"),
+        telebot.types.BotCommand("myid", "내 사용자 ID 확인"),
+        telebot.types.BotCommand("ping", "봇 상태 확인"),
+    ]
+)
+
 # Initialize logger module
 logger = log.Logger()
 
