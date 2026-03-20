@@ -201,5 +201,8 @@ logfile.*
 # Ruff
 .ruff_cache/
 
+# Data
+data/allowed_chats.json
+
 # macOS
 .DS_Store
