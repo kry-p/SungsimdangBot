@@ -327,10 +327,12 @@ class TestListModels:
 
 
 class TestSetModel:
-    def test_set_model(self):
+    @patch("modules.gemini_chat.Settings")
+    def test_set_model(self, mock_settings_cls):
         gc = make_gemini_chat()
         gc.model = "gemini-2.5-flash"
         gc.sessions = {1: MagicMock(), 2: MagicMock()}
         gc.set_model("gemini-2.5-pro")
         assert gc.model == "gemini-2.5-pro"
         assert gc.sessions == {}
+        mock_settings_cls().set.assert_called_once_with("modules.gemini_chat", "model", "gemini-2.5-pro")

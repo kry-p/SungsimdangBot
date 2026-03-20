@@ -9,12 +9,14 @@ from google.genai import types
 
 from config import config
 from modules import log
+from modules.settings import Settings
 from resources import strings
 
 logger = log.Logger()
 
 DEFAULT_MODEL = "gemini-2.5-flash"
 
+SETTINGS_MODULE_PATH = "modules.gemini_chat"
 EXCLUDED_KEYWORDS = ("embedding", "tts", "audio", "image", "robotics", "computer-use", "deep-research", "aqa")
 
 
@@ -29,7 +31,7 @@ class GeminiChat:
         self.client = None
         if config.GEMINI_API_KEY:
             self.client = genai.Client(api_key=config.GEMINI_API_KEY)
-        self.model = DEFAULT_MODEL
+        self.model = Settings().get(SETTINGS_MODULE_PATH, "model", DEFAULT_MODEL)
         self.sessions = {}
         self.request_counts = {}
         self.allowlist = {}
@@ -148,6 +150,7 @@ class GeminiChat:
     def set_model(self, model_name):
         self.model = model_name
         self.sessions.clear()
+        Settings().set(SETTINGS_MODULE_PATH, "model", model_name)
 
     # --- 허용 목록 ---
 

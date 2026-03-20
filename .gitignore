@@ -203,6 +203,7 @@ logfile.*
 
 # Data
 data/allowed_chats.json
+data/settings.json
 
 # macOS
 .DS_Store
