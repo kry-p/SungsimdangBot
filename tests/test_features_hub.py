@@ -281,6 +281,53 @@ class TestAdminCallback:
         hub.gemini_chat.allow_chat.assert_not_called()
         assert 999 in hub.pending_actions
 
+    @patch("modules.features_hub.config.ADMIN_USER_ID", 100)
+    def test_set_model_callback(self, hub):
+        call = MagicMock()
+        call.from_user.id = 100
+        call.data = "set_model:gemini-2.5-pro"
+        hub.handle_admin_callback(call)
+        hub.gemini_chat.set_model.assert_called_once_with("gemini-2.5-pro")
+        hub.bot.edit_message_text.assert_called_once()
+
+
+class TestSetModelHandler:
+    @patch("modules.features_hub.config.ADMIN_USER_ID", 100)
+    def test_shows_model_list(self, hub):
+        hub.gemini_chat.list_models.return_value = ["gemini-2.5-flash", "gemini-2.5-pro"]
+        msg = make_message("/set_model", user_id=100)
+        hub.set_model_handler(msg)
+        call_kwargs = hub.bot.reply_to.call_args
+        assert "reply_markup" in call_kwargs.kwargs
+
+    @patch("modules.features_hub.config.ADMIN_USER_ID", 100)
+    def test_empty_model_list(self, hub):
+        hub.gemini_chat.list_models.return_value = []
+        msg = make_message("/set_model", user_id=100)
+        hub.set_model_handler(msg)
+        hub.bot.reply_to.assert_called_once_with(msg, strings.set_model_error_msg)
+
+    @patch("modules.features_hub.config.ADMIN_USER_ID", 100)
+    def test_non_admin_rejected(self, hub):
+        msg = make_message("/set_model", user_id=999)
+        hub.set_model_handler(msg)
+        hub.bot.reply_to.assert_called_once_with(msg, strings.admin_only_msg)
+
+
+class TestCurrentModelHandler:
+    @patch("modules.features_hub.config.ADMIN_USER_ID", 100)
+    def test_shows_current_model(self, hub):
+        hub.gemini_chat.model = "gemini-2.5-flash"
+        msg = make_message("/current_model", user_id=100)
+        hub.current_model_handler(msg)
+        hub.bot.reply_to.assert_called_once_with(msg, strings.current_model_msg.format(model="gemini-2.5-flash"))
+
+    @patch("modules.features_hub.config.ADMIN_USER_ID", 100)
+    def test_non_admin_rejected(self, hub):
+        msg = make_message("/current_model", user_id=999)
+        hub.current_model_handler(msg)
+        hub.bot.reply_to.assert_called_once_with(msg, strings.admin_only_msg)
+
 
 class TestListChatsHandler:
     @patch("modules.features_hub.config.ADMIN_USER_ID", 100)

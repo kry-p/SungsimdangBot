@@ -21,7 +21,6 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 GEMINI_SESSION_TIMEOUT = int(os.getenv("GEMINI_SESSION_TIMEOUT", "3600"))
 GEMINI_MAX_HISTORY = int(os.getenv("GEMINI_MAX_HISTORY", "20"))
 GEMINI_RATE_LIMIT = int(os.getenv("GEMINI_RATE_LIMIT", "5"))
-GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
 ADMIN_USER_ID = int(os.getenv("ADMIN_USER_ID", "0"))
 GEMINI_ALLOWLIST_PATH = os.getenv("GEMINI_ALLOWLIST_PATH", "data/allowed_chats.json")
 

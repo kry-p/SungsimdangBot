@@ -220,8 +220,16 @@ class BotFeaturesHub:
     def handle_admin_callback(self, call):
         if not self.is_admin(call.from_user.id):
             return
-        action, msg_id_str = call.data.split(":", 1)
-        msg_id = int(msg_id_str)
+        action, value = call.data.split(":", 1)
+        if action == "set_model":
+            self.gemini_chat.set_model(value)
+            self.bot.edit_message_text(
+                strings.set_model_done_msg.format(model=value),
+                call.message.chat.id,
+                call.message.message_id,
+            )
+            return
+        msg_id = int(value)
         pending = self.pending_actions.pop(msg_id, None)
         if not pending:
             return
@@ -268,6 +276,29 @@ class BotFeaturesHub:
         else:
             chat_list = "\n".join(f"{c['id']} ({c['name']})" if c["name"] else str(c["id"]) for c in chats)
             self.bot.reply_to(message, strings.admin_list_chats_msg.format(chat_list))
+
+    # Set model 모델 선택
+    def set_model_handler(self, message):
+        if not self.is_admin(message.from_user.id):
+            self.bot.reply_to(message, strings.admin_only_msg)
+            return
+        models = self.gemini_chat.list_models()
+        if not models:
+            self.bot.reply_to(message, strings.set_model_error_msg)
+            return
+        keyboard = telebot.types.InlineKeyboardMarkup()
+        for model_name in models:
+            keyboard.row(
+                telebot.types.InlineKeyboardButton(model_name, callback_data=f"set_model:{model_name}"),
+            )
+        self.bot.reply_to(message, strings.set_model_msg, reply_markup=keyboard)
+
+    # Current model 현재 모델 확인
+    def current_model_handler(self, message):
+        if not self.is_admin(message.from_user.id):
+            self.bot.reply_to(message, strings.admin_only_msg)
+            return
+        self.bot.reply_to(message, strings.current_model_msg.format(model=self.gemini_chat.model))
 
     # Handling ordinary message 일반 메시지 처리
     def ordinary_message(self, message):

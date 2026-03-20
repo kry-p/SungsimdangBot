@@ -10,6 +10,7 @@ def make_gemini_chat(**overrides):
     with patch.object(GeminiChat, "__init__", lambda self: None):
         gc = GeminiChat()
         gc.client = MagicMock()
+        gc.model = "gemini-2.5-flash"
         gc.sessions = {}
         gc.request_counts = {}
         gc.allowlist = {}
@@ -282,3 +283,54 @@ class TestBuildSystemPrompt:
     def test_without_language_code(self):
         prompt = GeminiChat._build_system_prompt(None)
         assert "same language" in prompt
+
+
+class TestListModels:
+    def test_normal(self):
+        gc = make_gemini_chat()
+        m1 = MagicMock()
+        m1.name = "models/gemini-2.5-flash"
+        m1.supported_actions = ["generateContent", "countTokens"]
+        m2 = MagicMock()
+        m2.name = "models/gemini-embedding-001"
+        m2.supported_actions = ["embedContent"]
+        m3 = MagicMock()
+        m3.name = "models/gemma-3-4b-it"
+        m3.supported_actions = ["generateContent"]
+        gc.client.models.list.return_value = [m1, m2, m3]
+        result = gc.list_models()
+        assert result == ["gemini-2.5-flash"]
+
+    def test_no_client(self):
+        gc = make_gemini_chat(client=None)
+        assert gc.list_models() == []
+
+    def test_api_error(self):
+        gc = make_gemini_chat()
+        gc.client.models.list.side_effect = Exception("error")
+        assert gc.list_models() == []
+
+    def test_excludes_tts_and_image(self):
+        gc = make_gemini_chat()
+        m1 = MagicMock()
+        m1.name = "models/gemini-2.5-flash-preview-tts"
+        m1.supported_actions = ["generateContent"]
+        m2 = MagicMock()
+        m2.name = "models/gemini-2.5-flash-image"
+        m2.supported_actions = ["generateContent"]
+        m3 = MagicMock()
+        m3.name = "models/gemini-2.5-pro"
+        m3.supported_actions = ["generateContent"]
+        gc.client.models.list.return_value = [m1, m2, m3]
+        result = gc.list_models()
+        assert result == ["gemini-2.5-pro"]
+
+
+class TestSetModel:
+    def test_set_model(self):
+        gc = make_gemini_chat()
+        gc.model = "gemini-2.5-flash"
+        gc.sessions = {1: MagicMock(), 2: MagicMock()}
+        gc.set_model("gemini-2.5-pro")
+        assert gc.model == "gemini-2.5-pro"
+        assert gc.sessions == {}

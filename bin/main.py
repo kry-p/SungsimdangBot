@@ -98,7 +98,8 @@ class MessageProvider:
         if (
             query.data
             and ":" in query.data
-            and query.data.split(":")[0] in ("allow_confirm", "allow_cancel", "deny_confirm", "deny_cancel")
+            and query.data.split(":")[0]
+            in ("allow_confirm", "allow_cancel", "deny_confirm", "deny_cancel", "set_model")
         ):
             bot_features.handle_admin_callback(query)
             return
@@ -205,6 +206,14 @@ class MessageProvider:
     @bot.message_handler(commands=["list_chats"])
     def handle_list_chats(message):
         bot_features.list_chats_handler(message)
+
+    @bot.message_handler(commands=["set_model"])
+    def handle_set_model(message):
+        bot_features.set_model_handler(message)
+
+    @bot.message_handler(commands=["current_model"])
+    def handle_current_model(message):
+        bot_features.current_model_handler(message)
 
     # D-day
     @bot.message_handler(commands=["dday"])

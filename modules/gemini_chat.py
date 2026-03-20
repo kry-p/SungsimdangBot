@@ -13,6 +13,10 @@ from resources import strings
 
 logger = log.Logger()
 
+DEFAULT_MODEL = "gemini-2.5-flash"
+
+EXCLUDED_KEYWORDS = ("embedding", "tts", "audio", "image", "robotics", "computer-use", "deep-research", "aqa")
+
 
 @dataclass
 class ManagedSession:
@@ -25,6 +29,7 @@ class GeminiChat:
         self.client = None
         if config.GEMINI_API_KEY:
             self.client = genai.Client(api_key=config.GEMINI_API_KEY)
+        self.model = DEFAULT_MODEL
         self.sessions = {}
         self.request_counts = {}
         self.allowlist = {}
@@ -65,7 +70,7 @@ class GeminiChat:
     def _get_or_create_session(self, chat_id, language_code):
         if chat_id not in self.sessions:
             chat = self.client.chats.create(
-                model=config.GEMINI_MODEL,
+                model=self.model,
                 config=types.GenerateContentConfig(
                     system_instruction=self._build_system_prompt(language_code),
                 ),
@@ -89,7 +94,7 @@ class GeminiChat:
         if len(history) > max_entries:
             trimmed = history[-max_entries:]
             managed.chat = self.client.chats.create(
-                model=config.GEMINI_MODEL,
+                model=self.model,
                 config=types.GenerateContentConfig(
                     system_instruction=self._build_system_prompt(language_code),
                 ),
@@ -117,6 +122,32 @@ class GeminiChat:
         timestamps.append(now)
         self.request_counts[chat_id] = timestamps
         return True
+
+    # --- 모델 관리 ---
+
+    def list_models(self):
+        if not self.client:
+            return []
+        try:
+            models = []
+            for m in self.client.models.list():
+                name = m.name.removeprefix("models/")
+                actions = getattr(m, "supported_actions", []) or []
+                if "gemini" not in name:
+                    continue
+                if "generateContent" not in actions:
+                    continue
+                if any(kw in name for kw in EXCLUDED_KEYWORDS):
+                    continue
+                models.append(name)
+            return sorted(models)
+        except Exception:
+            logger.log_error("Failed to list Gemini models.")
+            return []
+
+    def set_model(self, model_name):
+        self.model = model_name
+        self.sessions.clear()
 
     # --- 허용 목록 ---
 
