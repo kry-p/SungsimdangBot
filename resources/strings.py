@@ -135,9 +135,9 @@ ask_clear_msg = "대화 기록이 초기화되었습니다."
 
 # admin message
 admin_only_msg = "관리자만 사용할 수 있는 명령어입니다."
-admin_allow_chat_msg = "채팅 {}이(가) 허용 목록에 추가되었습니다."
-admin_deny_chat_msg = "채팅 {}이(가) 허용 목록에서 제거되었습니다."
-admin_deny_chat_not_found_msg = "채팅 {}이(가) 허용 목록에 없습니다."
+admin_allow_chat_msg = "{name} ({chat_id}) 이(가) 허용 목록에 추가되었습니다."
+admin_deny_chat_msg = "{name} ({chat_id}) 이(가) 허용 목록에서 제거되었습니다."
+admin_deny_chat_not_found_msg = "채팅 {chat_id}이(가) 허용 목록에 없습니다."
 admin_list_chats_msg = "허용된 채팅 목록:\n{}"
 admin_list_chats_empty_msg = "허용된 채팅이 없습니다."
 admin_allow_usage_msg = "사용법: /allow_chat [chat_id]"

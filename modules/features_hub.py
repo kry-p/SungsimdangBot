@@ -148,14 +148,20 @@ class BotFeaturesHub:
         parts = message.text.split()
         if len(parts) < 2:
             chat_id = message.chat.id
+            name = getattr(message.chat, "title", None) or getattr(message.chat, "first_name", "") or ""
         else:
             try:
                 chat_id = int(parts[1])
             except ValueError:
                 self.bot.reply_to(message, strings.admin_allow_usage_msg)
                 return
-        self.gemini_chat.allow_chat(chat_id)
-        self.bot.reply_to(message, strings.admin_allow_chat_msg.format(chat_id))
+            try:
+                chat_info = self.bot.get_chat(chat_id)
+                name = getattr(chat_info, "title", None) or getattr(chat_info, "first_name", "") or ""
+            except Exception:
+                name = ""
+        self.gemini_chat.allow_chat(chat_id, name)
+        self.bot.reply_to(message, strings.admin_allow_chat_msg.format(name=name or chat_id, chat_id=chat_id))
 
     # Deny chat 채팅 거부
     def deny_chat_handler(self, message):
@@ -172,10 +178,11 @@ class BotFeaturesHub:
                 self.bot.reply_to(message, strings.admin_deny_usage_msg)
                 return
         if chat_id in self.gemini_chat.allowlist:
+            name = self.gemini_chat.allowlist[chat_id]
             self.gemini_chat.deny_chat(chat_id)
-            self.bot.reply_to(message, strings.admin_deny_chat_msg.format(chat_id))
+            self.bot.reply_to(message, strings.admin_deny_chat_msg.format(name=name or chat_id, chat_id=chat_id))
         else:
-            self.bot.reply_to(message, strings.admin_deny_chat_not_found_msg.format(chat_id))
+            self.bot.reply_to(message, strings.admin_deny_chat_not_found_msg.format(chat_id=chat_id))
 
     # List chats 허용 목록 조회
     def list_chats_handler(self, message):
@@ -186,7 +193,7 @@ class BotFeaturesHub:
         if not chats:
             self.bot.reply_to(message, strings.admin_list_chats_empty_msg)
         else:
-            chat_list = "\n".join(str(c) for c in chats)
+            chat_list = "\n".join(f"{c['id']} ({c['name']})" if c["name"] else str(c["id"]) for c in chats)
             self.bot.reply_to(message, strings.admin_list_chats_msg.format(chat_list))
 
     # Handling ordinary message 일반 메시지 처리

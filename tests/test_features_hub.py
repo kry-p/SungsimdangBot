@@ -189,15 +189,21 @@ class TestAllowChatHandler:
     @patch("modules.features_hub.config.ADMIN_USER_ID", 100)
     def test_admin_allow_current_chat(self, hub):
         msg = make_message("/allow_chat", chat_id=42, user_id=100)
+        msg.chat.title = "테스트 채널"
+        msg.chat.first_name = None
         hub.allow_chat_handler(msg)
-        hub.gemini_chat.allow_chat.assert_called_once_with(42)
-        hub.bot.reply_to.assert_called_once_with(msg, strings.admin_allow_chat_msg.format(42))
+        hub.gemini_chat.allow_chat.assert_called_once_with(42, "테스트 채널")
+        hub.bot.reply_to.assert_called_once_with(
+            msg, strings.admin_allow_chat_msg.format(name="테스트 채널", chat_id=42)
+        )
 
     @patch("modules.features_hub.config.ADMIN_USER_ID", 100)
     def test_admin_allow_specific_chat(self, hub):
         msg = make_message("/allow_chat -360634409", user_id=100)
+        hub.bot.get_chat.return_value.title = "원격 채널"
+        hub.bot.get_chat.return_value.first_name = None
         hub.allow_chat_handler(msg)
-        hub.gemini_chat.allow_chat.assert_called_once_with(-360634409)
+        hub.gemini_chat.allow_chat.assert_called_once_with(-360634409, "원격 채널")
 
     @patch("modules.features_hub.config.ADMIN_USER_ID", 100)
     def test_non_admin_rejected(self, hub):
@@ -215,17 +221,18 @@ class TestAllowChatHandler:
 class TestDenyChatHandler:
     @patch("modules.features_hub.config.ADMIN_USER_ID", 100)
     def test_admin_deny(self, hub):
-        hub.gemini_chat.allowlist = {42}
+        hub.gemini_chat.allowlist = {42: "테스트"}
         msg = make_message("/deny_chat 42", user_id=100)
         hub.deny_chat_handler(msg)
         hub.gemini_chat.deny_chat.assert_called_once_with(42)
+        hub.bot.reply_to.assert_called_once_with(msg, strings.admin_deny_chat_msg.format(name="테스트", chat_id=42))
 
     @patch("modules.features_hub.config.ADMIN_USER_ID", 100)
     def test_deny_not_in_list(self, hub):
-        hub.gemini_chat.allowlist = set()
+        hub.gemini_chat.allowlist = {}
         msg = make_message("/deny_chat 42", user_id=100)
         hub.deny_chat_handler(msg)
-        hub.bot.reply_to.assert_called_once_with(msg, strings.admin_deny_chat_not_found_msg.format(42))
+        hub.bot.reply_to.assert_called_once_with(msg, strings.admin_deny_chat_not_found_msg.format(chat_id=42))
 
     @patch("modules.features_hub.config.ADMIN_USER_ID", 100)
     def test_non_admin_rejected(self, hub):
@@ -237,10 +244,15 @@ class TestDenyChatHandler:
 class TestListChatsHandler:
     @patch("modules.features_hub.config.ADMIN_USER_ID", 100)
     def test_admin_with_chats(self, hub):
-        hub.gemini_chat.list_allowed_chats.return_value = [1, 2, 3]
+        hub.gemini_chat.list_allowed_chats.return_value = [
+            {"id": 1, "name": "A"},
+            {"id": 2, "name": ""},
+            {"id": 3, "name": "C"},
+        ]
         msg = make_message("/list_chats", user_id=100)
         hub.list_chats_handler(msg)
-        hub.bot.reply_to.assert_called_once_with(msg, strings.admin_list_chats_msg.format("1\n2\n3"))
+        expected = "1 (A)\n2\n3 (C)"
+        hub.bot.reply_to.assert_called_once_with(msg, strings.admin_list_chats_msg.format(expected))
 
     @patch("modules.features_hub.config.ADMIN_USER_ID", 100)
     def test_admin_empty(self, hub):
