@@ -142,6 +142,11 @@ admin_list_chats_msg = "허용된 채팅 목록:\n{}"
 admin_list_chats_empty_msg = "허용된 채팅이 없습니다."
 admin_allow_usage_msg = "사용법: /allow_chat [chat_id]"
 admin_deny_usage_msg = "사용법: /deny_chat [chat_id]"
+admin_allow_confirm_msg = "{name} ({chat_id})을(를) 허용 목록에 추가할까요?"
+admin_deny_confirm_msg = "{name} ({chat_id})을(를) 허용 목록에서 제거할까요?"
+admin_cancel_msg = "취소되었습니다."
+admin_confirm_btn = "확인"
+admin_cancel_btn = "취소"
 
 # user info message
 myid_msg = "사용자 ID: {}"

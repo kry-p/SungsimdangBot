@@ -5,6 +5,7 @@ import json
 import urllib.parse
 
 import requests
+import telebot
 
 from config import config
 from modules.calculator import Calculator
@@ -26,6 +27,7 @@ class BotFeaturesHub:
         self.web_manager = WebManager()
         self.calculator = Calculator()
         self.gemini_chat = GeminiChat()
+        self.pending_actions = {}
 
     # Get current river temperature 현재 강물 온도 정보 획득
     def get_temp(self, user_id):
@@ -160,8 +162,23 @@ class BotFeaturesHub:
                 name = getattr(chat_info, "title", None) or getattr(chat_info, "first_name", "") or ""
             except Exception:
                 name = ""
-        self.gemini_chat.allow_chat(chat_id, name)
-        self.bot.reply_to(message, strings.admin_allow_chat_msg.format(name=name or chat_id, chat_id=chat_id))
+        keyboard = telebot.types.InlineKeyboardMarkup()
+        keyboard.row(
+            telebot.types.InlineKeyboardButton(strings.admin_confirm_btn, callback_data="allow_confirm:0"),
+            telebot.types.InlineKeyboardButton(strings.admin_cancel_btn, callback_data="allow_cancel:0"),
+        )
+        sent = self.bot.reply_to(
+            message,
+            strings.admin_allow_confirm_msg.format(name=name or chat_id, chat_id=chat_id),
+            reply_markup=keyboard,
+        )
+        msg_id = sent.message_id
+        self.pending_actions[msg_id] = {"action": "allow", "chat_id": chat_id, "name": name}
+        self.bot.edit_message_reply_markup(
+            sent.chat.id,
+            msg_id,
+            reply_markup=self._build_admin_keyboard(f"allow_confirm:{msg_id}", f"allow_cancel:{msg_id}"),
+        )
 
     # Deny chat 채팅 거부
     def deny_chat_handler(self, message):
@@ -177,12 +194,68 @@ class BotFeaturesHub:
             except ValueError:
                 self.bot.reply_to(message, strings.admin_deny_usage_msg)
                 return
-        if chat_id in self.gemini_chat.allowlist:
-            name = self.gemini_chat.allowlist[chat_id]
-            self.gemini_chat.deny_chat(chat_id)
-            self.bot.reply_to(message, strings.admin_deny_chat_msg.format(name=name or chat_id, chat_id=chat_id))
-        else:
+        if chat_id not in self.gemini_chat.allowlist:
             self.bot.reply_to(message, strings.admin_deny_chat_not_found_msg.format(chat_id=chat_id))
+            return
+        name = self.gemini_chat.allowlist[chat_id]
+        keyboard = telebot.types.InlineKeyboardMarkup()
+        keyboard.row(
+            telebot.types.InlineKeyboardButton(strings.admin_confirm_btn, callback_data="deny_confirm:0"),
+            telebot.types.InlineKeyboardButton(strings.admin_cancel_btn, callback_data="deny_cancel:0"),
+        )
+        sent = self.bot.reply_to(
+            message,
+            strings.admin_deny_confirm_msg.format(name=name or chat_id, chat_id=chat_id),
+            reply_markup=keyboard,
+        )
+        msg_id = sent.message_id
+        self.pending_actions[msg_id] = {"action": "deny", "chat_id": chat_id, "name": name}
+        self.bot.edit_message_reply_markup(
+            sent.chat.id,
+            msg_id,
+            reply_markup=self._build_admin_keyboard(f"deny_confirm:{msg_id}", f"deny_cancel:{msg_id}"),
+        )
+
+    # Admin callback 관리자 콜백 처리
+    def handle_admin_callback(self, call):
+        if not self.is_admin(call.from_user.id):
+            return
+        action, msg_id_str = call.data.split(":", 1)
+        msg_id = int(msg_id_str)
+        pending = self.pending_actions.pop(msg_id, None)
+        if not pending:
+            return
+        chat_id = pending["chat_id"]
+        name = pending["name"]
+        if action == "allow_confirm":
+            self.gemini_chat.allow_chat(chat_id, name)
+            self.bot.edit_message_text(
+                strings.admin_allow_chat_msg.format(name=name or chat_id, chat_id=chat_id),
+                call.message.chat.id,
+                call.message.message_id,
+            )
+        elif action == "deny_confirm":
+            self.gemini_chat.deny_chat(chat_id)
+            self.bot.edit_message_text(
+                strings.admin_deny_chat_msg.format(name=name or chat_id, chat_id=chat_id),
+                call.message.chat.id,
+                call.message.message_id,
+            )
+        elif action in ("allow_cancel", "deny_cancel"):
+            self.bot.edit_message_text(
+                strings.admin_cancel_msg,
+                call.message.chat.id,
+                call.message.message_id,
+            )
+
+    @staticmethod
+    def _build_admin_keyboard(confirm_data, cancel_data):
+        keyboard = telebot.types.InlineKeyboardMarkup()
+        keyboard.row(
+            telebot.types.InlineKeyboardButton(strings.admin_confirm_btn, callback_data=confirm_data),
+            telebot.types.InlineKeyboardButton(strings.admin_cancel_btn, callback_data=cancel_data),
+        )
+        return keyboard
 
     # List chats 허용 목록 조회
     def list_chats_handler(self, message):

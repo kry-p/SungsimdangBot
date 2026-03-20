@@ -95,6 +95,13 @@ class MessageProvider:
 
     def get_ex_callback(query):
         bot.answer_callback_query(query.id)
+        if (
+            query.data
+            and ":" in query.data
+            and query.data.split(":")[0] in ("allow_confirm", "allow_cancel", "deny_confirm", "deny_cancel")
+        ):
+            bot_features.handle_admin_callback(query)
+            return
         MessageProvider.send_query_result(query, query.message)
 
     # launch command or show help message
