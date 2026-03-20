@@ -12,7 +12,7 @@ def make_gemini_chat(**overrides):
         gc.client = MagicMock()
         gc.sessions = {}
         gc.request_counts = {}
-        gc.allowlist = set()
+        gc.allowlist = {}
         for k, v in overrides.items():
             setattr(gc, k, v)
         return gc
@@ -20,7 +20,7 @@ def make_gemini_chat(**overrides):
 
 class TestAsk:
     def test_normal_response(self):
-        gc = make_gemini_chat(allowlist={1})
+        gc = make_gemini_chat(allowlist={1: "test"})
         mock_chat = MagicMock()
         mock_chat.send_message.return_value.text = "답변입니다"
         mock_chat.get_history.return_value = []
@@ -30,23 +30,23 @@ class TestAsk:
         assert result == "답변입니다"
 
     def test_no_client(self):
-        gc = make_gemini_chat(client=None, allowlist={1})
+        gc = make_gemini_chat(client=None, allowlist={1: "test"})
         result = gc.ask(1, "질문", "ko")
         assert result == strings.ask_error_msg
 
     def test_not_allowed(self):
-        gc = make_gemini_chat(allowlist=set())
+        gc = make_gemini_chat(allowlist={})
         result = gc.ask(1, "질문", "ko")
         assert result == strings.ask_not_allowed_msg
 
     def test_rate_limited(self):
-        gc = make_gemini_chat(allowlist={1})
+        gc = make_gemini_chat(allowlist={1: "test"})
         gc.request_counts = {1: [time.time() for _ in range(5)]}
         result = gc.ask(1, "질문", "ko")
         assert result == strings.ask_rate_limit_msg
 
     def test_api_error(self):
-        gc = make_gemini_chat(allowlist={1})
+        gc = make_gemini_chat(allowlist={1: "test"})
         mock_chat = MagicMock()
         mock_chat.send_message.side_effect = Exception("API error")
         gc.client.chats.create.return_value = mock_chat
@@ -55,7 +55,7 @@ class TestAsk:
         assert result == strings.ask_error_msg
 
     def test_long_response_split(self):
-        gc = make_gemini_chat(allowlist={1})
+        gc = make_gemini_chat(allowlist={1: "test"})
         long_text = "a" * 5000
         mock_chat = MagicMock()
         mock_chat.send_message.return_value.text = long_text
@@ -168,20 +168,20 @@ class TestRateLimit:
 
 class TestAllowlist:
     def test_is_chat_allowed(self):
-        gc = make_gemini_chat(allowlist={1, 2})
+        gc = make_gemini_chat(allowlist={1: "채널A", 2: "채널B"})
         assert gc.is_chat_allowed(1) is True
         assert gc.is_chat_allowed(3) is False
 
     @patch.object(GeminiChat, "_save_allowlist")
     def test_allow_chat(self, mock_save):
         gc = make_gemini_chat()
-        gc.allow_chat(1)
-        assert 1 in gc.allowlist
+        gc.allow_chat(1, "테스트 채널")
+        assert gc.allowlist[1] == "테스트 채널"
         mock_save.assert_called_once()
 
     @patch.object(GeminiChat, "_save_allowlist")
     def test_deny_chat(self, mock_save):
-        gc = make_gemini_chat(allowlist={1})
+        gc = make_gemini_chat(allowlist={1: "test"})
         gc.deny_chat(1)
         assert 1 not in gc.allowlist
         mock_save.assert_called_once()
@@ -193,18 +193,31 @@ class TestAllowlist:
         mock_save.assert_called_once()
 
     def test_list_allowed_chats(self):
-        gc = make_gemini_chat(allowlist={3, 1, 2})
-        assert gc.list_allowed_chats() == [1, 2, 3]
+        gc = make_gemini_chat(allowlist={3: "C", 1: "A", 2: "B"})
+        assert gc.list_allowed_chats() == [
+            {"id": 1, "name": "A"},
+            {"id": 2, "name": "B"},
+            {"id": 3, "name": "C"},
+        ]
 
 
 class TestAllowlistPersistence:
     @patch("modules.gemini_chat.config")
-    def test_load_success(self, mock_config):
+    def test_load_new_format(self, mock_config):
+        mock_config.GEMINI_ALLOWLIST_PATH = "data/allowed_chats.json"
+        gc = make_gemini_chat()
+        data = '[{"id": 1, "name": "A"}, {"id": 2, "name": "B"}]'
+        with patch("builtins.open", mock_open(read_data=data)):
+            gc._load_allowlist()
+        assert gc.allowlist == {1: "A", 2: "B"}
+
+    @patch("modules.gemini_chat.config")
+    def test_load_legacy_format(self, mock_config):
         mock_config.GEMINI_ALLOWLIST_PATH = "data/allowed_chats.json"
         gc = make_gemini_chat()
         with patch("builtins.open", mock_open(read_data="[1, 2, 3]")):
             gc._load_allowlist()
-        assert gc.allowlist == {1, 2, 3}
+        assert gc.allowlist == {1: "", 2: "", 3: ""}
 
     @patch("modules.gemini_chat.config")
     def test_load_file_not_found(self, mock_config):
@@ -212,7 +225,7 @@ class TestAllowlistPersistence:
         gc = make_gemini_chat()
         with patch("builtins.open", side_effect=FileNotFoundError):
             gc._load_allowlist()
-        assert gc.allowlist == set()
+        assert gc.allowlist == {}
 
     @patch("modules.gemini_chat.shutil.copy2")
     @patch("modules.gemini_chat.config")
@@ -221,20 +234,20 @@ class TestAllowlistPersistence:
         gc = make_gemini_chat()
         with patch("builtins.open", mock_open(read_data="not json")):
             gc._load_allowlist()
-        assert gc.allowlist == set()
+        assert gc.allowlist == {}
         mock_copy.assert_called_once_with("data/allowed_chats.json", "data/allowed_chats.json.bak")
 
     @patch("modules.gemini_chat.os.makedirs")
     @patch("modules.gemini_chat.config")
     def test_save(self, mock_config, mock_makedirs):
         mock_config.GEMINI_ALLOWLIST_PATH = "data/allowed_chats.json"
-        gc = make_gemini_chat(allowlist={2, 1})
+        gc = make_gemini_chat(allowlist={2: "B", 1: "A"})
         m = mock_open()
         with patch("builtins.open", m):
             gc._save_allowlist()
         written = m().write.call_args_list
         saved = "".join(call.args[0] for call in written)
-        assert json.loads(saved) == [1, 2]
+        assert json.loads(saved) == [{"id": 1, "name": "A"}, {"id": 2, "name": "B"}]
 
 
 class TestSplitResponse:

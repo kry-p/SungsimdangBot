@@ -27,7 +27,7 @@ class GeminiChat:
             self.client = genai.Client(api_key=config.GEMINI_API_KEY)
         self.sessions = {}
         self.request_counts = {}
-        self.allowlist = set()
+        self.allowlist = {}
         self._load_allowlist()
 
     # --- 핵심 기능 ---
@@ -123,35 +123,42 @@ class GeminiChat:
     def is_chat_allowed(self, chat_id):
         return chat_id in self.allowlist
 
-    def allow_chat(self, chat_id):
-        self.allowlist.add(chat_id)
+    def allow_chat(self, chat_id, name=""):
+        self.allowlist[chat_id] = name
         self._save_allowlist()
 
     def deny_chat(self, chat_id):
-        self.allowlist.discard(chat_id)
+        self.allowlist.pop(chat_id, None)
         self._save_allowlist()
 
     def list_allowed_chats(self):
-        return sorted(self.allowlist)
+        return sorted(
+            [{"id": cid, "name": name} for cid, name in self.allowlist.items()],
+            key=lambda x: x["id"],
+        )
 
     def _load_allowlist(self):
         path = config.GEMINI_ALLOWLIST_PATH
         try:
             with open(path) as f:
-                self.allowlist = set(json.load(f))
+                data = json.load(f)
+            if data and isinstance(data[0], dict):
+                self.allowlist = {item["id"]: item.get("name", "") for item in data}
+            else:
+                self.allowlist = dict.fromkeys(data, "")
         except FileNotFoundError:
-            self.allowlist = set()
+            self.allowlist = {}
         except (json.JSONDecodeError, TypeError):
             logger.log_error("Allowlist JSON corrupted, falling back to empty list.")
             backup = path + ".bak"
             shutil.copy2(path, backup)
-            self.allowlist = set()
+            self.allowlist = {}
 
     def _save_allowlist(self):
         path = config.GEMINI_ALLOWLIST_PATH
         os.makedirs(os.path.dirname(path), exist_ok=True)
         with open(path, "w") as f:
-            json.dump(sorted(self.allowlist), f)
+            json.dump(self.list_allowed_chats(), f)
 
     # --- 응답 분할 ---
 
