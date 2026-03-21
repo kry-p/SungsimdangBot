@@ -200,10 +200,10 @@ class BotFeaturesHub:
             except ValueError:
                 self.bot.reply_to(message, strings.admin_deny_usage_msg)
                 return
-        if chat_id not in self.gemini_chat.allowlist:
+        if not self.gemini_chat.is_chat_allowed(chat_id):
             self.bot.reply_to(message, strings.admin_deny_chat_not_found_msg.format(chat_id=chat_id))
             return
-        name = self.gemini_chat.allowlist[chat_id]
+        name = self.gemini_chat.get_chat_name(chat_id)
         keyboard = telebot.types.InlineKeyboardMarkup()
         keyboard.row(
             telebot.types.InlineKeyboardButton(strings.admin_confirm_btn, callback_data="deny_confirm:0"),

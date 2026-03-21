@@ -1,8 +1,4 @@
-import json
-import os
 import re
-import shutil
-import tempfile
 import threading
 import time
 from dataclasses import dataclass, field
@@ -12,6 +8,7 @@ from google.genai import types
 
 from config import config
 from modules import log
+from modules.database import AllowedChat
 from modules.settings import Settings
 from resources import strings
 
@@ -38,8 +35,6 @@ class GeminiChat:
         self.model = Settings().get(SETTINGS_MODULE_PATH, "model", DEFAULT_MODEL)
         self.sessions = {}
         self.request_counts = {}
-        self.allowlist = {}
-        self._load_allowlist()
 
     # --- 핵심 기능 ---
 
@@ -166,48 +161,22 @@ class GeminiChat:
     # --- 허용 목록 ---
 
     def is_chat_allowed(self, chat_id):
-        return chat_id in self.allowlist
+        return AllowedChat.select().where(AllowedChat.chat_id == chat_id).exists()
 
     def allow_chat(self, chat_id, name=""):
         with self._lock:
-            self.allowlist[chat_id] = name
-            self._save_allowlist()
+            AllowedChat.replace(chat_id=chat_id, name=name).execute()
 
     def deny_chat(self, chat_id):
         with self._lock:
-            self.allowlist.pop(chat_id, None)
-            self._save_allowlist()
+            AllowedChat.delete().where(AllowedChat.chat_id == chat_id).execute()
+
+    def get_chat_name(self, chat_id):
+        row = AllowedChat.get_or_none(AllowedChat.chat_id == chat_id)
+        return row.name if row else ""
 
     def list_allowed_chats(self):
-        return sorted(
-            [{"id": cid, "name": name} for cid, name in self.allowlist.items()],
-            key=lambda x: x["id"],
-        )
-
-    def _load_allowlist(self):
-        path = config.GEMINI_ALLOWLIST_PATH
-        try:
-            with open(path) as f:
-                data = json.load(f)
-            if data and isinstance(data[0], dict):
-                self.allowlist = {item["id"]: item.get("name", "") for item in data}
-            else:
-                self.allowlist = dict.fromkeys(data, "")
-        except FileNotFoundError:
-            self.allowlist = {}
-        except (json.JSONDecodeError, TypeError, KeyError):
-            logger.log_error("Allowlist JSON corrupted, falling back to empty list.")
-            backup = path + ".bak"
-            shutil.copy2(path, backup)
-            self.allowlist = {}
-
-    def _save_allowlist(self):
-        path = config.GEMINI_ALLOWLIST_PATH
-        dir_path = os.path.dirname(path)
-        os.makedirs(dir_path, exist_ok=True)
-        with tempfile.NamedTemporaryFile("w", dir=dir_path, delete=False, suffix=".tmp") as tmp:
-            json.dump(self.list_allowed_chats(), tmp)
-        os.replace(tmp.name, path)
+        return [{"id": row.chat_id, "name": row.name} for row in AllowedChat.select().order_by(AllowedChat.chat_id)]
 
     # --- 응답 분할 ---
 

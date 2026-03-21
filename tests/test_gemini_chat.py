@@ -1,12 +1,14 @@
 import threading
 import time
-from unittest.mock import MagicMock, mock_open, patch
+from unittest.mock import MagicMock, patch
 
+from modules.database import AllowedChat
 from modules.gemini_chat import GeminiChat, ManagedSession
 from resources import strings
 
 
 def make_gemini_chat(**overrides):
+    allowlist = overrides.pop("allowlist", {})
     with patch.object(GeminiChat, "__init__", lambda self: None):
         gc = GeminiChat()
         gc._lock = threading.RLock()
@@ -14,10 +16,11 @@ def make_gemini_chat(**overrides):
         gc.model = "gemini-2.5-flash"
         gc.sessions = {}
         gc.request_counts = {}
-        gc.allowlist = {}
         for k, v in overrides.items():
             setattr(gc, k, v)
-        return gc
+    for chat_id, name in allowlist.items():
+        AllowedChat.replace(chat_id=chat_id, name=name).execute()
+    return gc
 
 
 class TestAsk:
@@ -200,25 +203,21 @@ class TestAllowlist:
         assert gc.is_chat_allowed(1) is True
         assert gc.is_chat_allowed(3) is False
 
-    @patch.object(GeminiChat, "_save_allowlist")
-    def test_allow_chat(self, mock_save):
+    def test_allow_chat(self):
         gc = make_gemini_chat()
         gc.allow_chat(1, "테스트 채널")
-        assert gc.allowlist[1] == "테스트 채널"
-        mock_save.assert_called_once()
+        assert gc.is_chat_allowed(1)
+        chats = gc.list_allowed_chats()
+        assert {"id": 1, "name": "테스트 채널"} in chats
 
-    @patch.object(GeminiChat, "_save_allowlist")
-    def test_deny_chat(self, mock_save):
+    def test_deny_chat(self):
         gc = make_gemini_chat(allowlist={1: "test"})
         gc.deny_chat(1)
-        assert 1 not in gc.allowlist
-        mock_save.assert_called_once()
+        assert not gc.is_chat_allowed(1)
 
-    @patch.object(GeminiChat, "_save_allowlist")
-    def test_deny_nonexistent_chat(self, mock_save):
+    def test_deny_nonexistent_chat(self):
         gc = make_gemini_chat()
         gc.deny_chat(999)  # should not raise
-        mock_save.assert_called_once()
 
     def test_list_allowed_chats(self):
         gc = make_gemini_chat(allowlist={3: "C", 1: "A", 2: "B"})
@@ -228,81 +227,10 @@ class TestAllowlist:
             {"id": 3, "name": "C"},
         ]
 
-
-class TestAllowlistPersistence:
-    @patch("modules.gemini_chat.config")
-    def test_load_new_format(self, mock_config):
-        mock_config.GEMINI_ALLOWLIST_PATH = "data/allowed_chats.json"
-        gc = make_gemini_chat()
-        data = '[{"id": 1, "name": "A"}, {"id": 2, "name": "B"}]'
-        with patch("builtins.open", mock_open(read_data=data)):
-            gc._load_allowlist()
-        assert gc.allowlist == {1: "A", 2: "B"}
-
-    @patch("modules.gemini_chat.config")
-    def test_load_legacy_format(self, mock_config):
-        mock_config.GEMINI_ALLOWLIST_PATH = "data/allowed_chats.json"
-        gc = make_gemini_chat()
-        with patch("builtins.open", mock_open(read_data="[1, 2, 3]")):
-            gc._load_allowlist()
-        assert gc.allowlist == {1: "", 2: "", 3: ""}
-
-    @patch("modules.gemini_chat.config")
-    def test_load_file_not_found(self, mock_config):
-        mock_config.GEMINI_ALLOWLIST_PATH = "data/nonexistent.json"
-        gc = make_gemini_chat()
-        with patch("builtins.open", side_effect=FileNotFoundError):
-            gc._load_allowlist()
-        assert gc.allowlist == {}
-
-    @patch("modules.gemini_chat.shutil.copy2")
-    @patch("modules.gemini_chat.config")
-    def test_load_corrupted_json(self, mock_config, mock_copy):
-        mock_config.GEMINI_ALLOWLIST_PATH = "data/allowed_chats.json"
-        gc = make_gemini_chat()
-        with patch("builtins.open", mock_open(read_data="not json")):
-            gc._load_allowlist()
-        assert gc.allowlist == {}
-        mock_copy.assert_called_once_with("data/allowed_chats.json", "data/allowed_chats.json.bak")
-
-    @patch("modules.gemini_chat.os.replace")
-    @patch("modules.gemini_chat.os.makedirs")
-    @patch("modules.gemini_chat.json.dump")
-    @patch("modules.gemini_chat.config")
-    def test_save(self, mock_config, mock_json_dump, mock_makedirs, mock_replace):
-        mock_config.GEMINI_ALLOWLIST_PATH = "data/allowed_chats.json"
-        gc = make_gemini_chat(allowlist={2: "B", 1: "A"})
-        mock_tmp = MagicMock()
-        mock_tmp.__enter__ = MagicMock(return_value=mock_tmp)
-        mock_tmp.__exit__ = MagicMock(return_value=False)
-        mock_tmp.name = "/tmp/test.tmp"
-        with patch("modules.gemini_chat.tempfile.NamedTemporaryFile", return_value=mock_tmp):
-            gc._save_allowlist()
-        mock_json_dump.assert_called_once()
-        saved_data = mock_json_dump.call_args[0][0]
-        assert saved_data == [{"id": 1, "name": "A"}, {"id": 2, "name": "B"}]
-        mock_replace.assert_called_once_with("/tmp/test.tmp", "data/allowed_chats.json")
-
-    @patch("modules.gemini_chat.shutil.copy2")
-    @patch("modules.gemini_chat.config")
-    def test_load_dict_missing_id_key(self, mock_config, mock_copy):
-        mock_config.GEMINI_ALLOWLIST_PATH = "data/allowed_chats.json"
-        gc = make_gemini_chat()
-        data = '[{"name": "no id"}, {"id": 1, "name": "ok"}]'
-        with patch("builtins.open", mock_open(read_data=data)):
-            gc._load_allowlist()
-        assert gc.allowlist == {}
-        mock_copy.assert_called_once()
-
-    @patch("modules.gemini_chat.shutil.copy2")
-    @patch("modules.gemini_chat.config")
-    def test_load_empty_list(self, mock_config, mock_copy):
-        mock_config.GEMINI_ALLOWLIST_PATH = "data/allowed_chats.json"
-        gc = make_gemini_chat()
-        with patch("builtins.open", mock_open(read_data="[]")):
-            gc._load_allowlist()
-        assert gc.allowlist == {}
-        mock_copy.assert_not_called()
+    def test_get_chat_name(self):
+        gc = make_gemini_chat(allowlist={1: "테스트"})
+        assert gc.get_chat_name(1) == "테스트"
+        assert gc.get_chat_name(999) == ""
 
 
 class TestSplitResponse:
@@ -471,8 +399,7 @@ class TestThreadSafety:
             except Exception as e:
                 errors.append(e)
 
-        @patch.object(GeminiChat, "_save_allowlist")
-        def allow(mock_save):
+        def allow():
             try:
                 gc.allow_chat(2, "new")
             except Exception as e:
@@ -486,7 +413,7 @@ class TestThreadSafety:
             t.join()
 
         assert errors == []
-        assert 2 in gc.allowlist
+        assert gc.is_chat_allowed(2)
 
     def test_set_model_during_ask(self):
         gc = make_gemini_chat(allowlist={1: "test"})

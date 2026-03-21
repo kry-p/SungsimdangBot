@@ -217,7 +217,8 @@ class TestAllowChatHandler:
 class TestDenyChatHandler:
     @patch("modules.features_hub.config.ADMIN_USER_ID", 100)
     def test_admin_deny_shows_confirmation(self, hub):
-        hub.gemini_chat.allowlist = {42: "테스트"}
+        hub.gemini_chat.is_chat_allowed.return_value = True
+        hub.gemini_chat.get_chat_name.return_value = "테스트"
         msg = make_message("/deny_chat 42", user_id=100)
         hub.bot.reply_to.return_value.message_id = 888
         hub.bot.reply_to.return_value.chat.id = 1
@@ -228,7 +229,7 @@ class TestDenyChatHandler:
 
     @patch("modules.features_hub.config.ADMIN_USER_ID", 100)
     def test_deny_not_in_list(self, hub):
-        hub.gemini_chat.allowlist = {}
+        hub.gemini_chat.is_chat_allowed.return_value = False
         msg = make_message("/deny_chat 42", user_id=100)
         hub.deny_chat_handler(msg)
         hub.bot.reply_to.assert_called_once_with(msg, strings.admin_deny_chat_not_found_msg.format(chat_id=42))
