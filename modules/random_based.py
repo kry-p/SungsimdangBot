@@ -1,13 +1,12 @@
 # module for random based features
+import json
 import random
 
+from modules.database import RouletteGame
 from resources import strings
 
 
 class RandomBasedFeatures:
-    def __init__(self):
-        self.bullet = {}
-
     # Random picker 랜덤픽
     @staticmethod
     def picker(msg):
@@ -42,30 +41,34 @@ class RandomBasedFeatures:
         try:
             if message.split()[1].isdigit() and message.split()[2].isdigit():
                 if message.split()[1] == "0" and message.split()[2] == "0":
-                    self.bullet[chat_id] = ()
+                    RouletteGame.delete().where(RouletteGame.chat_id == chat_id).execute()
                     return strings.roulette_flush_msg
                 total = int(message.split()[1])
                 bullets = int(message.split()[2])
                 if bullets > total:
                     return strings.roulette_bullet_overflow_msg
-                self.bullet[chat_id] = []
-                for _n in range(total):
-                    self.bullet[chat_id].append(False)
-                for n in range(bullets):
-                    self.bullet[chat_id][n] = True
-                random.shuffle(self.bullet[chat_id])
-                return strings.roulette_loaded_msg.format(len(self.bullet[chat_id]))
+                bullet_list = [True] * bullets + [False] * (total - bullets)
+                random.shuffle(bullet_list)
+                RouletteGame.replace(chat_id=chat_id, bullets=json.dumps(bullet_list)).execute()
+                return strings.roulette_loaded_msg.format(total)
         except IndexError:
             return strings.roulette_error_msg
 
     # Launch roulette 러시안 룰렛 격발
     def trig_bullet(self, chat_id):
-        bullets = self.bullet.get(chat_id, [])
-        if len(bullets) == 0:
+        game = RouletteGame.get_or_none(RouletteGame.chat_id == chat_id)
+        if not game:
+            return strings.shot_error_msg
+        bullets = json.loads(game.bullets)
+        if not bullets:
+            game.delete_instance()
             return strings.shot_error_msg
         check = bullets.pop()
-        if not bullets:
-            del self.bullet[chat_id]
+        if bullets:
+            game.bullets = json.dumps(bullets)
+            game.save()
+        else:
+            game.delete_instance()
         if check:
             return strings.shot_real_msg
         else:
