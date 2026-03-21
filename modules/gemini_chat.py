@@ -38,7 +38,7 @@ class GeminiChat:
 
     # --- 핵심 기능 ---
 
-    def ask(self, chat_id, question, language_code):
+    def ask(self, chat_id, user_id, question, language_code):
         with self._lock:
             if not self.client:
                 return [strings.ask_error_msg]
@@ -49,8 +49,9 @@ class GeminiChat:
             if not self.check_rate_limit(chat_id):
                 return [strings.ask_rate_limit_msg]
 
-            self._expire_session_if_needed(chat_id)
-            managed = self._get_or_create_session(chat_id, language_code)
+            session_key = (chat_id, user_id)
+            self._expire_session_if_needed(session_key)
+            managed = self._get_or_create_session(session_key, language_code)
 
             try:
                 response = managed.chat.send_message(question)
@@ -59,37 +60,38 @@ class GeminiChat:
                 logger.log_error("Gemini API call failed.")
                 return [strings.ask_error_msg]
 
-            self._trim_history(chat_id, language_code)
+            self._trim_history(session_key, language_code)
             managed.last_active = time.time()
 
             return self.split_response(result)
 
-    def clear_session(self, chat_id):
+    def clear_session(self, chat_id, user_id):
         with self._lock:
-            self.sessions.pop(chat_id, None)
+            session_key = (chat_id, user_id)
+            self.sessions.pop(session_key, None)
 
     # --- 세션 관리 ---
 
-    def _get_or_create_session(self, chat_id, language_code):
-        if chat_id not in self.sessions:
+    def _get_or_create_session(self, session_key, language_code):
+        if session_key not in self.sessions:
             chat = self.client.chats.create(
                 model=self.model,
                 config=types.GenerateContentConfig(
                     system_instruction=self._build_system_prompt(language_code),
                 ),
             )
-            self.sessions[chat_id] = ManagedSession(chat=chat)
-        return self.sessions[chat_id]
+            self.sessions[session_key] = ManagedSession(chat=chat)
+        return self.sessions[session_key]
 
-    def _expire_session_if_needed(self, chat_id):
-        managed = self.sessions.get(chat_id)
+    def _expire_session_if_needed(self, session_key):
+        managed = self.sessions.get(session_key)
         if managed and time.time() - managed.last_active > config.GEMINI_SESSION_TIMEOUT:
-            del self.sessions[chat_id]
+            del self.sessions[session_key]
             return True
         return False
 
-    def _trim_history(self, chat_id, language_code):
-        managed = self.sessions.get(chat_id)
+    def _trim_history(self, session_key, language_code):
+        managed = self.sessions.get(session_key)
         if not managed:
             return
         history = managed.chat.get_history()

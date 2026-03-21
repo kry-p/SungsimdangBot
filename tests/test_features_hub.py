@@ -162,6 +162,7 @@ class TestAskHandler:
         msg = make_message("/ask 질문", user_id=1)
         msg.from_user.language_code = "ko"
         hub.ask_handler(msg)
+        hub.gemini_chat.ask.assert_called_once_with(1, 1, "질문", "ko")
         hub.bot.reply_to.assert_called_once_with(msg, "답변입니다")
 
     def test_split_response(self, hub):
@@ -183,7 +184,7 @@ class TestClearChatHandler:
     def test_clear(self, hub):
         msg = make_message("/clear_chat")
         hub.clear_chat_handler(msg)
-        hub.gemini_chat.clear_session.assert_called_once_with(1)
+        hub.gemini_chat.clear_session.assert_called_once_with(1, 1)
         hub.bot.reply_to.assert_called_once_with(msg, strings.ask_clear_msg)
 
 
