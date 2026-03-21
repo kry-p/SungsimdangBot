@@ -103,6 +103,24 @@ class TestSave:
             mock_replace.assert_called_once()
         reset_singleton()
 
+    @patch("modules.settings.os.replace")
+    @patch("modules.settings.os.makedirs")
+    @patch("modules.settings.json.dump")
+    def test_save_uses_temp_file_then_replace(self, mock_json_dump, mock_makedirs, mock_replace):
+        reset_singleton()
+        with patch.object(Settings, "_load"):
+            s = Settings()
+            s._data = {"key": "value"}
+            mock_tmp = MagicMock()
+            mock_tmp.__enter__ = MagicMock(return_value=mock_tmp)
+            mock_tmp.__exit__ = MagicMock(return_value=False)
+            mock_tmp.name = "/tmp/settings.tmp"
+            with patch("modules.settings.tempfile.NamedTemporaryFile", return_value=mock_tmp):
+                s._save()
+            mock_json_dump.assert_called_once_with({"key": "value"}, mock_tmp)
+            mock_replace.assert_called_once_with("/tmp/settings.tmp", "data/settings.json")
+        reset_singleton()
+
 
 class TestThreadSafety:
     def test_concurrent_singleton_creation(self):

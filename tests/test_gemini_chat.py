@@ -257,6 +257,27 @@ class TestAllowlistPersistence:
         assert saved_data == [{"id": 1, "name": "A"}, {"id": 2, "name": "B"}]
         mock_replace.assert_called_once_with("/tmp/test.tmp", "data/allowed_chats.json")
 
+    @patch("modules.gemini_chat.shutil.copy2")
+    @patch("modules.gemini_chat.config")
+    def test_load_dict_missing_id_key(self, mock_config, mock_copy):
+        mock_config.GEMINI_ALLOWLIST_PATH = "data/allowed_chats.json"
+        gc = make_gemini_chat()
+        data = '[{"name": "no id"}, {"id": 1, "name": "ok"}]'
+        with patch("builtins.open", mock_open(read_data=data)):
+            gc._load_allowlist()
+        assert gc.allowlist == {}
+        mock_copy.assert_called_once()
+
+    @patch("modules.gemini_chat.shutil.copy2")
+    @patch("modules.gemini_chat.config")
+    def test_load_empty_list(self, mock_config, mock_copy):
+        mock_config.GEMINI_ALLOWLIST_PATH = "data/allowed_chats.json"
+        gc = make_gemini_chat()
+        with patch("builtins.open", mock_open(read_data="[]")):
+            gc._load_allowlist()
+        assert gc.allowlist == {}
+        mock_copy.assert_not_called()
+
 
 class TestSplitResponse:
     def test_short_text(self):
