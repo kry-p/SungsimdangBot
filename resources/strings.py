@@ -149,7 +149,7 @@ admin_confirm_btn = "확인"
 admin_cancel_btn = "취소"
 
 # model selection message
-set_model_msg = "사용할 모델을 선택해주세요."
+set_model_msg = "현재 모델: {model}\n사용할 모델을 선택해주세요."
 set_model_done_msg = "모델이 {model}(으)로 변경되었습니다."
 set_model_error_msg = "모델 목록을 가져올 수 없습니다."
 current_model_msg = "현재 모델: {model}"
