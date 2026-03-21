@@ -31,7 +31,7 @@ class BotFeaturesHub:
         self.gemini_chat = GeminiChat()
 
     # Get current river temperature 현재 강물 온도 정보 획득
-    def get_temp(self, user_id):
+    def get_temp(self):
         self.web_manager.update_suon()
         provided_suon = self.web_manager.provide_suon_v2()
 
@@ -316,7 +316,7 @@ class BotFeaturesHub:
     def ordinary_message(self, message):
         # location-based message if user sent message that includes '수온' or '자살'
         if ("수온" in message.text) or ("자살" in message.text):
-            self.bot.reply_to(message, self.get_temp(message.from_user.id))
+            self.bot.reply_to(message, self.get_temp())
 
         # randomly select magic conch message if user sent message that includes '마법의 소라고둥/동'
         if ("마법의 소라고둥" in message.text) or ("마법의 소라고동" in message.text):

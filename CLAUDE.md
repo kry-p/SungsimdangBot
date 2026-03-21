@@ -13,7 +13,7 @@ modules/
   __init__.py
   features_hub.py        # BotFeaturesHub — 모든 기능 오케스트레이션
   calculator.py          # Calculator — 중위→후위 변환 수식 계산기
-  database.py            # peewee ORM 모델 (Setting, AllowedChat) + SQLite 초기화
+  database.py            # peewee ORM 모델 (Setting, AllowedChat, PendingAction, RouletteGame) + SQLite 초기화
   gemini_chat.py         # GeminiChat — Gemini AI 질답, 세션/레이트리밋 관리
   migration.py           # JSON → SQLite 일회성 마이그레이션
   random_based.py        # RandomBasedFeatures — 선택봇, 동전 던지기, 룰렛, 마법의 소라고동

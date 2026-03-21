@@ -64,12 +64,12 @@ class TestDDay:
 class TestGetTemp:
     def test_normal_temperature(self, hub):
         hub.web_manager.provide_suon_v2.return_value = "23.5"
-        result = hub.get_temp(1)
+        result = hub.get_temp()
         assert result == strings.suon_result_msg.format("23.5")
 
     def test_maintenance(self, hub):
         hub.web_manager.provide_suon_v2.return_value = "점검중"
-        result = hub.get_temp(1)
+        result = hub.get_temp()
         assert result == strings.suon_unavailable_msg
 
 
