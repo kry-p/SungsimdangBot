@@ -1,9 +1,9 @@
 import pytest
 
-from modules.database import AllowedChat, Setting, db
+from modules.database import AllowedChat, PendingAction, RouletteGame, Setting, db
 from modules.settings import Settings
 
-MODELS = [Setting, AllowedChat]
+MODELS = [Setting, AllowedChat, PendingAction, RouletteGame]
 
 
 @pytest.fixture(autouse=True)
