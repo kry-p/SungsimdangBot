@@ -10,7 +10,7 @@ db = SqliteDatabase(None)
 def init_db():
     os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
     db.init(DB_PATH, pragmas={"journal_mode": "wal", "foreign_keys": 1})
-    db.connect()
+    db.connect(reuse_if_open=True)
     db.create_tables([Setting, AllowedChat])
 
 

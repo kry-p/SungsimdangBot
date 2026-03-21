@@ -28,7 +28,6 @@ GEMINI_SESSION_TIMEOUT = _int_env("GEMINI_SESSION_TIMEOUT", 3600)
 GEMINI_MAX_HISTORY = _int_env("GEMINI_MAX_HISTORY", 20)
 GEMINI_RATE_LIMIT = _int_env("GEMINI_RATE_LIMIT", 5)
 ADMIN_USER_ID = _int_env("ADMIN_USER_ID", 0)
-GEMINI_ALLOWLIST_PATH = os.getenv("GEMINI_ALLOWLIST_PATH", "data/allowed_chats.json")
 
 # External endpoints
 NAMUWIKI_BASE_URL = "https://namu.wiki/w/"
