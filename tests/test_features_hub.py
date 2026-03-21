@@ -296,6 +296,19 @@ class TestAdminCallback:
         hub.gemini_chat.set_model.assert_called_once_with("gemini-2.5-pro")
         hub.bot.edit_message_text.assert_called_once()
 
+    @patch("modules.features_hub.config.ADMIN_USER_ID", 100)
+    def test_set_model_cancel_callback(self, hub):
+        call = MagicMock()
+        call.from_user.id = 100
+        call.data = "set_model_cancel:0"
+        hub.handle_admin_callback(call)
+        hub.gemini_chat.set_model.assert_not_called()
+        hub.bot.edit_message_text.assert_called_once_with(
+            strings.admin_cancel_msg,
+            call.message.chat.id,
+            call.message.message_id,
+        )
+
 
 class TestPendingExpiry:
     @patch("modules.features_hub.config.ADMIN_USER_ID", 100)
@@ -347,12 +360,24 @@ class TestCallbackDataLength:
 
 class TestSetModelHandler:
     @patch("modules.features_hub.config.ADMIN_USER_ID", 100)
-    def test_shows_model_list(self, hub):
+    def test_shows_model_list_with_current_model(self, hub):
+        hub.gemini_chat.model = "gemini-2.5-flash"
         hub.gemini_chat.list_models.return_value = ["gemini-2.5-flash", "gemini-2.5-pro"]
         msg = make_message("/set_model", user_id=100)
         hub.set_model_handler(msg)
-        call_kwargs = hub.bot.reply_to.call_args
-        assert "reply_markup" in call_kwargs.kwargs
+        call_args = hub.bot.reply_to.call_args
+        assert "gemini-2.5-flash" in call_args[0][1]
+        assert "reply_markup" in call_args.kwargs
+
+    @patch("modules.features_hub.config.ADMIN_USER_ID", 100)
+    def test_shows_cancel_button(self, hub):
+        hub.gemini_chat.model = "gemini-2.5-flash"
+        hub.gemini_chat.list_models.return_value = ["gemini-2.5-flash"]
+        msg = make_message("/set_model", user_id=100)
+        hub.set_model_handler(msg)
+        keyboard = hub.bot.reply_to.call_args.kwargs["reply_markup"]
+        last_row = keyboard.keyboard[-1]
+        assert last_row[0].callback_data == "set_model_cancel:0"
 
     @patch("modules.features_hub.config.ADMIN_USER_ID", 100)
     def test_empty_model_list(self, hub):
