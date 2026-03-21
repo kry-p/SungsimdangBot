@@ -126,13 +126,13 @@ class BotFeaturesHub:
         question = message.text[len(command) :].strip()
         language_code = getattr(message.from_user, "language_code", None)
         self.bot.send_chat_action(message.chat.id, "typing")
-        result = self.gemini_chat.ask(message.chat.id, question, language_code)
+        result = self.gemini_chat.ask(message.chat.id, message.from_user.id, question, language_code)
         for chunk in result:
             self.bot.reply_to(message, chunk)
 
     # Clear chat 대화 초기화
     def clear_chat_handler(self, message):
-        self.gemini_chat.clear_session(message.chat.id)
+        self.gemini_chat.clear_session(message.chat.id, message.from_user.id)
         self.bot.reply_to(message, strings.ask_clear_msg)
 
     # Admin check 관리자 확인
@@ -230,6 +230,13 @@ class BotFeaturesHub:
                 call.message.message_id,
             )
             return
+        if action == "set_model_cancel":
+            self.bot.edit_message_text(
+                strings.admin_cancel_msg,
+                call.message.chat.id,
+                call.message.message_id,
+            )
+            return
         msg_id = int(value)
         pending = PendingAction.get_or_none(PendingAction.msg_id == msg_id)
         if not pending:
@@ -303,7 +310,10 @@ class BotFeaturesHub:
         if not keyboard.keyboard:
             self.bot.reply_to(message, strings.set_model_error_msg)
             return
-        self.bot.reply_to(message, strings.set_model_msg, reply_markup=keyboard)
+        keyboard.row(
+            telebot.types.InlineKeyboardButton(strings.admin_cancel_btn, callback_data="set_model_cancel:0"),
+        )
+        self.bot.reply_to(message, strings.set_model_msg.format(model=self.gemini_chat.model), reply_markup=keyboard)
 
     # Current model 현재 모델 확인
     def current_model_handler(self, message):

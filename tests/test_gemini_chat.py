@@ -31,23 +31,23 @@ class TestAsk:
         mock_chat.get_history.return_value = []
         gc.client.chats.create.return_value = mock_chat
 
-        result = gc.ask(1, "질문", "ko")
+        result = gc.ask(1, 1, "질문", "ko")
         assert result == ["답변입니다"]
 
     def test_no_client(self):
         gc = make_gemini_chat(client=None, allowlist={1: "test"})
-        result = gc.ask(1, "질문", "ko")
+        result = gc.ask(1, 1, "질문", "ko")
         assert result == [strings.ask_error_msg]
 
     def test_not_allowed(self):
         gc = make_gemini_chat(allowlist={})
-        result = gc.ask(1, "질문", "ko")
+        result = gc.ask(1, 1, "질문", "ko")
         assert result == [strings.ask_not_allowed_msg]
 
     def test_rate_limited(self):
         gc = make_gemini_chat(allowlist={1: "test"})
         gc.request_counts = {1: [time.time() for _ in range(5)]}
-        result = gc.ask(1, "질문", "ko")
+        result = gc.ask(1, 1, "질문", "ko")
         assert result == [strings.ask_rate_limit_msg]
 
     def test_api_error(self):
@@ -56,7 +56,7 @@ class TestAsk:
         mock_chat.send_message.side_effect = Exception("API error")
         gc.client.chats.create.return_value = mock_chat
 
-        result = gc.ask(1, "질문", "ko")
+        result = gc.ask(1, 1, "질문", "ko")
         assert result == [strings.ask_error_msg]
 
     def test_long_response_split(self):
@@ -67,10 +67,29 @@ class TestAsk:
         mock_chat.get_history.return_value = []
         gc.client.chats.create.return_value = mock_chat
 
-        result = gc.ask(1, "질문", "ko")
+        result = gc.ask(1, 1, "질문", "ko")
         assert isinstance(result, list)
         assert all(len(chunk) <= 4096 for chunk in result)
         assert "".join(result) == long_text
+
+    def test_separate_sessions_per_user_in_group(self):
+        gc = make_gemini_chat(allowlist={100: "group"})
+        mock_chat_a = MagicMock()
+        mock_chat_a.send_message.return_value.text = "답변A"
+        mock_chat_a.get_history.return_value = []
+        mock_chat_b = MagicMock()
+        mock_chat_b.send_message.return_value.text = "답변B"
+        mock_chat_b.get_history.return_value = []
+        gc.client.chats.create.side_effect = [mock_chat_a, mock_chat_b]
+
+        result_a = gc.ask(100, 1, "질문A", "ko")
+        result_b = gc.ask(100, 2, "질문B", "ko")
+
+        assert result_a == ["답변A"]
+        assert result_b == ["답변B"]
+        assert (100, 1) in gc.sessions
+        assert (100, 2) in gc.sessions
+        assert gc.client.chats.create.call_count == 2
 
 
 class TestSessionManagement:
@@ -79,16 +98,16 @@ class TestSessionManagement:
         mock_chat = MagicMock()
         gc.client.chats.create.return_value = mock_chat
 
-        managed = gc._get_or_create_session(1, "ko")
+        managed = gc._get_or_create_session((1, 1), "ko")
         assert managed.chat is mock_chat
         gc.client.chats.create.assert_called_once()
 
     def test_reuse_existing_session(self):
         gc = make_gemini_chat()
         existing = ManagedSession(chat=MagicMock())
-        gc.sessions[1] = existing
+        gc.sessions[(1, 1)] = existing
 
-        managed = gc._get_or_create_session(1, "ko")
+        managed = gc._get_or_create_session((1, 1), "ko")
         assert managed is existing
         gc.client.chats.create.assert_not_called()
 
@@ -96,29 +115,29 @@ class TestSessionManagement:
     def test_expire_after_timeout(self, mock_config):
         mock_config.GEMINI_SESSION_TIMEOUT = 3600
         gc = make_gemini_chat()
-        gc.sessions[1] = ManagedSession(chat=MagicMock(), last_active=time.time() - 3601)
+        gc.sessions[(1, 1)] = ManagedSession(chat=MagicMock(), last_active=time.time() - 3601)
 
-        assert gc._expire_session_if_needed(1) is True
-        assert 1 not in gc.sessions
+        assert gc._expire_session_if_needed((1, 1)) is True
+        assert (1, 1) not in gc.sessions
 
     @patch("modules.gemini_chat.config")
     def test_no_expire_within_timeout(self, mock_config):
         mock_config.GEMINI_SESSION_TIMEOUT = 3600
         gc = make_gemini_chat()
-        gc.sessions[1] = ManagedSession(chat=MagicMock(), last_active=time.time())
+        gc.sessions[(1, 1)] = ManagedSession(chat=MagicMock(), last_active=time.time())
 
-        assert gc._expire_session_if_needed(1) is False
-        assert 1 in gc.sessions
+        assert gc._expire_session_if_needed((1, 1)) is False
+        assert (1, 1) in gc.sessions
 
     def test_clear_session(self):
         gc = make_gemini_chat()
-        gc.sessions[1] = ManagedSession(chat=MagicMock())
-        gc.clear_session(1)
-        assert 1 not in gc.sessions
+        gc.sessions[(1, 1)] = ManagedSession(chat=MagicMock())
+        gc.clear_session(1, 1)
+        assert (1, 1) not in gc.sessions
 
     def test_clear_nonexistent_session(self):
         gc = make_gemini_chat()
-        gc.clear_session(999)  # should not raise
+        gc.clear_session(999, 1)  # should not raise
 
     @patch("modules.gemini_chat.config")
     def test_trim_history(self, mock_config):
@@ -127,12 +146,12 @@ class TestSessionManagement:
         gc = make_gemini_chat()
         mock_chat = MagicMock()
         mock_chat.get_history.return_value = ["a", "b", "c", "d", "e", "f"]
-        gc.sessions[1] = ManagedSession(chat=mock_chat)
+        gc.sessions[(1, 1)] = ManagedSession(chat=mock_chat)
 
         new_chat = MagicMock()
         gc.client.chats.create.return_value = new_chat
 
-        gc._trim_history(1, "ko")
+        gc._trim_history((1, 1), "ko")
         gc.client.chats.create.assert_called_once()
         call_kwargs = gc.client.chats.create.call_args
         assert call_kwargs.kwargs["history"] == ["c", "d", "e", "f"]
@@ -143,9 +162,9 @@ class TestSessionManagement:
         gc = make_gemini_chat()
         mock_chat = MagicMock()
         mock_chat.get_history.return_value = ["a", "b"]
-        gc.sessions[1] = ManagedSession(chat=mock_chat)
+        gc.sessions[(1, 1)] = ManagedSession(chat=mock_chat)
 
-        gc._trim_history(1, "ko")
+        gc._trim_history((1, 1), "ko")
         gc.client.chats.create.assert_not_called()
 
 
@@ -373,7 +392,7 @@ class TestThreadSafety:
         results = []
 
         def ask():
-            results.append(gc.ask(1, "질문", "ko"))
+            results.append(gc.ask(1, 1, "질문", "ko"))
 
         threads = [threading.Thread(target=ask) for _ in range(10)]
         for t in threads:
@@ -382,7 +401,7 @@ class TestThreadSafety:
             t.join()
 
         assert len(results) == 10
-        assert 1 in gc.sessions
+        assert (1, 1) in gc.sessions
 
     def test_concurrent_allow_and_ask(self):
         gc = make_gemini_chat(allowlist={1: "test"})
@@ -395,7 +414,7 @@ class TestThreadSafety:
 
         def ask():
             try:
-                gc.ask(1, "질문", "ko")
+                gc.ask(1, 1, "질문", "ko")
             except Exception as e:
                 errors.append(e)
 
@@ -426,7 +445,7 @@ class TestThreadSafety:
 
         def ask():
             try:
-                gc.ask(1, "질문", "ko")
+                gc.ask(1, 1, "질문", "ko")
             except Exception as e:
                 errors.append(e)
 
