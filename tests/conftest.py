@@ -1,15 +1,24 @@
 import pytest
-from peewee import SqliteDatabase
 
-from modules.database import AllowedChat, Setting
+from modules.database import AllowedChat, Setting, db
+from modules.settings import Settings
 
 MODELS = [Setting, AllowedChat]
 
 
 @pytest.fixture(autouse=True)
-def _test_db():
-    test_db = SqliteDatabase(":memory:")
-    with test_db.bind_ctx(MODELS):
-        test_db.create_tables(MODELS)
-        yield test_db
-        test_db.drop_tables(MODELS)
+def _test_db(tmp_path):
+    db_path = str(tmp_path / "test.db")
+    db.init(db_path)
+    db.connect()
+    db.create_tables(MODELS)
+    yield db
+    db.drop_tables(MODELS)
+    db.close()
+
+
+@pytest.fixture(autouse=True)
+def _reset_singleton():
+    Settings._instance = None
+    yield
+    Settings._instance = None
