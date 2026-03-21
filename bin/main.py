@@ -18,11 +18,17 @@ import telebot
 
 from config import config
 from modules import features_hub, log
+from modules.database import init_db
+from modules.migration import migrate_json_to_db
 from resources import strings
 
 BOT_INTERVAL = 3
 BOT_TIMEOUT = 30
 
+
+# Initialize database
+init_db()
+migrate_json_to_db()
 
 # Initialize bot
 bot = telebot.TeleBot(config.BOT_TOKEN, parse_mode=None)
