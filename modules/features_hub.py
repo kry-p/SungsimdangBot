@@ -2,7 +2,6 @@
 
 import datetime
 import json
-import threading
 import time
 import urllib.parse
 
@@ -11,6 +10,7 @@ import telebot
 
 from config import config
 from modules.calculator import Calculator
+from modules.database import PendingAction
 from modules.gemini_chat import GeminiChat
 from modules.random_based import RandomBasedFeatures
 from modules.web_based import WebManager
@@ -29,8 +29,6 @@ class BotFeaturesHub:
         self.web_manager = WebManager()
         self.calculator = Calculator()
         self.gemini_chat = GeminiChat()
-        self.pending_actions = {}
-        self._pending_lock = threading.Lock()
 
     # Get current river temperature 현재 강물 온도 정보 획득
     def get_temp(self, user_id):
@@ -173,13 +171,7 @@ class BotFeaturesHub:
             reply_markup=keyboard,
         )
         msg_id = sent.message_id
-        with self._pending_lock:
-            self.pending_actions[msg_id] = {
-                "action": "allow",
-                "chat_id": chat_id,
-                "name": name,
-                "timestamp": time.time(),
-            }
+        PendingAction.create(msg_id=msg_id, action="allow", chat_id=chat_id, name=name, timestamp=time.time())
         self.bot.edit_message_reply_markup(
             sent.chat.id,
             msg_id,
@@ -215,13 +207,7 @@ class BotFeaturesHub:
             reply_markup=keyboard,
         )
         msg_id = sent.message_id
-        with self._pending_lock:
-            self.pending_actions[msg_id] = {
-                "action": "deny",
-                "chat_id": chat_id,
-                "name": name,
-                "timestamp": time.time(),
-            }
+        PendingAction.create(msg_id=msg_id, action="deny", chat_id=chat_id, name=name, timestamp=time.time())
         self.bot.edit_message_reply_markup(
             sent.chat.id,
             msg_id,
@@ -245,12 +231,12 @@ class BotFeaturesHub:
             )
             return
         msg_id = int(value)
-        with self._pending_lock:
-            pending = self.pending_actions.pop(msg_id, None)
+        pending = PendingAction.get_or_none(PendingAction.msg_id == msg_id)
         if not pending:
             return
-        chat_id = pending["chat_id"]
-        name = pending["name"]
+        chat_id = pending.chat_id
+        name = pending.name
+        pending.delete_instance()
         if action == "allow_confirm":
             self.gemini_chat.allow_chat(chat_id, name)
             self.bot.edit_message_text(
@@ -274,10 +260,7 @@ class BotFeaturesHub:
 
     def _cleanup_expired_pending(self):
         now = time.time()
-        with self._pending_lock:
-            expired = [k for k, v in self.pending_actions.items() if now - v.get("timestamp", 0) > self.PENDING_TIMEOUT]
-            for k in expired:
-                del self.pending_actions[k]
+        PendingAction.delete().where(PendingAction.timestamp < now - self.PENDING_TIMEOUT).execute()
 
     @staticmethod
     def _build_admin_keyboard(confirm_data, cancel_data):

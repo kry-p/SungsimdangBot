@@ -1,11 +1,11 @@
 import datetime
 import json
-import threading
 import time
 from unittest.mock import MagicMock, patch
 
 import pytest
 
+from modules.database import PendingAction
 from modules.features_hub import BotFeaturesHub
 from resources import strings
 
@@ -197,9 +197,10 @@ class TestAllowChatHandler:
         hub.bot.reply_to.return_value.chat.id = 42
         hub.allow_chat_handler(msg)
         hub.gemini_chat.allow_chat.assert_not_called()
-        assert 999 in hub.pending_actions
-        assert hub.pending_actions[999]["action"] == "allow"
-        assert hub.pending_actions[999]["chat_id"] == 42
+        row = PendingAction.get_or_none(PendingAction.msg_id == 999)
+        assert row is not None
+        assert row.action == "allow"
+        assert row.chat_id == 42
 
     @patch("modules.features_hub.config.ADMIN_USER_ID", 100)
     def test_non_admin_rejected(self, hub):
@@ -224,8 +225,9 @@ class TestDenyChatHandler:
         hub.bot.reply_to.return_value.chat.id = 1
         hub.deny_chat_handler(msg)
         hub.gemini_chat.deny_chat.assert_not_called()
-        assert 888 in hub.pending_actions
-        assert hub.pending_actions[888]["action"] == "deny"
+        row = PendingAction.get_or_none(PendingAction.msg_id == 888)
+        assert row is not None
+        assert row.action == "deny"
 
     @patch("modules.features_hub.config.ADMIN_USER_ID", 100)
     def test_deny_not_in_list(self, hub):
@@ -244,18 +246,18 @@ class TestDenyChatHandler:
 class TestAdminCallback:
     @patch("modules.features_hub.config.ADMIN_USER_ID", 100)
     def test_allow_confirm(self, hub):
-        hub.pending_actions[999] = {"action": "allow", "chat_id": 42, "name": "테스트", "timestamp": time.time()}
+        PendingAction.create(msg_id=999, action="allow", chat_id=42, name="테스트", timestamp=time.time())
         call = MagicMock()
         call.from_user.id = 100
         call.data = "allow_confirm:999"
         hub.handle_admin_callback(call)
         hub.gemini_chat.allow_chat.assert_called_once_with(42, "테스트")
         hub.bot.edit_message_text.assert_called_once()
-        assert 999 not in hub.pending_actions
+        assert PendingAction.get_or_none(PendingAction.msg_id == 999) is None
 
     @patch("modules.features_hub.config.ADMIN_USER_ID", 100)
     def test_deny_confirm(self, hub):
-        hub.pending_actions[888] = {"action": "deny", "chat_id": 42, "name": "테스트", "timestamp": time.time()}
+        PendingAction.create(msg_id=888, action="deny", chat_id=42, name="테스트", timestamp=time.time())
         call = MagicMock()
         call.from_user.id = 100
         call.data = "deny_confirm:888"
@@ -265,54 +267,24 @@ class TestAdminCallback:
 
     @patch("modules.features_hub.config.ADMIN_USER_ID", 100)
     def test_cancel(self, hub):
-        hub.pending_actions[999] = {"action": "allow", "chat_id": 42, "name": "테스트", "timestamp": time.time()}
+        PendingAction.create(msg_id=999, action="allow", chat_id=42, name="테스트", timestamp=time.time())
         call = MagicMock()
         call.from_user.id = 100
         call.data = "allow_cancel:999"
         hub.handle_admin_callback(call)
         hub.gemini_chat.allow_chat.assert_not_called()
         hub.bot.edit_message_text.assert_called_once()
-        assert 999 not in hub.pending_actions
+        assert PendingAction.get_or_none(PendingAction.msg_id == 999) is None
 
     @patch("modules.features_hub.config.ADMIN_USER_ID", 100)
     def test_non_admin_ignored(self, hub):
-        hub.pending_actions[999] = {"action": "allow", "chat_id": 42, "name": "테스트", "timestamp": time.time()}
+        PendingAction.create(msg_id=999, action="allow", chat_id=42, name="테스트", timestamp=time.time())
         call = MagicMock()
         call.from_user.id = 999
         call.data = "allow_confirm:999"
         hub.handle_admin_callback(call)
         hub.gemini_chat.allow_chat.assert_not_called()
-        assert 999 in hub.pending_actions
-
-    @patch("modules.features_hub.config.ADMIN_USER_ID", 100)
-    def test_concurrent_allow_and_callback(self, hub):
-        errors = []
-
-        def add_pending(key):
-            try:
-                with hub._pending_lock:
-                    hub.pending_actions[key] = {"action": "allow", "chat_id": key, "name": "test"}
-            except Exception as e:
-                errors.append(e)
-
-        def pop_pending(key):
-            try:
-                with hub._pending_lock:
-                    hub.pending_actions.pop(key, None)
-            except Exception as e:
-                errors.append(e)
-
-        for i in range(20):
-            threads = [
-                threading.Thread(target=add_pending, args=(i,)),
-                threading.Thread(target=pop_pending, args=(i,)),
-            ]
-            for t in threads:
-                t.start()
-            for t in threads:
-                t.join()
-
-        assert errors == []
+        assert PendingAction.get_or_none(PendingAction.msg_id == 999) is not None
 
     @patch("modules.features_hub.config.ADMIN_USER_ID", 100)
     def test_set_model_callback(self, hub):
@@ -327,27 +299,22 @@ class TestAdminCallback:
 class TestPendingExpiry:
     @patch("modules.features_hub.config.ADMIN_USER_ID", 100)
     def test_expired_entries_cleaned(self, hub):
-        hub.pending_actions[1] = {"action": "allow", "chat_id": 10, "name": "old", "timestamp": time.time() - 301}
-        hub.pending_actions[2] = {"action": "deny", "chat_id": 20, "name": "fresh", "timestamp": time.time()}
+        PendingAction.create(msg_id=1, action="allow", chat_id=10, name="old", timestamp=time.time() - 301)
+        PendingAction.create(msg_id=2, action="deny", chat_id=20, name="fresh", timestamp=time.time())
         hub._cleanup_expired_pending()
-        assert 1 not in hub.pending_actions
-        assert 2 in hub.pending_actions
+        assert PendingAction.get_or_none(PendingAction.msg_id == 1) is None
+        assert PendingAction.get_or_none(PendingAction.msg_id == 2) is not None
 
     @patch("modules.features_hub.config.ADMIN_USER_ID", 100)
     def test_all_expired(self, hub):
-        hub.pending_actions[1] = {"action": "allow", "chat_id": 10, "name": "a", "timestamp": time.time() - 400}
-        hub.pending_actions[2] = {"action": "deny", "chat_id": 20, "name": "b", "timestamp": time.time() - 500}
+        PendingAction.create(msg_id=1, action="allow", chat_id=10, name="a", timestamp=time.time() - 400)
+        PendingAction.create(msg_id=2, action="deny", chat_id=20, name="b", timestamp=time.time() - 500)
         hub._cleanup_expired_pending()
-        assert hub.pending_actions == {}
+        assert PendingAction.select().count() == 0
 
     @patch("modules.features_hub.config.ADMIN_USER_ID", 100)
     def test_expired_callback_ignored(self, hub):
-        hub.pending_actions[999] = {
-            "action": "allow",
-            "chat_id": 42,
-            "name": "expired",
-            "timestamp": time.time() - 301,
-        }
+        PendingAction.create(msg_id=999, action="allow", chat_id=42, name="expired", timestamp=time.time() - 301)
         call = MagicMock()
         call.from_user.id = 100
         call.data = "allow_confirm:999"
