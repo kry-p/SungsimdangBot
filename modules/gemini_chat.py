@@ -123,6 +123,8 @@ class GeminiChat:
         now = time.time()
         timestamps = self.request_counts.get(chat_id, [])
         timestamps = [t for t in timestamps if now - t < 60]
+        if not timestamps:
+            self.request_counts.pop(chat_id, None)
         if len(timestamps) >= config.GEMINI_RATE_LIMIT:
             self.request_counts[chat_id] = timestamps
             return False

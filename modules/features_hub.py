@@ -3,6 +3,7 @@
 import datetime
 import json
 import threading
+import time
 import urllib.parse
 
 import requests
@@ -176,7 +177,12 @@ class BotFeaturesHub:
         )
         msg_id = sent.message_id
         with self._pending_lock:
-            self.pending_actions[msg_id] = {"action": "allow", "chat_id": chat_id, "name": name}
+            self.pending_actions[msg_id] = {
+                "action": "allow",
+                "chat_id": chat_id,
+                "name": name,
+                "timestamp": time.time(),
+            }
         self.bot.edit_message_reply_markup(
             sent.chat.id,
             msg_id,
@@ -213,7 +219,12 @@ class BotFeaturesHub:
         )
         msg_id = sent.message_id
         with self._pending_lock:
-            self.pending_actions[msg_id] = {"action": "deny", "chat_id": chat_id, "name": name}
+            self.pending_actions[msg_id] = {
+                "action": "deny",
+                "chat_id": chat_id,
+                "name": name,
+                "timestamp": time.time(),
+            }
         self.bot.edit_message_reply_markup(
             sent.chat.id,
             msg_id,
@@ -221,9 +232,12 @@ class BotFeaturesHub:
         )
 
     # Admin callback 관리자 콜백 처리
+    PENDING_TIMEOUT = 300
+
     def handle_admin_callback(self, call):
         if not self.is_admin(call.from_user.id):
             return
+        self._cleanup_expired_pending()
         action, value = call.data.split(":", 1)
         if action == "set_model":
             self.gemini_chat.set_model(value)
@@ -261,6 +275,13 @@ class BotFeaturesHub:
                 call.message.message_id,
             )
 
+    def _cleanup_expired_pending(self):
+        now = time.time()
+        with self._pending_lock:
+            expired = [k for k, v in self.pending_actions.items() if now - v.get("timestamp", 0) > self.PENDING_TIMEOUT]
+            for k in expired:
+                del self.pending_actions[k]
+
     @staticmethod
     def _build_admin_keyboard(confirm_data, cancel_data):
         keyboard = telebot.types.InlineKeyboardMarkup()
@@ -293,9 +314,15 @@ class BotFeaturesHub:
             return
         keyboard = telebot.types.InlineKeyboardMarkup()
         for model_name in models:
+            callback_data = f"set_model:{model_name}"
+            if len(callback_data.encode()) > 64:
+                continue
             keyboard.row(
-                telebot.types.InlineKeyboardButton(model_name, callback_data=f"set_model:{model_name}"),
+                telebot.types.InlineKeyboardButton(model_name, callback_data=callback_data),
             )
+        if not keyboard.keyboard:
+            self.bot.reply_to(message, strings.set_model_error_msg)
+            return
         self.bot.reply_to(message, strings.set_model_msg, reply_markup=keyboard)
 
     # Current model 현재 모델 확인

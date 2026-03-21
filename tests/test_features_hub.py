@@ -1,6 +1,7 @@
 import datetime
 import json
 import threading
+import time
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -242,7 +243,7 @@ class TestDenyChatHandler:
 class TestAdminCallback:
     @patch("modules.features_hub.config.ADMIN_USER_ID", 100)
     def test_allow_confirm(self, hub):
-        hub.pending_actions[999] = {"action": "allow", "chat_id": 42, "name": "테스트"}
+        hub.pending_actions[999] = {"action": "allow", "chat_id": 42, "name": "테스트", "timestamp": time.time()}
         call = MagicMock()
         call.from_user.id = 100
         call.data = "allow_confirm:999"
@@ -253,7 +254,7 @@ class TestAdminCallback:
 
     @patch("modules.features_hub.config.ADMIN_USER_ID", 100)
     def test_deny_confirm(self, hub):
-        hub.pending_actions[888] = {"action": "deny", "chat_id": 42, "name": "테스트"}
+        hub.pending_actions[888] = {"action": "deny", "chat_id": 42, "name": "테스트", "timestamp": time.time()}
         call = MagicMock()
         call.from_user.id = 100
         call.data = "deny_confirm:888"
@@ -263,7 +264,7 @@ class TestAdminCallback:
 
     @patch("modules.features_hub.config.ADMIN_USER_ID", 100)
     def test_cancel(self, hub):
-        hub.pending_actions[999] = {"action": "allow", "chat_id": 42, "name": "테스트"}
+        hub.pending_actions[999] = {"action": "allow", "chat_id": 42, "name": "테스트", "timestamp": time.time()}
         call = MagicMock()
         call.from_user.id = 100
         call.data = "allow_cancel:999"
@@ -274,7 +275,7 @@ class TestAdminCallback:
 
     @patch("modules.features_hub.config.ADMIN_USER_ID", 100)
     def test_non_admin_ignored(self, hub):
-        hub.pending_actions[999] = {"action": "allow", "chat_id": 42, "name": "테스트"}
+        hub.pending_actions[999] = {"action": "allow", "chat_id": 42, "name": "테스트", "timestamp": time.time()}
         call = MagicMock()
         call.from_user.id = 999
         call.data = "allow_confirm:999"
