@@ -338,3 +338,89 @@ class TestSetModel:
         assert gc.model == "gemini-2.5-pro"
         assert gc.sessions == {}
         mock_settings_cls().set.assert_called_once_with("modules.gemini_chat", "model", "gemini-2.5-pro")
+
+
+class TestThreadSafety:
+    def test_concurrent_ask_no_duplicate_sessions(self):
+        gc = make_gemini_chat(allowlist={1: "test"})
+        mock_chat = MagicMock()
+        mock_chat.send_message.return_value.text = "ok"
+        mock_chat.get_history.return_value = []
+        gc.client.chats.create.return_value = mock_chat
+
+        results = []
+
+        def ask():
+            results.append(gc.ask(1, "질문", "ko"))
+
+        threads = [threading.Thread(target=ask) for _ in range(10)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+
+        assert len(results) == 10
+        assert 1 in gc.sessions
+
+    def test_concurrent_allow_and_ask(self):
+        gc = make_gemini_chat(allowlist={1: "test"})
+        mock_chat = MagicMock()
+        mock_chat.send_message.return_value.text = "ok"
+        mock_chat.get_history.return_value = []
+        gc.client.chats.create.return_value = mock_chat
+
+        errors = []
+
+        def ask():
+            try:
+                gc.ask(1, "질문", "ko")
+            except Exception as e:
+                errors.append(e)
+
+        @patch.object(GeminiChat, "_save_allowlist")
+        def allow(mock_save):
+            try:
+                gc.allow_chat(2, "new")
+            except Exception as e:
+                errors.append(e)
+
+        threads = [threading.Thread(target=ask) for _ in range(5)]
+        threads += [threading.Thread(target=allow) for _ in range(5)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+
+        assert errors == []
+        assert 2 in gc.allowlist
+
+    def test_set_model_during_ask(self):
+        gc = make_gemini_chat(allowlist={1: "test"})
+        mock_chat = MagicMock()
+        mock_chat.send_message.return_value.text = "ok"
+        mock_chat.get_history.return_value = []
+        gc.client.chats.create.return_value = mock_chat
+
+        errors = []
+
+        def ask():
+            try:
+                gc.ask(1, "질문", "ko")
+            except Exception as e:
+                errors.append(e)
+
+        @patch("modules.gemini_chat.Settings")
+        def set_model(mock_settings):
+            try:
+                gc.set_model("gemini-2.5-pro")
+            except Exception as e:
+                errors.append(e)
+
+        threads = [threading.Thread(target=ask) for _ in range(5)]
+        threads += [threading.Thread(target=set_model) for _ in range(3)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+
+        assert errors == []

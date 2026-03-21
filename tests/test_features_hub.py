@@ -1,5 +1,6 @@
 import datetime
 import json
+import threading
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -280,6 +281,36 @@ class TestAdminCallback:
         hub.handle_admin_callback(call)
         hub.gemini_chat.allow_chat.assert_not_called()
         assert 999 in hub.pending_actions
+
+    @patch("modules.features_hub.config.ADMIN_USER_ID", 100)
+    def test_concurrent_allow_and_callback(self, hub):
+        errors = []
+
+        def add_pending(key):
+            try:
+                with hub._pending_lock:
+                    hub.pending_actions[key] = {"action": "allow", "chat_id": key, "name": "test"}
+            except Exception as e:
+                errors.append(e)
+
+        def pop_pending(key):
+            try:
+                with hub._pending_lock:
+                    hub.pending_actions.pop(key, None)
+            except Exception as e:
+                errors.append(e)
+
+        for i in range(20):
+            threads = [
+                threading.Thread(target=add_pending, args=(i,)),
+                threading.Thread(target=pop_pending, args=(i,)),
+            ]
+            for t in threads:
+                t.start()
+            for t in threads:
+                t.join()
+
+        assert errors == []
 
     @patch("modules.features_hub.config.ADMIN_USER_ID", 100)
     def test_set_model_callback(self, hub):

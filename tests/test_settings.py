@@ -1,4 +1,5 @@
 import json
+import threading
 from unittest.mock import mock_open, patch
 
 from modules.settings import Settings
@@ -94,4 +95,53 @@ class TestSave:
                 s._save()
             written = "".join(call.args[0] for call in m().write.call_args_list)
             assert json.loads(written) == {"modules": {"gemini_chat": {"model": "gemini-2.5-pro"}}}
+        reset_singleton()
+
+
+class TestThreadSafety:
+    def test_concurrent_singleton_creation(self):
+        reset_singleton()
+        instances = []
+
+        def create():
+            with patch.object(Settings, "_load"):
+                instances.append(Settings())
+
+        threads = [threading.Thread(target=create) for _ in range(20)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+
+        assert all(inst is instances[0] for inst in instances)
+        reset_singleton()
+
+    def test_concurrent_set_and_get(self):
+        reset_singleton()
+        with patch.object(Settings, "_load"), patch.object(Settings, "_save"):
+            s = Settings()
+            s._data = {}
+            errors = []
+
+            def setter(i):
+                try:
+                    s.set("modules.test", "key", i)
+                except Exception as e:
+                    errors.append(e)
+
+            def getter():
+                try:
+                    s.get("modules.test", "key", None)
+                except Exception as e:
+                    errors.append(e)
+
+            threads = [threading.Thread(target=setter, args=(i,)) for i in range(10)]
+            threads += [threading.Thread(target=getter) for _ in range(10)]
+            for t in threads:
+                t.start()
+            for t in threads:
+                t.join()
+
+            assert errors == []
+            assert s.get("modules.test", "key") is not None
         reset_singleton()
