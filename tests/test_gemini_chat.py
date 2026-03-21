@@ -29,23 +29,23 @@ class TestAsk:
         gc.client.chats.create.return_value = mock_chat
 
         result = gc.ask(1, "질문", "ko")
-        assert result == "답변입니다"
+        assert result == ["답변입니다"]
 
     def test_no_client(self):
         gc = make_gemini_chat(client=None, allowlist={1: "test"})
         result = gc.ask(1, "질문", "ko")
-        assert result == strings.ask_error_msg
+        assert result == [strings.ask_error_msg]
 
     def test_not_allowed(self):
         gc = make_gemini_chat(allowlist={})
         result = gc.ask(1, "질문", "ko")
-        assert result == strings.ask_not_allowed_msg
+        assert result == [strings.ask_not_allowed_msg]
 
     def test_rate_limited(self):
         gc = make_gemini_chat(allowlist={1: "test"})
         gc.request_counts = {1: [time.time() for _ in range(5)]}
         result = gc.ask(1, "질문", "ko")
-        assert result == strings.ask_rate_limit_msg
+        assert result == [strings.ask_rate_limit_msg]
 
     def test_api_error(self):
         gc = make_gemini_chat(allowlist={1: "test"})
@@ -54,7 +54,7 @@ class TestAsk:
         gc.client.chats.create.return_value = mock_chat
 
         result = gc.ask(1, "질문", "ko")
-        assert result == strings.ask_error_msg
+        assert result == [strings.ask_error_msg]
 
     def test_long_response_split(self):
         gc = make_gemini_chat(allowlist={1: "test"})
@@ -307,11 +307,11 @@ class TestAllowlistPersistence:
 
 class TestSplitResponse:
     def test_short_text(self):
-        assert GeminiChat.split_response("hello") == "hello"
+        assert GeminiChat.split_response("hello") == ["hello"]
 
     def test_exactly_max_len(self):
         text = "a" * 4096
-        assert GeminiChat.split_response(text) == text
+        assert GeminiChat.split_response(text) == [text]
 
     def test_split_at_newline(self):
         text = "a" * 4000 + "\n" + "b" * 200

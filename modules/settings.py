@@ -27,7 +27,11 @@ class Settings:
         with self._lock:
             d = self._data
             for part in module_path.split("."):
+                if not isinstance(d, dict):
+                    return default
                 d = d.get(part, {})
+            if not isinstance(d, dict):
+                return default
             return d.get(key, default)
 
     def set(self, module_path, key, value):

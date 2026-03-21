@@ -158,7 +158,7 @@ class TestAskHandler:
         hub.bot.reply_to.assert_called_once_with(msg, strings.ask_empty_msg)
 
     def test_normal_question(self, hub):
-        hub.gemini_chat.ask.return_value = "답변입니다"
+        hub.gemini_chat.ask.return_value = ["답변입니다"]
         msg = make_message("/ask 질문", user_id=1)
         msg.from_user.language_code = "ko"
         hub.ask_handler(msg)
@@ -172,7 +172,7 @@ class TestAskHandler:
         assert hub.bot.reply_to.call_count == 2
 
     def test_not_allowed(self, hub):
-        hub.gemini_chat.ask.return_value = strings.ask_not_allowed_msg
+        hub.gemini_chat.ask.return_value = [strings.ask_not_allowed_msg]
         msg = make_message("/ask 질문", user_id=1)
         msg.from_user.language_code = "ko"
         hub.ask_handler(msg)

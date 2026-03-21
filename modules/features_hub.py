@@ -129,11 +129,8 @@ class BotFeaturesHub:
         language_code = getattr(message.from_user, "language_code", None)
         self.bot.send_chat_action(message.chat.id, "typing")
         result = self.gemini_chat.ask(message.chat.id, question, language_code)
-        if isinstance(result, list):
-            for chunk in result:
-                self.bot.reply_to(message, chunk)
-        else:
-            self.bot.reply_to(message, result)
+        for chunk in result:
+            self.bot.reply_to(message, chunk)
 
     # Clear chat 대화 초기화
     def clear_chat_handler(self, message):

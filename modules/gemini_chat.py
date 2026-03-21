@@ -1,5 +1,6 @@
 import json
 import os
+import re
 import shutil
 import tempfile
 import threading
@@ -45,13 +46,13 @@ class GeminiChat:
     def ask(self, chat_id, question, language_code):
         with self._lock:
             if not self.client:
-                return strings.ask_error_msg
+                return [strings.ask_error_msg]
 
             if not self.is_chat_allowed(chat_id):
-                return strings.ask_not_allowed_msg
+                return [strings.ask_not_allowed_msg]
 
             if not self.check_rate_limit(chat_id):
-                return strings.ask_rate_limit_msg
+                return [strings.ask_rate_limit_msg]
 
             self._expire_session_if_needed(chat_id)
             managed = self._get_or_create_session(chat_id, language_code)
@@ -61,7 +62,7 @@ class GeminiChat:
                 result = response.text
             except Exception:
                 logger.log_error("Gemini API call failed.")
-                return strings.ask_error_msg
+                return [strings.ask_error_msg]
 
             self._trim_history(chat_id, language_code)
             managed.last_active = time.time()
@@ -108,9 +109,11 @@ class GeminiChat:
                 history=trimmed,
             )
 
+    _LANGUAGE_CODE_PATTERN = re.compile(r"^[a-z]{2}(-[A-Z]{2})?$")
+
     @staticmethod
     def _build_system_prompt(language_code):
-        if language_code:
+        if language_code and GeminiChat._LANGUAGE_CODE_PATTERN.match(language_code):
             return (
                 f"Respond in the language with code '{language_code}'."
                 " If unsure, respond in the same language as the user's question."
@@ -211,7 +214,7 @@ class GeminiChat:
     @staticmethod
     def split_response(text, max_len=4096):
         if len(text) <= max_len:
-            return text
+            return [text]
         chunks = []
         while text:
             if len(text) <= max_len:
