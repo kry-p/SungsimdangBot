@@ -24,7 +24,7 @@ class Logger:
             f"{LOG_DIRECTORY}/logfile_{datetime.datetime.now():%Y%m%d}.log", encoding="utf-8"
         )
         self.timed_file_handler = logging.handlers.TimedRotatingFileHandler(
-            filename="logfile", when="midnight", interval=1, encoding="utf-8"
+            filename=f"{LOG_DIRECTORY}/logfile", when="midnight", interval=1, encoding="utf-8"
         )
         self.timed_file_handler.setFormatter(self.formatter)
         self.timed_file_handler.suffix = "%Y%m%d"

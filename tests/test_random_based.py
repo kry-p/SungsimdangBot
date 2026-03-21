@@ -1,3 +1,6 @@
+import json
+
+from modules.database import RouletteGame
 from modules.random_based import RandomBasedFeatures
 from resources import strings
 
@@ -36,8 +39,10 @@ class TestRussianRoulette:
         feat = RandomBasedFeatures()
         result = feat.russian_roulette(self.CHAT_ID, "/roulette 6 1")
         assert result == strings.roulette_loaded_msg.format(6)
-        assert len(feat.bullet[self.CHAT_ID]) == 6
-        assert feat.bullet[self.CHAT_ID].count(True) == 1
+        game = RouletteGame.get(RouletteGame.chat_id == self.CHAT_ID)
+        bullets = json.loads(game.bullets)
+        assert len(bullets) == 6
+        assert bullets.count(True) == 1
 
     def test_shoot_without_loading(self):
         feat = RandomBasedFeatures()
@@ -59,14 +64,16 @@ class TestRussianRoulette:
         results = [feat.trig_bullet(self.CHAT_ID) for _ in range(3)]
         assert results.count(strings.shot_real_msg) == 1
         assert results.count(strings.shot_blind_msg) == 2
-        # after all exhausted, should return error
+        # after all exhausted, game should be deleted from DB
         assert feat.trig_bullet(self.CHAT_ID) == strings.shot_error_msg
+        assert RouletteGame.get_or_none(RouletteGame.chat_id == self.CHAT_ID) is None
 
     def test_flush_bullet(self):
         feat = RandomBasedFeatures()
         feat.russian_roulette(self.CHAT_ID, "/roulette 3 1")
         result = feat.russian_roulette(self.CHAT_ID, "/roulette 0 0")
         assert result == strings.roulette_flush_msg
+        assert RouletteGame.get_or_none(RouletteGame.chat_id == self.CHAT_ID) is None
 
     def test_bullet_overflow(self):
         feat = RandomBasedFeatures()
@@ -77,10 +84,14 @@ class TestRussianRoulette:
         feat = RandomBasedFeatures()
         feat.russian_roulette(1, "/roulette 6 1")
         feat.russian_roulette(2, "/roulette 3 2")
-        assert len(feat.bullet[1]) == 6
-        assert feat.bullet[1].count(True) == 1
-        assert len(feat.bullet[2]) == 3
-        assert feat.bullet[2].count(True) == 2
+        game1 = RouletteGame.get(RouletteGame.chat_id == 1)
+        game2 = RouletteGame.get(RouletteGame.chat_id == 2)
+        bullets1 = json.loads(game1.bullets)
+        bullets2 = json.loads(game2.bullets)
+        assert len(bullets1) == 6
+        assert bullets1.count(True) == 1
+        assert len(bullets2) == 3
+        assert bullets2.count(True) == 2
 
     def test_shoot_unknown_chat(self):
         feat = RandomBasedFeatures()
