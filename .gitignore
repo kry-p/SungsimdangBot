@@ -204,6 +204,10 @@ logfile.*
 # Data
 data/allowed_chats.json
 data/settings.json
+data/bot.db
+data/bot.db-wal
+data/bot.db-shm
+data/.migrated
 
 # macOS
 .DS_Store
