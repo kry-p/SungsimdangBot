@@ -323,6 +323,59 @@ class TestAdminCallback:
         hub.bot.edit_message_text.assert_called_once()
 
 
+class TestPendingExpiry:
+    @patch("modules.features_hub.config.ADMIN_USER_ID", 100)
+    def test_expired_entries_cleaned(self, hub):
+        hub.pending_actions[1] = {"action": "allow", "chat_id": 10, "name": "old", "timestamp": time.time() - 301}
+        hub.pending_actions[2] = {"action": "deny", "chat_id": 20, "name": "fresh", "timestamp": time.time()}
+        hub._cleanup_expired_pending()
+        assert 1 not in hub.pending_actions
+        assert 2 in hub.pending_actions
+
+    @patch("modules.features_hub.config.ADMIN_USER_ID", 100)
+    def test_all_expired(self, hub):
+        hub.pending_actions[1] = {"action": "allow", "chat_id": 10, "name": "a", "timestamp": time.time() - 400}
+        hub.pending_actions[2] = {"action": "deny", "chat_id": 20, "name": "b", "timestamp": time.time() - 500}
+        hub._cleanup_expired_pending()
+        assert hub.pending_actions == {}
+
+    @patch("modules.features_hub.config.ADMIN_USER_ID", 100)
+    def test_expired_callback_ignored(self, hub):
+        hub.pending_actions[999] = {
+            "action": "allow",
+            "chat_id": 42,
+            "name": "expired",
+            "timestamp": time.time() - 301,
+        }
+        call = MagicMock()
+        call.from_user.id = 100
+        call.data = "allow_confirm:999"
+        hub.handle_admin_callback(call)
+        hub.gemini_chat.allow_chat.assert_not_called()
+
+
+class TestCallbackDataLength:
+    @patch("modules.features_hub.config.ADMIN_USER_ID", 100)
+    def test_long_model_name_skipped(self, hub):
+        long_name = "gemini-" + "x" * 60
+        hub.gemini_chat.list_models.return_value = [long_name, "gemini-2.5-flash"]
+        msg = make_message("/set_model", user_id=100)
+        hub.set_model_handler(msg)
+        call_kwargs = hub.bot.reply_to.call_args
+        keyboard = call_kwargs.kwargs["reply_markup"]
+        button_texts = [btn.text for row in keyboard.keyboard for btn in row]
+        assert long_name not in button_texts
+        assert "gemini-2.5-flash" in button_texts
+
+    @patch("modules.features_hub.config.ADMIN_USER_ID", 100)
+    def test_all_models_too_long(self, hub):
+        long_name = "gemini-" + "x" * 60
+        hub.gemini_chat.list_models.return_value = [long_name]
+        msg = make_message("/set_model", user_id=100)
+        hub.set_model_handler(msg)
+        hub.bot.reply_to.assert_called_with(msg, strings.set_model_error_msg)
+
+
 class TestSetModelHandler:
     @patch("modules.features_hub.config.ADMIN_USER_ID", 100)
     def test_shows_model_list(self, hub):

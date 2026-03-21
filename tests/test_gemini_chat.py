@@ -167,6 +167,32 @@ class TestRateLimit:
         gc.request_counts = {1: [time.time() - 61 for _ in range(5)]}
         assert gc.check_rate_limit(1) is True
 
+    @patch("modules.gemini_chat.config")
+    def test_empty_timestamps_entry_removed(self, mock_config):
+        mock_config.GEMINI_RATE_LIMIT = 5
+        gc = make_gemini_chat()
+        gc.request_counts = {1: [time.time() - 61], 2: [time.time()]}
+        gc.check_rate_limit(1)
+        assert 1 in gc.request_counts  # re-added with new timestamp
+        gc.request_counts = {3: [time.time() - 61]}
+        gc.check_rate_limit(3)
+        # after filtering, empty list is removed then re-added
+        assert 3 in gc.request_counts
+
+    @patch("modules.gemini_chat.config")
+    def test_multiple_chats_partial_expiry(self, mock_config):
+        mock_config.GEMINI_RATE_LIMIT = 5
+        gc = make_gemini_chat()
+        gc.request_counts = {
+            1: [time.time() - 61],
+            2: [time.time()],
+            3: [time.time() - 61],
+        }
+        gc.check_rate_limit(1)
+        gc.check_rate_limit(3)
+        assert 2 in gc.request_counts
+        assert gc.request_counts[2] == gc.request_counts[2]  # untouched
+
 
 class TestAllowlist:
     def test_is_chat_allowed(self):
