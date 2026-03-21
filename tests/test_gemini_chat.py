@@ -1,4 +1,5 @@
 import json
+import threading
 import time
 from unittest.mock import MagicMock, mock_open, patch
 
@@ -9,6 +10,7 @@ from resources import strings
 def make_gemini_chat(**overrides):
     with patch.object(GeminiChat, "__init__", lambda self: None):
         gc = GeminiChat()
+        gc._lock = threading.RLock()
         gc.client = MagicMock()
         gc.model = "gemini-2.5-flash"
         gc.sessions = {}

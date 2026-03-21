@@ -1,6 +1,7 @@
 import json
 import os
 import shutil
+import threading
 import time
 from dataclasses import dataclass, field
 
@@ -28,6 +29,7 @@ class ManagedSession:
 
 class GeminiChat:
     def __init__(self):
+        self._lock = threading.RLock()
         self.client = None
         if config.GEMINI_API_KEY:
             self.client = genai.Client(api_key=config.GEMINI_API_KEY)
@@ -40,32 +42,34 @@ class GeminiChat:
     # --- 핵심 기능 ---
 
     def ask(self, chat_id, question, language_code):
-        if not self.client:
-            return strings.ask_error_msg
+        with self._lock:
+            if not self.client:
+                return strings.ask_error_msg
 
-        if not self.is_chat_allowed(chat_id):
-            return strings.ask_not_allowed_msg
+            if not self.is_chat_allowed(chat_id):
+                return strings.ask_not_allowed_msg
 
-        if not self.check_rate_limit(chat_id):
-            return strings.ask_rate_limit_msg
+            if not self.check_rate_limit(chat_id):
+                return strings.ask_rate_limit_msg
 
-        self._expire_session_if_needed(chat_id)
-        managed = self._get_or_create_session(chat_id, language_code)
+            self._expire_session_if_needed(chat_id)
+            managed = self._get_or_create_session(chat_id, language_code)
 
-        try:
-            response = managed.chat.send_message(question)
-            result = response.text
-        except Exception:
-            logger.log_error("Gemini API call failed.")
-            return strings.ask_error_msg
+            try:
+                response = managed.chat.send_message(question)
+                result = response.text
+            except Exception:
+                logger.log_error("Gemini API call failed.")
+                return strings.ask_error_msg
 
-        self._trim_history(chat_id, language_code)
-        managed.last_active = time.time()
+            self._trim_history(chat_id, language_code)
+            managed.last_active = time.time()
 
-        return self.split_response(result)
+            return self.split_response(result)
 
     def clear_session(self, chat_id):
-        self.sessions.pop(chat_id, None)
+        with self._lock:
+            self.sessions.pop(chat_id, None)
 
     # --- 세션 관리 ---
 
@@ -148,9 +152,10 @@ class GeminiChat:
             return []
 
     def set_model(self, model_name):
-        self.model = model_name
-        self.sessions.clear()
-        Settings().set(SETTINGS_MODULE_PATH, "model", model_name)
+        with self._lock:
+            self.model = model_name
+            self.sessions.clear()
+            Settings().set(SETTINGS_MODULE_PATH, "model", model_name)
 
     # --- 허용 목록 ---
 
@@ -158,12 +163,14 @@ class GeminiChat:
         return chat_id in self.allowlist
 
     def allow_chat(self, chat_id, name=""):
-        self.allowlist[chat_id] = name
-        self._save_allowlist()
+        with self._lock:
+            self.allowlist[chat_id] = name
+            self._save_allowlist()
 
     def deny_chat(self, chat_id):
-        self.allowlist.pop(chat_id, None)
-        self._save_allowlist()
+        with self._lock:
+            self.allowlist.pop(chat_id, None)
+            self._save_allowlist()
 
     def list_allowed_chats(self):
         return sorted(

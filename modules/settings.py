@@ -15,10 +15,11 @@ class Settings:
     _lock = threading.Lock()
 
     def __new__(cls):
-        if cls._instance is None:
-            cls._instance = super().__new__(cls)
-            cls._instance._data = {}
-            cls._instance._load()
+        with cls._lock:
+            if cls._instance is None:
+                cls._instance = super().__new__(cls)
+                cls._instance._data = {}
+                cls._instance._load()
         return cls._instance
 
     def get(self, module_path, key, default=None):

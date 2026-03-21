@@ -2,6 +2,7 @@
 
 import datetime
 import json
+import threading
 import urllib.parse
 
 import requests
@@ -28,6 +29,7 @@ class BotFeaturesHub:
         self.calculator = Calculator()
         self.gemini_chat = GeminiChat()
         self.pending_actions = {}
+        self._pending_lock = threading.Lock()
 
     # Get current river temperature 현재 강물 온도 정보 획득
     def get_temp(self, user_id):
@@ -173,7 +175,8 @@ class BotFeaturesHub:
             reply_markup=keyboard,
         )
         msg_id = sent.message_id
-        self.pending_actions[msg_id] = {"action": "allow", "chat_id": chat_id, "name": name}
+        with self._pending_lock:
+            self.pending_actions[msg_id] = {"action": "allow", "chat_id": chat_id, "name": name}
         self.bot.edit_message_reply_markup(
             sent.chat.id,
             msg_id,
@@ -209,7 +212,8 @@ class BotFeaturesHub:
             reply_markup=keyboard,
         )
         msg_id = sent.message_id
-        self.pending_actions[msg_id] = {"action": "deny", "chat_id": chat_id, "name": name}
+        with self._pending_lock:
+            self.pending_actions[msg_id] = {"action": "deny", "chat_id": chat_id, "name": name}
         self.bot.edit_message_reply_markup(
             sent.chat.id,
             msg_id,
@@ -230,7 +234,8 @@ class BotFeaturesHub:
             )
             return
         msg_id = int(value)
-        pending = self.pending_actions.pop(msg_id, None)
+        with self._pending_lock:
+            pending = self.pending_actions.pop(msg_id, None)
         if not pending:
             return
         chat_id = pending["chat_id"]
