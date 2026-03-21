@@ -1,6 +1,7 @@
 import json
 import os
 import shutil
+import tempfile
 import threading
 import time
 from dataclasses import dataclass, field
@@ -189,7 +190,7 @@ class GeminiChat:
                 self.allowlist = dict.fromkeys(data, "")
         except FileNotFoundError:
             self.allowlist = {}
-        except (json.JSONDecodeError, TypeError):
+        except (json.JSONDecodeError, TypeError, KeyError):
             logger.log_error("Allowlist JSON corrupted, falling back to empty list.")
             backup = path + ".bak"
             shutil.copy2(path, backup)
@@ -197,9 +198,11 @@ class GeminiChat:
 
     def _save_allowlist(self):
         path = config.GEMINI_ALLOWLIST_PATH
-        os.makedirs(os.path.dirname(path), exist_ok=True)
-        with open(path, "w") as f:
-            json.dump(self.list_allowed_chats(), f)
+        dir_path = os.path.dirname(path)
+        os.makedirs(dir_path, exist_ok=True)
+        with tempfile.NamedTemporaryFile("w", dir=dir_path, delete=False, suffix=".tmp") as tmp:
+            json.dump(self.list_allowed_chats(), tmp)
+        os.replace(tmp.name, path)
 
     # --- 응답 분할 ---
 

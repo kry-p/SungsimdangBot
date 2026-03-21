@@ -1,6 +1,7 @@
 import json
 import os
 import shutil
+import tempfile
 import threading
 
 from modules import log
@@ -49,6 +50,8 @@ class Settings:
             self._data = {}
 
     def _save(self):
-        os.makedirs(os.path.dirname(SETTINGS_PATH), exist_ok=True)
-        with open(SETTINGS_PATH, "w") as f:
-            json.dump(self._data, f)
+        dir_path = os.path.dirname(SETTINGS_PATH)
+        os.makedirs(dir_path, exist_ok=True)
+        with tempfile.NamedTemporaryFile("w", dir=dir_path, delete=False, suffix=".tmp") as tmp:
+            json.dump(self._data, tmp)
+        os.replace(tmp.name, SETTINGS_PATH)

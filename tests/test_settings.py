@@ -1,6 +1,5 @@
-import json
 import threading
-from unittest.mock import mock_open, patch
+from unittest.mock import MagicMock, mock_open, patch
 
 from modules.settings import Settings
 
@@ -84,17 +83,24 @@ class TestPersistence:
 
 
 class TestSave:
+    @patch("modules.settings.os.replace")
     @patch("modules.settings.os.makedirs")
-    def test_save_writes_json(self, mock_makedirs):
+    @patch("modules.settings.json.dump")
+    def test_save_writes_json(self, mock_json_dump, mock_makedirs, mock_replace):
         reset_singleton()
         with patch.object(Settings, "_load"):
             s = Settings()
             s._data = {"modules": {"gemini_chat": {"model": "gemini-2.5-pro"}}}
-            m = mock_open()
-            with patch("builtins.open", m):
+            mock_tmp = MagicMock()
+            mock_tmp.__enter__ = MagicMock(return_value=mock_tmp)
+            mock_tmp.__exit__ = MagicMock(return_value=False)
+            mock_tmp.name = "/tmp/test.tmp"
+            with patch("modules.settings.tempfile.NamedTemporaryFile", return_value=mock_tmp):
                 s._save()
-            written = "".join(call.args[0] for call in m().write.call_args_list)
-            assert json.loads(written) == {"modules": {"gemini_chat": {"model": "gemini-2.5-pro"}}}
+            mock_json_dump.assert_called_once()
+            saved_data = mock_json_dump.call_args[0][0]
+            assert saved_data == {"modules": {"gemini_chat": {"model": "gemini-2.5-pro"}}}
+            mock_replace.assert_called_once()
         reset_singleton()
 
 

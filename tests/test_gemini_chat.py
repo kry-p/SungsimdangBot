@@ -1,4 +1,3 @@
-import json
 import threading
 import time
 from unittest.mock import MagicMock, mock_open, patch
@@ -240,17 +239,23 @@ class TestAllowlistPersistence:
         assert gc.allowlist == {}
         mock_copy.assert_called_once_with("data/allowed_chats.json", "data/allowed_chats.json.bak")
 
+    @patch("modules.gemini_chat.os.replace")
     @patch("modules.gemini_chat.os.makedirs")
+    @patch("modules.gemini_chat.json.dump")
     @patch("modules.gemini_chat.config")
-    def test_save(self, mock_config, mock_makedirs):
+    def test_save(self, mock_config, mock_json_dump, mock_makedirs, mock_replace):
         mock_config.GEMINI_ALLOWLIST_PATH = "data/allowed_chats.json"
         gc = make_gemini_chat(allowlist={2: "B", 1: "A"})
-        m = mock_open()
-        with patch("builtins.open", m):
+        mock_tmp = MagicMock()
+        mock_tmp.__enter__ = MagicMock(return_value=mock_tmp)
+        mock_tmp.__exit__ = MagicMock(return_value=False)
+        mock_tmp.name = "/tmp/test.tmp"
+        with patch("modules.gemini_chat.tempfile.NamedTemporaryFile", return_value=mock_tmp):
             gc._save_allowlist()
-        written = m().write.call_args_list
-        saved = "".join(call.args[0] for call in written)
-        assert json.loads(saved) == [{"id": 1, "name": "A"}, {"id": 2, "name": "B"}]
+        mock_json_dump.assert_called_once()
+        saved_data = mock_json_dump.call_args[0][0]
+        assert saved_data == [{"id": 1, "name": "A"}, {"id": 2, "name": "B"}]
+        mock_replace.assert_called_once_with("/tmp/test.tmp", "data/allowed_chats.json")
 
 
 class TestSplitResponse:

@@ -5,6 +5,12 @@ from dotenv import load_dotenv
 # PLEASE be careful about handling API Keys!
 load_dotenv()
 
+
+def _int_env(key, default):
+    value = os.getenv(key, "")
+    return int(value) if value else default
+
+
 # Telegram bot token 텔레그램 봇 토큰
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 # Kakao REST API token 카카오 REST API 토큰
@@ -18,10 +24,10 @@ SEOUL_HANGANG_WATER_TOKEN = os.getenv("SEOUL_HANGANG_WATER_TOKEN", "")
 
 # Gemini API
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
-GEMINI_SESSION_TIMEOUT = int(os.getenv("GEMINI_SESSION_TIMEOUT", "3600"))
-GEMINI_MAX_HISTORY = int(os.getenv("GEMINI_MAX_HISTORY", "20"))
-GEMINI_RATE_LIMIT = int(os.getenv("GEMINI_RATE_LIMIT", "5"))
-ADMIN_USER_ID = int(os.getenv("ADMIN_USER_ID", "0"))
+GEMINI_SESSION_TIMEOUT = _int_env("GEMINI_SESSION_TIMEOUT", 3600)
+GEMINI_MAX_HISTORY = _int_env("GEMINI_MAX_HISTORY", 20)
+GEMINI_RATE_LIMIT = _int_env("GEMINI_RATE_LIMIT", 5)
+ADMIN_USER_ID = _int_env("ADMIN_USER_ID", 0)
 GEMINI_ALLOWLIST_PATH = os.getenv("GEMINI_ALLOWLIST_PATH", "data/allowed_chats.json")
 
 # External endpoints
