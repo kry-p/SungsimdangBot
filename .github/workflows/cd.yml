@@ -61,6 +61,9 @@ jobs:
             KAKAO_TOKEN=${{ secrets.KAKAO_TOKEN }}
             WEATHER_TOKEN=${{ secrets.WEATHER_TOKEN }}
             SEOUL_HANGANG_WATER_TOKEN=${{ secrets.SEOUL_HANGANG_WATER_TOKEN }}
+            GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}
+            ADMIN_USER_ID=${{ secrets.ADMIN_USER_ID }}
             EOF
+            mkdir -p ~/sungsimdangbot/data
             docker compose pull
             docker compose up -d

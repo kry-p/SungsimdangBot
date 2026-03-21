@@ -18,15 +18,41 @@ import telebot
 
 from config import config
 from modules import features_hub, log
+from modules.database import init_db
+from modules.migration import migrate_json_to_db
 from resources import strings
 
 BOT_INTERVAL = 3
 BOT_TIMEOUT = 30
 
 
+# Initialize database
+init_db()
+migrate_json_to_db()
+
 # Initialize bot
 bot = telebot.TeleBot(config.BOT_TOKEN, parse_mode=None)
 bot_features = features_hub.BotFeaturesHub(bot)
+
+# Register bot commands
+bot.set_my_commands(
+    [
+        telebot.types.BotCommand("help", "도움말"),
+        telebot.types.BotCommand("pick", "랜덤 선택"),
+        telebot.types.BotCommand("coin_toss", "동전뒤집기"),
+        telebot.types.BotCommand("roulette", "러시안 룰렛 장전"),
+        telebot.types.BotCommand("shoot", "러시안 룰렛 격발"),
+        telebot.types.BotCommand("flush_bullet", "러시안 룰렛 초기화"),
+        telebot.types.BotCommand("calc", "계산기"),
+        telebot.types.BotCommand("dday", "D-day 계산"),
+        telebot.types.BotCommand("search", "검색"),
+        telebot.types.BotCommand("namu", "나무위키 검색"),
+        telebot.types.BotCommand("ask", "AI 질문"),
+        telebot.types.BotCommand("clear_chat", "AI 대화 초기화"),
+        telebot.types.BotCommand("myid", "내 사용자 ID 확인"),
+        telebot.types.BotCommand("ping", "봇 상태 확인"),
+    ]
+)
 
 # Initialize logger module
 logger = log.Logger()
@@ -57,6 +83,9 @@ query_string = {
     "geolocation": strings.geolocation_help_msg,
     "dday": strings.day_help_msg,
     "calc": strings.calc_help_msg,
+    "ask": strings.ask_help_msg,
+    "search": strings.search_help_msg,
+    "namu": strings.namu_help_msg,
 }
 
 
@@ -72,6 +101,14 @@ class MessageProvider:
 
     def get_ex_callback(query):
         bot.answer_callback_query(query.id)
+        if (
+            query.data
+            and ":" in query.data
+            and query.data.split(":")[0]
+            in ("allow_confirm", "allow_cancel", "deny_confirm", "deny_cancel", "set_model")
+        ):
+            bot_features.handle_admin_callback(query)
+            return
         MessageProvider.send_query_result(query, query.message)
 
     # launch command or show help message
@@ -86,6 +123,11 @@ class MessageProvider:
     @bot.message_handler(commands=["ping"])
     def start_command(message):
         bot.send_message(message.chat.id, strings.working_msg)
+
+    # get user id
+    @bot.message_handler(commands=["myid"])
+    def handle_myid(message):
+        bot.reply_to(message, strings.myid_msg.format(message.from_user.id))
 
     # message for /start
     @bot.message_handler(commands=["start", "help"])
@@ -148,6 +190,36 @@ class MessageProvider:
     @bot.message_handler(commands=["calc"])
     def handle_calc(message):
         bot_features.calculator_handler(message)
+
+    # Gemini Q&A
+    @bot.message_handler(commands=["ask"])
+    def handle_ask(message):
+        bot_features.ask_handler(message)
+
+    @bot.message_handler(commands=["clear_chat"])
+    def handle_clear_chat(message):
+        bot_features.clear_chat_handler(message)
+
+    # Admin commands
+    @bot.message_handler(commands=["allow_chat"])
+    def handle_allow_chat(message):
+        bot_features.allow_chat_handler(message)
+
+    @bot.message_handler(commands=["deny_chat"])
+    def handle_deny_chat(message):
+        bot_features.deny_chat_handler(message)
+
+    @bot.message_handler(commands=["list_chats"])
+    def handle_list_chats(message):
+        bot_features.list_chats_handler(message)
+
+    @bot.message_handler(commands=["set_model"])
+    def handle_set_model(message):
+        bot_features.set_model_handler(message)
+
+    @bot.message_handler(commands=["current_model"])
+    def handle_current_model(message):
+        bot_features.current_model_handler(message)
 
     # D-day
     @bot.message_handler(commands=["dday"])
