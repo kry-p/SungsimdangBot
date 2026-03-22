@@ -33,4 +33,13 @@ ADMIN_USER_ID = _int_env("ADMIN_USER_ID", 0)
 # External endpoints
 NAMUWIKI_BASE_URL = "https://namu.wiki/w/"
 SEARCH_BASE_URL = "https://dapi.kakao.com/v2/search/web?"
+# NOTE: 서울 열린데이터 API는 HTTPS를 지원하지 않음 (2026-03-23 확인)
 SEOUL_HANGANG_WATER_URL = f"http://openapi.seoul.go.kr:8088/{SEOUL_HANGANG_WATER_TOKEN}/json/WPOSInformationTime/1/5/"
+
+REQUIRED_VARS = {"BOT_TOKEN": BOT_TOKEN}
+
+
+def validate():
+    missing = [name for name, value in REQUIRED_VARS.items() if not value]
+    if missing:
+        raise RuntimeError(f"Required environment variables not set: {', '.join(missing)}")

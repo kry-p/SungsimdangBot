@@ -15,7 +15,7 @@ logger = log.Logger()
 NAMUWIKI_BASE_URL = config.NAMUWIKI_BASE_URL
 SEARCH_BASE_URL = config.SEARCH_BASE_URL
 MAP_BASE_URL = "https://dapi.kakao.com/v2/local/geo/coord2address.json?"
-WEATHER_BASE_URL = "http://api.openweathermap.org/data/2.5/weather?"
+WEATHER_BASE_URL = "https://api.openweathermap.org/data/2.5/weather?"
 SUON_REFRESH_INTERVAL = 600  # seconds
 
 

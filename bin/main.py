@@ -9,6 +9,7 @@
 # 정지된 동안에 수신된 메시지를 무시하도록 관련 처리가 필요합니다.
 # 여러 목적으로 활용하기 위한 로그를 작성할 예정입니다.
 import logging
+import signal
 import threading
 from time import sleep
 
@@ -25,6 +26,9 @@ BOT_INTERVAL = 3
 BOT_TIMEOUT = 30
 CLEANUP_INTERVAL = 600
 
+# Validate required environment variables
+config.validate()
+
 # Initialize database
 init_db()
 migrate_json_to_db()
@@ -37,6 +41,18 @@ logger = log.Logger()
 # Register commands and handlers
 register_commands(bot)
 register_handlers(bot, hub, logger)
+
+shutdown_event = threading.Event()
+
+
+def shutdown_handler(signum, frame):
+    logger.log_info("Received shutdown signal, stopping...")
+    bot.stop_polling()
+    shutdown_event.set()
+
+
+signal.signal(signal.SIGTERM, shutdown_handler)
+signal.signal(signal.SIGINT, shutdown_handler)
 
 
 def bot_polling():
@@ -58,7 +74,10 @@ def bot_polling():
 def periodic_cleanup():
     while True:
         sleep(CLEANUP_INTERVAL)
-        hub.gemini_chat.cleanup_expired()
+        try:
+            hub.gemini_chat.cleanup_expired()
+        except Exception as e:
+            logger.log_error(f"Cleanup failed: {e}")
 
 
 polling_thread = threading.Thread(target=bot_polling, daemon=True)
@@ -68,8 +87,4 @@ cleanup_thread = threading.Thread(target=periodic_cleanup, daemon=True)
 cleanup_thread.start()
 
 if __name__ == "__main__":
-    while True:
-        try:
-            sleep(120)
-        except KeyboardInterrupt:
-            break
+    shutdown_event.wait()
