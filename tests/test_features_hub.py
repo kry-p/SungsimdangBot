@@ -364,6 +364,8 @@ class TestCallbackPrefixes:
             "set_model_cancel",
             "set_search",
             "set_search_cancel",
+            "set_prompt",
+            "set_prompt_cancel",
         }
         assert BotFeaturesHub.CALLBACK_PREFIXES == expected
 
@@ -373,6 +375,7 @@ class TestAskSettingsHandler:
     def test_shows_menu(self, hub):
         hub.gemini_chat.model = "gemini-2.5-flash"
         hub.gemini_chat.search_grounding = False
+        hub.gemini_chat.custom_prompt = ""
         msg = make_message("/ask_settings", user_id=100)
         hub.ask_settings_handler(msg)
         hub.bot.reply_to.assert_called_once()
@@ -435,6 +438,67 @@ class TestAskSettingsHandler:
         call.data = "ask_settings:allowlist"
         hub.handle_admin_callback(call)
         hub.bot.edit_message_text.assert_called_once()
+
+    @patch("modules.features_hub.config.ADMIN_USER_ID", 100)
+    def test_prompt_callback(self, hub):
+        hub.gemini_chat.custom_prompt = "Be formal."
+        call = MagicMock()
+        call.from_user.id = 100
+        call.data = "ask_settings:prompt"
+        hub.handle_admin_callback(call)
+        hub.bot.edit_message_text.assert_called_once()
+        call_args = hub.bot.edit_message_text.call_args
+        assert "Be formal." in call_args[0][0]
+        assert "reply_markup" in call_args.kwargs
+
+    @patch("modules.features_hub.config.ADMIN_USER_ID", 100)
+    def test_set_prompt_clear(self, hub):
+        call = MagicMock()
+        call.from_user.id = 100
+        call.data = "set_prompt:clear"
+        hub.handle_admin_callback(call)
+        hub.gemini_chat.set_custom_prompt.assert_called_once_with("")
+
+    @patch("modules.features_hub.config.ADMIN_USER_ID", 100)
+    def test_set_prompt_edit_sends_force_reply(self, hub):
+        call = MagicMock()
+        call.from_user.id = 100
+        call.data = "set_prompt:edit"
+        hub.handle_admin_callback(call)
+        hub.bot.send_message.assert_called_once()
+        call_kwargs = hub.bot.send_message.call_args
+        assert "reply_markup" in call_kwargs.kwargs
+
+    @patch("modules.features_hub.config.ADMIN_USER_ID", 100)
+    def test_handle_prompt_reply(self, hub):
+        hub._pending_prompt = (100, 1, time.time())
+        msg = make_message("Always be polite.", chat_id=1, user_id=100)
+        hub.handle_prompt_reply(msg)
+        hub.gemini_chat.set_custom_prompt.assert_called_once_with("Always be polite.")
+        hub.bot.reply_to.assert_called_once_with(msg, strings.set_prompt_done_msg)
+        assert hub._pending_prompt is None
+
+    @patch("modules.features_hub.config.ADMIN_USER_ID", 100)
+    def test_handle_prompt_reply_wrong_user(self, hub):
+        hub._pending_prompt = (100, 1, time.time())
+        msg = make_message("hack prompt", chat_id=1, user_id=999)
+        hub.handle_prompt_reply(msg)
+        hub.gemini_chat.set_custom_prompt.assert_not_called()
+
+    @patch("modules.features_hub.config.ADMIN_USER_ID", 100)
+    def test_handle_prompt_reply_wrong_chat(self, hub):
+        hub._pending_prompt = (100, 1, time.time())
+        msg = make_message("prompt text", chat_id=999, user_id=100)
+        hub.handle_prompt_reply(msg)
+        hub.gemini_chat.set_custom_prompt.assert_not_called()
+
+    @patch("modules.features_hub.config.ADMIN_USER_ID", 100)
+    def test_handle_prompt_reply_expired(self, hub):
+        hub._pending_prompt = (100, 1, time.time() - 301)
+        msg = make_message("late reply", chat_id=1, user_id=100)
+        hub.handle_prompt_reply(msg)
+        hub.gemini_chat.set_custom_prompt.assert_not_called()
+        assert hub._pending_prompt is None
 
     @patch("modules.features_hub.config.ADMIN_USER_ID", 100)
     def test_cancel_callback(self, hub):

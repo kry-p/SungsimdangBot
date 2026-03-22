@@ -135,6 +135,11 @@ def register_handlers(bot, hub, logger):
     def handle_location(message):
         hub.geolocation_info(message, message.location.latitude, message.location.longitude)
 
+    # ForceReply handler for custom prompt input
+    @bot.message_handler(func=lambda m: m.reply_to_message and m.reply_to_message.text == strings.set_prompt_input_msg)
+    def handle_prompt_reply(message):
+        hub.handle_prompt_reply(message)
+
     # Ordinary message
     @bot.message_handler(content_types=["text"])
     def handle_text(message):

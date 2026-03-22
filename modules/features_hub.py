@@ -38,6 +38,8 @@ class BotFeaturesHub:
             "set_model_cancel",
             "set_search",
             "set_search_cancel",
+            "set_prompt",
+            "set_prompt_cancel",
         }
     )
 
@@ -45,9 +47,12 @@ class BotFeaturesHub:
     def is_admin_callback(data):
         return bool(data and ":" in data and data.split(":")[0] in BotFeaturesHub.CALLBACK_PREFIXES)
 
+    PROMPT_INPUT_TIMEOUT = 300
+
     # init
     def __init__(self, bot):
         self.bot = bot
+        self._pending_prompt = None  # (user_id, chat_id, timestamp)
 
         self.random_based_features = RandomBasedFeatures()
         self.web_manager = WebManager()
@@ -287,7 +292,7 @@ class BotFeaturesHub:
         if action == "ask_settings":
             self._handle_ask_settings_callback(call, value)
             return
-        if action in ("ask_settings_cancel", "set_model_cancel", "set_search_cancel"):
+        if action in ("ask_settings_cancel", "set_model_cancel", "set_search_cancel", "set_prompt_cancel"):
             self.bot.edit_message_text(
                 strings.admin_cancel_msg,
                 call.message.chat.id,
@@ -307,6 +312,21 @@ class BotFeaturesHub:
             self.gemini_chat.set_search_grounding(enabled)
             msg = strings.set_search_enabled_msg if enabled else strings.set_search_disabled_msg
             self.bot.edit_message_text(msg, call.message.chat.id, call.message.message_id)
+            return
+        if action == "set_prompt":
+            if value == "edit":
+                self._pending_prompt = (call.from_user.id, call.message.chat.id, time.time())
+                self.bot.edit_message_text(strings.set_prompt_input_msg, call.message.chat.id, call.message.message_id)
+                self.bot.send_message(
+                    call.message.chat.id,
+                    strings.set_prompt_input_msg,
+                    reply_markup=telebot.types.ForceReply(selective=True),
+                )
+            elif value == "clear":
+                self.gemini_chat.set_custom_prompt("")
+                self.bot.edit_message_text(
+                    strings.set_prompt_cleared_msg, call.message.chat.id, call.message.message_id
+                )
             return
 
         msg_id = int(value)
@@ -363,6 +383,9 @@ class BotFeaturesHub:
             telebot.types.InlineKeyboardButton(strings.ask_settings_search_btn, callback_data="ask_settings:search"),
         )
         keyboard.row(
+            telebot.types.InlineKeyboardButton(strings.ask_settings_prompt_btn, callback_data="ask_settings:prompt"),
+        )
+        keyboard.row(
             telebot.types.InlineKeyboardButton(
                 strings.ask_settings_allowlist_btn, callback_data="ask_settings:allowlist"
             ),
@@ -376,7 +399,10 @@ class BotFeaturesHub:
     def _build_ask_settings_status(self):
         model = self.gemini_chat.model
         search = "활성화" if self.gemini_chat.search_grounding else "비활성화"
-        return strings.ask_settings_msg.format(model=model, search=search)
+        prompt = self.gemini_chat.custom_prompt or "(없음)"
+        if len(prompt) > 50:
+            prompt = prompt[:50] + "..."
+        return strings.ask_settings_msg.format(model=model, search=search, prompt=prompt)
 
     def _handle_ask_settings_callback(self, call, value):
         chat_id = call.message.chat.id
@@ -421,6 +447,38 @@ class BotFeaturesHub:
             else:
                 chat_list = "\n".join(f"{c['id']} ({c['name']})" if c["name"] else str(c["id"]) for c in chats)
                 self.bot.edit_message_text(strings.admin_list_chats_msg.format(chat_list), chat_id, msg_id)
+        elif value == "prompt":
+            current = self.gemini_chat.custom_prompt or "(없음)"
+            keyboard = telebot.types.InlineKeyboardMarkup()
+            keyboard.row(
+                telebot.types.InlineKeyboardButton(
+                    strings.ask_settings_prompt_edit_btn, callback_data="set_prompt:edit"
+                ),
+                telebot.types.InlineKeyboardButton(
+                    strings.ask_settings_prompt_clear_btn, callback_data="set_prompt:clear"
+                ),
+            )
+            keyboard.row(
+                telebot.types.InlineKeyboardButton(strings.admin_cancel_btn, callback_data="set_prompt_cancel:0"),
+            )
+            self.bot.edit_message_text(
+                strings.set_prompt_msg.format(prompt=current), chat_id, msg_id, reply_markup=keyboard
+            )
+
+    # ForceReply 응답 처리
+    def handle_prompt_reply(self, message):
+        if not self._pending_prompt:
+            return
+        user_id, chat_id, timestamp = self._pending_prompt
+        if message.from_user.id != user_id or message.chat.id != chat_id:
+            return
+        if time.time() - timestamp > self.PROMPT_INPUT_TIMEOUT:
+            self._pending_prompt = None
+            return
+        self._pending_prompt = None
+        new_prompt = message.text.strip()
+        self.gemini_chat.set_custom_prompt(new_prompt)
+        self.bot.reply_to(message, strings.set_prompt_done_msg)
 
     # Handling ordinary message 일반 메시지 처리
     def ordinary_message(self, message):
