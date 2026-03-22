@@ -32,8 +32,12 @@ class BotFeaturesHub:
             "allow_cancel",
             "deny_confirm",
             "deny_cancel",
+            "ask_settings",
+            "ask_settings_cancel",
             "set_model",
             "set_model_cancel",
+            "set_search",
+            "set_search_cancel",
         }
     )
 
@@ -278,6 +282,18 @@ class BotFeaturesHub:
             return
         self._cleanup_expired_pending()
         action, value = call.data.split(":", 1)
+
+        # ask_settings 메뉴 콜백
+        if action == "ask_settings":
+            self._handle_ask_settings_callback(call, value)
+            return
+        if action in ("ask_settings_cancel", "set_model_cancel", "set_search_cancel"):
+            self.bot.edit_message_text(
+                strings.admin_cancel_msg,
+                call.message.chat.id,
+                call.message.message_id,
+            )
+            return
         if action == "set_model":
             self.gemini_chat.set_model(value)
             self.bot.edit_message_text(
@@ -286,13 +302,13 @@ class BotFeaturesHub:
                 call.message.message_id,
             )
             return
-        if action == "set_model_cancel":
-            self.bot.edit_message_text(
-                strings.admin_cancel_msg,
-                call.message.chat.id,
-                call.message.message_id,
-            )
+        if action == "set_search":
+            enabled = value == "true"
+            self.gemini_chat.set_search_grounding(enabled)
+            msg = strings.set_search_enabled_msg if enabled else strings.set_search_disabled_msg
+            self.bot.edit_message_text(msg, call.message.chat.id, call.message.message_id)
             return
+
         msg_id = int(value)
         pending = PendingAction.get_or_none(PendingAction.msg_id == msg_id)
         if not pending:
@@ -334,49 +350,77 @@ class BotFeaturesHub:
         )
         return keyboard
 
-    # List chats 허용 목록 조회
-    def list_chats_handler(self, message):
+    # Ask settings AI 질문 설정
+    def ask_settings_handler(self, message):
         if not self.is_admin(message.from_user.id):
             self.bot.reply_to(message, strings.admin_only_msg)
-            return
-        chats = self.gemini_chat.list_allowed_chats()
-        if not chats:
-            self.bot.reply_to(message, strings.admin_list_chats_empty_msg)
-        else:
-            chat_list = "\n".join(f"{c['id']} ({c['name']})" if c["name"] else str(c["id"]) for c in chats)
-            self.bot.reply_to(message, strings.admin_list_chats_msg.format(chat_list))
-
-    # Set model 모델 선택
-    def set_model_handler(self, message):
-        if not self.is_admin(message.from_user.id):
-            self.bot.reply_to(message, strings.admin_only_msg)
-            return
-        models = self.gemini_chat.list_models()
-        if not models:
-            self.bot.reply_to(message, strings.set_model_error_msg)
             return
         keyboard = telebot.types.InlineKeyboardMarkup()
-        for model_name in models:
-            callback_data = f"set_model:{model_name}"
-            if len(callback_data.encode()) > 64:
-                continue
-            keyboard.row(
-                telebot.types.InlineKeyboardButton(model_name, callback_data=callback_data),
-            )
-        if not keyboard.keyboard:
-            self.bot.reply_to(message, strings.set_model_error_msg)
-            return
         keyboard.row(
-            telebot.types.InlineKeyboardButton(strings.admin_cancel_btn, callback_data="set_model_cancel:0"),
+            telebot.types.InlineKeyboardButton(strings.ask_settings_model_btn, callback_data="ask_settings:model"),
         )
-        self.bot.reply_to(message, strings.set_model_msg.format(model=self.gemini_chat.model), reply_markup=keyboard)
+        keyboard.row(
+            telebot.types.InlineKeyboardButton(strings.ask_settings_search_btn, callback_data="ask_settings:search"),
+        )
+        keyboard.row(
+            telebot.types.InlineKeyboardButton(
+                strings.ask_settings_allowlist_btn, callback_data="ask_settings:allowlist"
+            ),
+        )
+        keyboard.row(
+            telebot.types.InlineKeyboardButton(strings.admin_cancel_btn, callback_data="ask_settings_cancel:0"),
+        )
+        status = self._build_ask_settings_status()
+        self.bot.reply_to(message, status, reply_markup=keyboard)
 
-    # Current model 현재 모델 확인
-    def current_model_handler(self, message):
-        if not self.is_admin(message.from_user.id):
-            self.bot.reply_to(message, strings.admin_only_msg)
-            return
-        self.bot.reply_to(message, strings.current_model_msg.format(model=self.gemini_chat.model))
+    def _build_ask_settings_status(self):
+        model = self.gemini_chat.model
+        search = "활성화" if self.gemini_chat.search_grounding else "비활성화"
+        return strings.ask_settings_msg.format(model=model, search=search)
+
+    def _handle_ask_settings_callback(self, call, value):
+        chat_id = call.message.chat.id
+        msg_id = call.message.message_id
+        if value == "model":
+            models = self.gemini_chat.list_models()
+            if not models:
+                self.bot.edit_message_text(strings.set_model_error_msg, chat_id, msg_id)
+                return
+            keyboard = telebot.types.InlineKeyboardMarkup()
+            for model_name in models:
+                callback_data = f"set_model:{model_name}"
+                if len(callback_data.encode()) > 64:
+                    continue
+                keyboard.row(telebot.types.InlineKeyboardButton(model_name, callback_data=callback_data))
+            if not keyboard.keyboard:
+                self.bot.edit_message_text(strings.set_model_error_msg, chat_id, msg_id)
+                return
+            keyboard.row(
+                telebot.types.InlineKeyboardButton(strings.admin_cancel_btn, callback_data="set_model_cancel:0"),
+            )
+            self.bot.edit_message_text(
+                strings.set_model_msg.format(model=self.gemini_chat.model), chat_id, msg_id, reply_markup=keyboard
+            )
+        elif value == "search":
+            status = "활성화" if self.gemini_chat.search_grounding else "비활성화"
+            keyboard = telebot.types.InlineKeyboardMarkup()
+            keyboard.row(
+                telebot.types.InlineKeyboardButton(strings.admin_enable_btn, callback_data="set_search:true"),
+                telebot.types.InlineKeyboardButton(strings.admin_disable_btn, callback_data="set_search:false"),
+            )
+            keyboard.row(
+                telebot.types.InlineKeyboardButton(strings.admin_cancel_btn, callback_data="set_search_cancel:0"),
+            )
+            self.bot.edit_message_text(
+                strings.set_search_msg.format(status=status), chat_id, msg_id, reply_markup=keyboard
+            )
+        elif value == "allowlist":
+            chats = self.gemini_chat.list_allowed_chats()
+            if not chats:
+                self.bot.edit_message_text(strings.admin_list_chats_empty_msg, chat_id, msg_id)
+            else:
+                chat_list = "\n".join(f"{c['id']} ({c['name']})" if c["name"] else str(c["id"]) for c in chats)
+                self.bot.edit_message_text(strings.admin_list_chats_msg.format(chat_list), chat_id, msg_id)
 
     # Handling ordinary message 일반 메시지 처리
     def ordinary_message(self, message):

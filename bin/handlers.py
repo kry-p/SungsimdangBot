@@ -121,17 +121,9 @@ def register_handlers(bot, hub, logger):
     def handle_deny_chat(message):
         hub.deny_chat_handler(message)
 
-    @bot.message_handler(commands=["list_chats"])
-    def handle_list_chats(message):
-        hub.list_chats_handler(message)
-
-    @bot.message_handler(commands=["set_model"])
-    def handle_set_model(message):
-        hub.set_model_handler(message)
-
-    @bot.message_handler(commands=["current_model"])
-    def handle_current_model(message):
-        hub.current_model_handler(message)
+    @bot.message_handler(commands=["ask_settings"])
+    def handle_ask_settings(message):
+        hub.ask_settings_handler(message)
 
     # D-day
     @bot.message_handler(commands=["dday"])

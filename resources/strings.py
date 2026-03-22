@@ -148,11 +148,23 @@ admin_cancel_msg = "취소되었습니다."
 admin_confirm_btn = "확인"
 admin_cancel_btn = "취소"
 
+# /ask_settings message
+ask_settings_msg = "AI 질문 설정\n\n모델: {model}\n웹 검색: {search}"
+ask_settings_model_btn = "모델 변경"
+ask_settings_search_btn = "웹 검색 설정"
+ask_settings_allowlist_btn = "허용 목록 보기"
+
 # model selection message
 set_model_msg = "현재 모델: {model}\n사용할 모델을 선택해주세요."
 set_model_done_msg = "모델이 {model}(으)로 변경되었습니다."
 set_model_error_msg = "모델 목록을 가져올 수 없습니다."
-current_model_msg = "현재 모델: {model}"
+
+# search grounding message
+set_search_msg = "현재 웹 검색: {status}\n변경할 상태를 선택해주세요."
+set_search_enabled_msg = "웹 검색이 활성화되었습니다. AI 응답에 검색 결과가 반영됩니다."
+set_search_disabled_msg = "웹 검색이 비활성화되었습니다."
+admin_enable_btn = "활성화"
+admin_disable_btn = "비활성화"
 
 # user info message
 myid_msg = "사용자 ID: {}"

@@ -33,6 +33,7 @@ class GeminiChat:
         if config.GEMINI_API_KEY:
             self.client = genai.Client(api_key=config.GEMINI_API_KEY)
         self.model = Settings().get(SETTINGS_MODULE_PATH, "model", DEFAULT_MODEL)
+        self.search_grounding = Settings().get(SETTINGS_MODULE_PATH, "search_grounding", "False") == "True"
         self.sessions = {}
         self.request_counts = {}
 
@@ -60,6 +61,7 @@ class GeminiChat:
                 logger.log_error("Gemini API call failed.")
                 return [strings.ask_error_msg]
 
+            result = self._append_grounding_sources(response, result)
             self._trim_history(session_key, language_code)
             managed.last_active = time.time()
 
@@ -76,9 +78,7 @@ class GeminiChat:
         if session_key not in self.sessions:
             chat = self.client.chats.create(
                 model=self.model,
-                config=types.GenerateContentConfig(
-                    system_instruction=self._build_system_prompt(language_code),
-                ),
+                config=self._build_config(language_code),
             )
             self.sessions[session_key] = ManagedSession(chat=chat)
         return self.sessions[session_key]
@@ -90,6 +90,12 @@ class GeminiChat:
             return True
         return False
 
+    def _build_config(self, language_code):
+        config_kwargs = {"system_instruction": self._build_system_prompt(language_code)}
+        if self.search_grounding:
+            config_kwargs["tools"] = [types.Tool(google_search=types.GoogleSearch())]
+        return types.GenerateContentConfig(**config_kwargs)
+
     def _trim_history(self, session_key, language_code):
         managed = self.sessions.get(session_key)
         if not managed:
@@ -100,9 +106,7 @@ class GeminiChat:
             trimmed = history[-max_entries:]
             managed.chat = self.client.chats.create(
                 model=self.model,
-                config=types.GenerateContentConfig(
-                    system_instruction=self._build_system_prompt(language_code),
-                ),
+                config=self._build_config(language_code),
                 history=trimmed,
             )
 
@@ -132,6 +136,21 @@ class GeminiChat:
         self.request_counts[chat_id] = timestamps
         return True
 
+    @staticmethod
+    def _append_grounding_sources(response, text):
+        metadata = getattr(response.candidates[0], "grounding_metadata", None) if response.candidates else None
+        if not metadata:
+            return text
+        chunks = getattr(metadata, "grounding_chunks", None)
+        if not chunks:
+            return text
+        sources = "\n\n참고한 자료"
+        for chunk in chunks:
+            web = getattr(chunk, "web", None)
+            if web:
+                sources += f"\n- [{web.title}]({web.uri})"
+        return text + sources
+
     # --- 모델 관리 ---
 
     def list_models(self):
@@ -159,6 +178,12 @@ class GeminiChat:
             self.model = model_name
             self.sessions.clear()
             Settings().set(SETTINGS_MODULE_PATH, "model", model_name)
+
+    def set_search_grounding(self, enabled):
+        with self._lock:
+            self.search_grounding = enabled
+            self.sessions.clear()
+            Settings().set(SETTINGS_MODULE_PATH, "search_grounding", str(enabled))
 
     # --- 허용 목록 ---
 

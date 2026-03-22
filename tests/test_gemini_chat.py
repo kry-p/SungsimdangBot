@@ -14,6 +14,7 @@ def make_gemini_chat(**overrides):
         gc._lock = threading.RLock()
         gc.client = MagicMock()
         gc.model = "gemini-2.5-flash"
+        gc.search_grounding = False
         gc.sessions = {}
         gc.request_counts = {}
         for k, v in overrides.items():
@@ -28,6 +29,7 @@ class TestAsk:
         gc = make_gemini_chat(allowlist={1: "test"})
         mock_chat = MagicMock()
         mock_chat.send_message.return_value.text = "답변입니다"
+        mock_chat.send_message.return_value.candidates = []
         mock_chat.get_history.return_value = []
         gc.client.chats.create.return_value = mock_chat
 
@@ -64,6 +66,7 @@ class TestAsk:
         long_text = "a" * 5000
         mock_chat = MagicMock()
         mock_chat.send_message.return_value.text = long_text
+        mock_chat.send_message.return_value.candidates = []
         mock_chat.get_history.return_value = []
         gc.client.chats.create.return_value = mock_chat
 
@@ -74,9 +77,11 @@ class TestAsk:
         gc = make_gemini_chat(allowlist={100: "group"})
         mock_chat_a = MagicMock()
         mock_chat_a.send_message.return_value.text = "답변A"
+        mock_chat_a.send_message.return_value.candidates = []
         mock_chat_a.get_history.return_value = []
         mock_chat_b = MagicMock()
         mock_chat_b.send_message.return_value.text = "답변B"
+        mock_chat_b.send_message.return_value.candidates = []
         mock_chat_b.get_history.return_value = []
         gc.client.chats.create.side_effect = [mock_chat_a, mock_chat_b]
 
@@ -250,6 +255,74 @@ class TestAllowlist:
         assert gc.get_chat_name(999) == ""
 
 
+class TestSearchGrounding:
+    def test_ask_with_grounding_metadata(self):
+        gc = make_gemini_chat(allowlist={1: "test"}, search_grounding=True)
+        mock_chat = MagicMock()
+        mock_response = MagicMock()
+        mock_response.text = "답변입니다"
+        mock_chunk = MagicMock()
+        mock_chunk.web.title = "참고 문서"
+        mock_chunk.web.uri = "https://example.com"
+        mock_response.candidates = [MagicMock()]
+        mock_response.candidates[0].grounding_metadata.grounding_chunks = [mock_chunk]
+        mock_chat.send_message.return_value = mock_response
+        mock_chat.get_history.return_value = []
+        gc.client.chats.create.return_value = mock_chat
+
+        result = gc.ask(1, 1, "질문", "ko")
+        assert "참고한 자료" in result[0]
+        assert "[참고 문서](https://example.com)" in result[0]
+
+    def test_ask_without_grounding_metadata(self):
+        gc = make_gemini_chat(allowlist={1: "test"}, search_grounding=True)
+        mock_chat = MagicMock()
+        mock_response = MagicMock()
+        mock_response.text = "답변입니다"
+        mock_response.candidates = [MagicMock()]
+        mock_response.candidates[0].grounding_metadata = None
+        mock_chat.send_message.return_value = mock_response
+        mock_chat.get_history.return_value = []
+        gc.client.chats.create.return_value = mock_chat
+
+        result = gc.ask(1, 1, "질문", "ko")
+        assert result == ["답변입니다"]
+
+    def test_session_created_with_tools_when_enabled(self):
+        gc = make_gemini_chat(allowlist={1: "test"}, search_grounding=True)
+        mock_chat = MagicMock()
+        mock_chat.send_message.return_value.text = "답변"
+        mock_chat.send_message.return_value.candidates = []
+        mock_chat.get_history.return_value = []
+        gc.client.chats.create.return_value = mock_chat
+
+        gc.ask(1, 1, "질문", "ko")
+        config_arg = gc.client.chats.create.call_args.kwargs["config"]
+        assert config_arg.tools is not None
+        assert len(config_arg.tools) == 1
+
+    def test_session_created_without_tools_when_disabled(self):
+        gc = make_gemini_chat(allowlist={1: "test"}, search_grounding=False)
+        mock_chat = MagicMock()
+        mock_chat.send_message.return_value.text = "답변"
+        mock_chat.send_message.return_value.candidates = []
+        mock_chat.get_history.return_value = []
+        gc.client.chats.create.return_value = mock_chat
+
+        gc.ask(1, 1, "질문", "ko")
+        config_arg = gc.client.chats.create.call_args.kwargs["config"]
+        assert config_arg.tools is None
+
+    @patch("modules.gemini_chat.Settings")
+    def test_set_search_grounding(self, mock_settings):
+        gc = make_gemini_chat()
+        gc.sessions = {(1, 1): MagicMock()}
+        gc.set_search_grounding(True)
+        assert gc.search_grounding is True
+        assert gc.sessions == {}
+        mock_settings().set.assert_called_with("modules.gemini_chat", "search_grounding", "True")
+
+
 class TestSplitResponse:
     def test_short_text(self):
         assert GeminiChat.split_response("hello") == ["hello"]
@@ -384,6 +457,7 @@ class TestThreadSafety:
         gc = make_gemini_chat(allowlist={1: "test"})
         mock_chat = MagicMock()
         mock_chat.send_message.return_value.text = "ok"
+        mock_chat.send_message.return_value.candidates = []
         mock_chat.get_history.return_value = []
         gc.client.chats.create.return_value = mock_chat
 
@@ -405,6 +479,7 @@ class TestThreadSafety:
         gc = make_gemini_chat(allowlist={1: "test"})
         mock_chat = MagicMock()
         mock_chat.send_message.return_value.text = "ok"
+        mock_chat.send_message.return_value.candidates = []
         mock_chat.get_history.return_value = []
         gc.client.chats.create.return_value = mock_chat
 
@@ -436,6 +511,7 @@ class TestThreadSafety:
         gc = make_gemini_chat(allowlist={1: "test"})
         mock_chat = MagicMock()
         mock_chat.send_message.return_value.text = "ok"
+        mock_chat.send_message.return_value.candidates = []
         mock_chat.get_history.return_value = []
         gc.client.chats.create.return_value = mock_chat
 
