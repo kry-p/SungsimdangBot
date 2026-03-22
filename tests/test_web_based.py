@@ -3,14 +3,11 @@ import json
 import urllib.parse
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 from modules.web_based import WebManager
 from resources import strings
-
-
-def make_message(text):
-    msg = MagicMock()
-    msg.text = text
-    return msg
+from tests.conftest import make_message
 
 
 class TestWebManagerInit:
@@ -213,6 +210,43 @@ class TestNamuwikiSearchUrlMismatch:
             assert "https://namu.wiki/w/different_page" in result
             assert "Different Page" in result
             assert "content here" in result
+
+
+class TestGeolocationInfo:
+    @patch("modules.web_based.config.WEATHER_TOKEN", "test_weather")
+    @patch("modules.web_based.config.KAKAO_TOKEN", "test_kakao")
+    @patch("modules.web_based.requests.get")
+    def test_success(self, mock_get):
+        map_response = MagicMock()
+        map_response.text = json.dumps({"documents": [{"address": {"address_name": "서울특별시 중구"}}]})
+
+        weather_response = MagicMock()
+        weather_response.text = json.dumps(
+            {
+                "weather": [{"description": "맑음"}],
+                "main": {"temp": 293.15, "feels_like": 291.15, "humidity": 50},
+            }
+        )
+
+        mock_get.side_effect = [map_response, weather_response]
+
+        with patch.object(WebManager, "__init__", lambda self: None):
+            wm = WebManager()
+            result = wm.geolocation_info(37.5, 127.0)
+            assert "서울특별시 중구" in result
+            assert "맑음" in result
+            assert "37.5" in result
+
+    @patch("modules.web_based.config.WEATHER_TOKEN", "test_weather")
+    @patch("modules.web_based.config.KAKAO_TOKEN", "test_kakao")
+    @patch("modules.web_based.requests.get")
+    def test_api_error(self, mock_get):
+        mock_get.side_effect = ConnectionError("connection error")
+
+        with patch.object(WebManager, "__init__", lambda self: None):
+            wm = WebManager()
+            with pytest.raises(ConnectionError):
+                wm.geolocation_info(37.5, 127.0)
 
 
 class TestProvideSuonV2:

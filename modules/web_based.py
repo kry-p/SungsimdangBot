@@ -1,12 +1,12 @@
 import datetime
 import json
-import re
 import urllib.parse
 
 import requests
 
 from config import config
 from modules import log
+from modules.utils import extract_command_args, strip_html_tags
 from resources import strings
 
 # Initialize logger module
@@ -14,6 +14,8 @@ logger = log.Logger()
 
 NAMUWIKI_BASE_URL = config.NAMUWIKI_BASE_URL
 SEARCH_BASE_URL = config.SEARCH_BASE_URL
+MAP_BASE_URL = "https://dapi.kakao.com/v2/local/geo/coord2address.json?"
+WEATHER_BASE_URL = "https://api.openweathermap.org/data/2.5/weather?"
 SUON_REFRESH_INTERVAL = 600  # seconds
 
 
@@ -52,13 +54,7 @@ class WebManager:
 
     # Search from Daum and returns result by JSON
     def daum_search(self, message, site):
-        command = message.text.split()
-        keyword = ""
-        for i in range(1, len(command)):
-            if i < len(command) - 1:
-                keyword += command[i] + " "
-            else:
-                keyword += command[i]
+        keyword = extract_command_args(message.text)
 
         # Sends request
         search_args = {"query": keyword if site is None else keyword + " site:" + site}
@@ -79,14 +75,7 @@ class WebManager:
 
     # Search from Namu.wiki
     def namuwiki_search(self, message):
-        command = message.text.split()
-        keyword = ""
-        for i in range(1, len(command)):
-            if i < len(command) - 1:
-                keyword += command[i] + " "
-            else:
-                keyword += command[i]
-
+        keyword = extract_command_args(message.text)
         url = NAMUWIKI_BASE_URL + urllib.parse.quote(keyword)
 
         documents = self.daum_search(message, "namu.wiki")["documents"]
@@ -97,10 +86,10 @@ class WebManager:
         result_contents = result["contents"]
         result_url = result["url"]
 
-        text = re.sub("<.+?>", "", result_contents, count=0, flags=re.IGNORECASE | re.DOTALL)
+        text = strip_html_tags(result_contents)
 
         if result_url != url:
-            result_title = re.sub("<.+?>", "", result["title"], count=0, flags=re.IGNORECASE | re.DOTALL)
+            result_title = strip_html_tags(result["title"])
             return (
                 strings.search_mismatch_msg.format(keyword=keyword)
                 + "["
@@ -111,7 +100,33 @@ class WebManager:
                 + text
             )
         else:
-            return "[" + keyword + " - 나무위키](" + url + ")\n\n" + text
+            return strings.namu_result_msg.format(keyword=keyword, url=url, text=text)
+
+    # Geolocation information
+    def geolocation_info(self, latitude, longitude):
+        map_args = {"x": longitude, "y": latitude}
+        map_url = MAP_BASE_URL + urllib.parse.urlencode(map_args)
+        map_headers = {"Authorization": "KakaoAK " + config.KAKAO_TOKEN}
+        map_request = requests.get(map_url, headers=map_headers, timeout=10)
+
+        weather_args = {"lang": "kr", "appid": config.WEATHER_TOKEN, "lat": latitude, "lon": longitude}
+        weather_url = WEATHER_BASE_URL + urllib.parse.urlencode(weather_args)
+        weather_request = requests.get(weather_url, timeout=10)
+        weather_json = json.loads(weather_request.text)
+
+        weather = weather_json["weather"][0]["description"]
+        temp = str(round(weather_json["main"]["temp"] - 273.15)) + "°C"
+        feels_temp = str(round(weather_json["main"]["feels_like"] - 273.15)) + "°C"
+        humidity = str(round(weather_json["main"]["humidity"])) + "%"
+
+        weather_result = strings.geolocation_weather_msg.format(
+            weather=weather, temp=temp, feels_temp=feels_temp, humidity=humidity
+        )
+
+        map_location = json.loads(map_request.text)["documents"][0]["address"]["address_name"]
+        geo_location = strings.geolocation_coords_msg.format(latitude=latitude, longitude=longitude)
+
+        return geo_location + "\n" + map_location + "\n\n" + weather_result
 
     # Provide temperature data to other methods (V2, 한강으로 고정)
     def provide_suon_v2(self):

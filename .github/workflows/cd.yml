@@ -90,5 +90,6 @@ jobs:
             ADMIN_USER_ID=${{ secrets.ADMIN_USER_ID }}
             EOF
             mkdir -p ~/sungsimdangbot/data
+            chown -R 1000:1000 ~/sungsimdangbot/data
             docker compose pull
             docker compose up -d

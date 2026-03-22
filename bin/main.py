@@ -9,22 +9,25 @@
 # 정지된 동안에 수신된 메시지를 무시하도록 관련 처리가 필요합니다.
 # 여러 목적으로 활용하기 위한 로그를 작성할 예정입니다.
 import logging
-import logging.handlers
-import re
+import signal
 import threading
 from time import sleep
 
 import telebot
 
+from bin.handlers import register_commands, register_handlers
 from config import config
-from modules import features_hub, log
+from modules import log
 from modules.database import init_db
+from modules.features_hub import BotFeaturesHub
 from modules.migration import migrate_json_to_db
-from resources import strings
 
 BOT_INTERVAL = 3
 BOT_TIMEOUT = 30
+CLEANUP_INTERVAL = 600
 
+# Validate required environment variables
+config.validate()
 
 # Initialize database
 init_db()
@@ -32,30 +35,24 @@ migrate_json_to_db()
 
 # Initialize bot
 bot = telebot.TeleBot(config.BOT_TOKEN, parse_mode=None)
-bot_features = features_hub.BotFeaturesHub(bot)
-
-# Register bot commands
-bot.set_my_commands(
-    [
-        telebot.types.BotCommand("help", "도움말"),
-        telebot.types.BotCommand("pick", "랜덤 선택"),
-        telebot.types.BotCommand("coin_toss", "동전뒤집기"),
-        telebot.types.BotCommand("roulette", "러시안 룰렛 장전"),
-        telebot.types.BotCommand("shoot", "러시안 룰렛 격발"),
-        telebot.types.BotCommand("flush_bullet", "러시안 룰렛 초기화"),
-        telebot.types.BotCommand("calc", "계산기"),
-        telebot.types.BotCommand("dday", "D-day 계산"),
-        telebot.types.BotCommand("search", "검색"),
-        telebot.types.BotCommand("namu", "나무위키 검색"),
-        telebot.types.BotCommand("ask", "AI 질문"),
-        telebot.types.BotCommand("clear_chat", "AI 대화 초기화"),
-        telebot.types.BotCommand("myid", "내 사용자 ID 확인"),
-        telebot.types.BotCommand("ping", "봇 상태 확인"),
-    ]
-)
-
-# Initialize logger module
+hub = BotFeaturesHub(bot)
 logger = log.Logger()
+
+# Register commands and handlers
+register_commands(bot)
+register_handlers(bot, hub, logger)
+
+shutdown_event = threading.Event()
+
+
+def shutdown_handler(signum, frame):
+    logger.log_info("Received shutdown signal, stopping...")
+    bot.stop_polling()
+    shutdown_event.set()
+
+
+signal.signal(signal.SIGTERM, shutdown_handler)
+signal.signal(signal.SIGINT, shutdown_handler)
 
 
 def bot_polling():
@@ -64,194 +61,30 @@ def bot_polling():
         try:
             logger.log_info("Bot instance is running")
             bot.polling(none_stop=True, interval=BOT_INTERVAL, timeout=BOT_TIMEOUT)
-        except Exception as ex:  # Error in polling
+        except Exception as ex:
             logger.log_error(f"Polling has failed. Retry in {BOT_TIMEOUT} sec.\n Error : {ex}\n")
             bot.stop_polling()
             sleep(BOT_TIMEOUT)
-        else:  # Clean exit
+        else:
             bot.stop_polling()
             logger.log_info("Polling stopped")
-            break  # End loop
+            break
 
 
-# Callback query strings
-query_string = {
-    "get_nearby_temp": strings.temperature_help_msg,
-    "random_picker": strings.picker_help_msg,
-    "russian_roulette": strings.roulette_help_msg,
-    "coin_toss": strings.coin_toss_help_msg,
-    "geolocation": strings.geolocation_help_msg,
-    "dday": strings.day_help_msg,
-    "calc": strings.calc_help_msg,
-    "ask": strings.ask_help_msg,
-    "search": strings.search_help_msg,
-    "namu": strings.namu_help_msg,
-}
-
-
-# Message handler 메시지 처리
-class MessageProvider:
-    def __init__(self):
-        pass
-
-    # callback query handler
-    @bot.callback_query_handler(func=lambda call: True)
-    def iq_callback(query):
-        MessageProvider.get_ex_callback(query)
-
-    def get_ex_callback(query):
-        bot.answer_callback_query(query.id)
-        if (
-            query.data
-            and ":" in query.data
-            and query.data.split(":")[0]
-            in ("allow_confirm", "allow_cancel", "deny_confirm", "deny_cancel", "set_model")
-        ):
-            bot_features.handle_admin_callback(query)
-            return
-        MessageProvider.send_query_result(query, query.message)
-
-    # launch command or show help message
-    def send_query_result(query, message):
-        result = query_string.get(query.data)
-        if result is None:
-            return
-        bot.send_chat_action(message.chat.id, "typing")
-        bot.send_message(message.chat.id, result)
-
-    # check bot status
-    @bot.message_handler(commands=["ping"])
-    def start_command(message):
-        bot.send_message(message.chat.id, strings.working_msg)
-
-    # get user id
-    @bot.message_handler(commands=["myid"])
-    def handle_myid(message):
-        bot.reply_to(message, strings.myid_msg.format(message.from_user.id))
-
-    # message for /start
-    @bot.message_handler(commands=["start", "help"])
-    def exchange_command(message):
-        bot.send_message(message.chat.id, strings.start_msg, reply_markup=strings.main_keyboard)
-
-    # randomly select one word between 1 or more words
-    @bot.message_handler(commands=["pick"])
-    def handle_pick(message):
-        bot.send_message(message.chat.id, bot_features.random_based_features.picker(message.text))
-
-    # randomly select coin heads or tails
-    @bot.message_handler(commands=["coin_toss"])
-    def handle_coin_toss(message):
-        bot.send_message(message.chat.id, bot_features.random_based_features.coin_toss())
-
-    # Russian roulette
-    @bot.message_handler(commands=["roulette"])
-    def handle_roulette(message):
-        bot.send_message(
-            message.chat.id, bot_features.random_based_features.russian_roulette(message.chat.id, message.text)
-        )
-
-    @bot.message_handler(commands=["shoot"])
-    def handle_shoot(message):
-        bot.send_message(message.chat.id, bot_features.random_based_features.trig_bullet(message.chat.id))
-
-    @bot.message_handler(commands=["flush_bullet"])
-    def handle_flush_bullet(message):
-        bot.send_message(
-            message.chat.id, bot_features.random_based_features.russian_roulette(message.chat.id, "roulette 0 0")
-        )
-
-    @bot.message_handler(commands=["search"])
-    def handle_search(message):
+def periodic_cleanup():
+    while True:
+        sleep(CLEANUP_INTERVAL)
         try:
-            result = bot_features.web_manager.daum_search(message, None)
-            result_contents = ""
-
-            for doc in result["documents"][:5]:
-                result_contents += re.sub(
-                    "<.+?>",
-                    "",
-                    "*" + doc["title"] + "*\n" + doc["contents"] + "\n" + "[더 보기](" + doc["url"] + ")\n\n",
-                    count=0,
-                    flags=re.IGNORECASE | re.DOTALL,
-                )
-            text = strings.search_result_header_msg + re.sub(
-                "<.+?>", "", result_contents, count=0, flags=re.IGNORECASE | re.DOTALL
-            )
-            bot.reply_to(message, text, parse_mode="Markdown")
-        except Exception:
-            bot.reply_to(message, strings.search_error_msg)
-
-    @bot.message_handler(commands=["namu"])
-    def handle_namu(message):
-        bot.reply_to(message, bot_features.web_manager.namuwiki_search(message), parse_mode="Markdown")
-
-    # calculator
-    @bot.message_handler(commands=["calc"])
-    def handle_calc(message):
-        bot_features.calculator_handler(message)
-
-    # Gemini Q&A
-    @bot.message_handler(commands=["ask"])
-    def handle_ask(message):
-        bot_features.ask_handler(message)
-
-    @bot.message_handler(commands=["clear_chat"])
-    def handle_clear_chat(message):
-        bot_features.clear_chat_handler(message)
-
-    # Admin commands
-    @bot.message_handler(commands=["allow_chat"])
-    def handle_allow_chat(message):
-        bot_features.allow_chat_handler(message)
-
-    @bot.message_handler(commands=["deny_chat"])
-    def handle_deny_chat(message):
-        bot_features.deny_chat_handler(message)
-
-    @bot.message_handler(commands=["list_chats"])
-    def handle_list_chats(message):
-        bot_features.list_chats_handler(message)
-
-    @bot.message_handler(commands=["set_model"])
-    def handle_set_model(message):
-        bot_features.set_model_handler(message)
-
-    @bot.message_handler(commands=["current_model"])
-    def handle_current_model(message):
-        bot_features.current_model_handler(message)
-
-    # D-day
-    @bot.message_handler(commands=["dday"])
-    def handle_dday(message):
-        bot_features.d_day(message)
-
-    # location
-    @bot.message_handler(content_types=["location"])
-    def handle_location(message):
-        # latitude : 위도, longitude : 경도
-        bot_features.geolocation_info(message, message.location.latitude, message.location.longitude)
-
-    # ordinary message handler
-    @bot.message_handler(content_types=["text"])
-    def handle_text(message):
-        # check if message is command
-        if message.text.startswith("/"):
-            return
-        else:
-            logger.log_info("Ordinary message handler working...")
-            logger.log_info(f"Message: {message}")
-            bot_features.ordinary_message(message)
+            hub.gemini_chat.cleanup_expired()
+        except Exception as e:
+            logger.log_error(f"Cleanup failed: {e}")
 
 
-polling_thread = threading.Thread(target=bot_polling)
-polling_thread.daemon = True
+polling_thread = threading.Thread(target=bot_polling, daemon=True)
 polling_thread.start()
 
-# Keep main program running while bot runs threaded 봇이 스레드에서 작동될 동안 메인 프로그램을 유지
+cleanup_thread = threading.Thread(target=periodic_cleanup, daemon=True)
+cleanup_thread.start()
+
 if __name__ == "__main__":
-    while True:
-        try:
-            sleep(120)
-        except KeyboardInterrupt:
-            break
+    shutdown_event.wait()

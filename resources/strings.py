@@ -129,6 +129,8 @@ ask_help_msg = (
 )
 ask_empty_msg = "질문을 입력해 주세요.\n\n예) /ask 오늘 날씨 어때?"
 ask_error_msg = "AI 응답을 가져오는 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요."
+ask_timeout_msg = "AI 응답 시간이 초과되었습니다. 잠시 후 다시 시도해 주세요."
+ask_client_error_msg = "AI 서비스 요청이 거부되었습니다. 잠시 후 다시 시도해 주세요."
 ask_not_allowed_msg = "이 채팅에서는 AI 질문 기능을 사용할 수 없습니다."
 ask_rate_limit_msg = "요청이 너무 많습니다. 잠시 후 다시 시도해 주세요."
 ask_clear_msg = "대화 기록이 초기화되었습니다."
@@ -148,11 +150,48 @@ admin_cancel_msg = "취소되었습니다."
 admin_confirm_btn = "확인"
 admin_cancel_btn = "취소"
 
+# /ask_settings message
+ask_settings_msg = "AI 질문 설정\n\n모델: {model}\n웹 검색: {search}\n추가 지시: {prompt}"
+ask_settings_model_btn = "모델 변경"
+ask_settings_search_btn = "웹 검색 설정"
+ask_settings_allowlist_btn = "허용 목록 보기"
+
 # model selection message
 set_model_msg = "현재 모델: {model}\n사용할 모델을 선택해주세요."
 set_model_done_msg = "모델이 {model}(으)로 변경되었습니다."
 set_model_error_msg = "모델 목록을 가져올 수 없습니다."
-current_model_msg = "현재 모델: {model}"
+
+# search grounding message
+set_search_msg = "현재 웹 검색: {status}\n변경할 상태를 선택해주세요."
+set_search_enabled_msg = "웹 검색이 활성화되었습니다. AI 응답에 검색 결과가 반영됩니다."
+set_search_disabled_msg = "웹 검색이 비활성화되었습니다."
+admin_enable_btn = "활성화"
+admin_disable_btn = "비활성화"
+
+# custom prompt message
+ask_settings_prompt_btn = "추가 지시 수정"
+ask_settings_prompt_edit_btn = "수정"
+ask_settings_prompt_clear_btn = "초기화"
+set_prompt_msg = "현재 추가 지시:\n{prompt}"
+set_prompt_input_msg = "새로운 추가 지시를 입력해주세요."
+set_prompt_done_msg = "추가 지시가 저장되었습니다. 새 대화부터 적용됩니다."
+set_prompt_cleared_msg = "추가 지시가 초기화되었습니다."
+
+# status labels
+status_enabled = "활성화"
+status_disabled = "비활성화"
+status_empty = "(없음)"
+
+# geolocation format
+geolocation_weather_msg = "날씨 {weather}, 기온 {temp}, 체감온도 {feels_temp}, 습도 {humidity}"
+geolocation_coords_msg = "위도 : {latitude}, 경도 : {longitude}"
+
+# search result format
+search_more_link_msg = "더 보기"
+namu_result_msg = "[{keyword} - 나무위키]({url})\n\n{text}"
+
+# grounding sources label
+grounding_sources_label = "\n\n참고한 자료"
 
 # user info message
 myid_msg = "사용자 ID: {}"
