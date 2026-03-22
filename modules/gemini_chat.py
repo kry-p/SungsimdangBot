@@ -177,7 +177,7 @@ class GeminiChat:
         chunks = getattr(metadata, "grounding_chunks", None)
         if not chunks:
             return text
-        sources = "\n\n참고한 자료"
+        sources = strings.grounding_sources_label
         for chunk in chunks:
             web = getattr(chunk, "web", None)
             if web:

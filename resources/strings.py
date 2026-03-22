@@ -177,6 +177,22 @@ set_prompt_input_msg = "새로운 추가 지시를 입력해주세요."
 set_prompt_done_msg = "추가 지시가 저장되었습니다. 새 대화부터 적용됩니다."
 set_prompt_cleared_msg = "추가 지시가 초기화되었습니다."
 
+# status labels
+status_enabled = "활성화"
+status_disabled = "비활성화"
+status_empty = "(없음)"
+
+# geolocation format
+geolocation_weather_msg = "날씨 {weather}, 기온 {temp}, 체감온도 {feels_temp}, 습도 {humidity}"
+geolocation_coords_msg = "위도 : {latitude}, 경도 : {longitude}"
+
+# search result format
+search_more_link_msg = "더 보기"
+namu_result_msg = "[{keyword} - 나무위키]({url})\n\n{text}"
+
+# grounding sources label
+grounding_sources_label = "\n\n참고한 자료"
+
 # user info message
 myid_msg = "사용자 ID: {}"
 

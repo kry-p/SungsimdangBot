@@ -104,9 +104,8 @@ class BotFeaturesHub:
             result_contents = ""
 
             for doc in result["documents"][:5]:
-                result_contents += strip_html_tags(
-                    "*" + doc["title"] + "*\n" + doc["contents"] + "\n" + "[더 보기](" + doc["url"] + ")\n\n"
-                )
+                link = f"[{strings.search_more_link_msg}]({doc['url']})"
+                result_contents += strip_html_tags(f"*{doc['title']}*\n{doc['contents']}\n{link}\n\n")
             text = strings.search_result_header_msg + strip_html_tags(result_contents)
             self.bot.reply_to(message, text, parse_mode="Markdown")
         except Exception:

@@ -100,7 +100,7 @@ class WebManager:
                 + text
             )
         else:
-            return "[" + keyword + " - 나무위키](" + url + ")\n\n" + text
+            return strings.namu_result_msg.format(keyword=keyword, url=url, text=text)
 
     # Geolocation information
     def geolocation_info(self, latitude, longitude):
@@ -119,12 +119,12 @@ class WebManager:
         feels_temp = str(round(weather_json["main"]["feels_like"] - 273.15)) + "°C"
         humidity = str(round(weather_json["main"]["humidity"])) + "%"
 
-        weather_result = (
-            "날씨 " + weather + ", " + "기온 " + temp + ", " + "체감온도 " + feels_temp + ", " + "습도 " + humidity
+        weather_result = strings.geolocation_weather_msg.format(
+            weather=weather, temp=temp, feels_temp=feels_temp, humidity=humidity
         )
 
         map_location = json.loads(map_request.text)["documents"][0]["address"]["address_name"]
-        geo_location = "위도 : " + str(latitude) + ", 경도 : " + str(longitude)
+        geo_location = strings.geolocation_coords_msg.format(latitude=latitude, longitude=longitude)
 
         return geo_location + "\n" + map_location + "\n\n" + weather_result
 

@@ -223,8 +223,8 @@ class AdminManager:
 
     def _build_ask_settings_status(self):
         model = self.gemini_chat.model
-        search = "활성화" if self.gemini_chat.search_grounding else "비활성화"
-        prompt = self.gemini_chat.custom_prompt or "(없음)"
+        search = strings.status_enabled if self.gemini_chat.search_grounding else strings.status_disabled
+        prompt = self.gemini_chat.custom_prompt or strings.status_empty
         if len(prompt) > 50:
             prompt = prompt[:50] + "..."
         return strings.ask_settings_msg.format(model=model, search=search, prompt=prompt)
@@ -261,7 +261,7 @@ class AdminManager:
         )
 
     def _show_search_toggle(self, chat_id, msg_id):
-        status = "활성화" if self.gemini_chat.search_grounding else "비활성화"
+        status = strings.status_enabled if self.gemini_chat.search_grounding else strings.status_disabled
         keyboard = telebot.types.InlineKeyboardMarkup()
         keyboard.row(
             telebot.types.InlineKeyboardButton(strings.admin_enable_btn, callback_data="set_search:true"),
@@ -281,7 +281,7 @@ class AdminManager:
             self.bot.edit_message_text(strings.admin_list_chats_msg.format(chat_list), chat_id, msg_id)
 
     def _show_prompt_settings(self, chat_id, msg_id):
-        current = self.gemini_chat.custom_prompt or "(없음)"
+        current = self.gemini_chat.custom_prompt or strings.status_empty
         keyboard = telebot.types.InlineKeyboardMarkup()
         keyboard.row(
             telebot.types.InlineKeyboardButton(strings.ask_settings_prompt_edit_btn, callback_data="set_prompt:edit"),
