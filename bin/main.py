@@ -96,17 +96,9 @@ class MessageProvider:
 
     # callback query handler
     @bot.callback_query_handler(func=lambda call: True)
-    def iq_callback(query):
-        MessageProvider.get_ex_callback(query)
-
-    def get_ex_callback(query):
+    def handle_callback(query):
         bot.answer_callback_query(query.id)
-        if (
-            query.data
-            and ":" in query.data
-            and query.data.split(":")[0]
-            in ("allow_confirm", "allow_cancel", "deny_confirm", "deny_cancel", "set_model", "set_model_cancel")
-        ):
+        if features_hub.BotFeaturesHub.is_admin_callback(query.data):
             bot_features.handle_admin_callback(query)
             return
         MessageProvider.send_query_result(query, query.message)

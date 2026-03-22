@@ -21,6 +21,21 @@ WEATHER_BASE_URL = "http://api.openweathermap.org/data/2.5/weather?"
 
 
 class BotFeaturesHub:
+    CALLBACK_PREFIXES = frozenset(
+        {
+            "allow_confirm",
+            "allow_cancel",
+            "deny_confirm",
+            "deny_cancel",
+            "set_model",
+            "set_model_cancel",
+        }
+    )
+
+    @staticmethod
+    def is_admin_callback(data):
+        return bool(data and ":" in data and data.split(":")[0] in BotFeaturesHub.CALLBACK_PREFIXES)
+
     # init
     def __init__(self, bot):
         self.bot = bot

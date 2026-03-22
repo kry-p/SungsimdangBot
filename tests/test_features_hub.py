@@ -408,6 +408,12 @@ class TestCurrentModelHandler:
         hub.bot.reply_to.assert_called_once_with(msg, strings.admin_only_msg)
 
 
+class TestCallbackPrefixes:
+    def test_all_handled_actions_registered(self):
+        expected = {"allow_confirm", "allow_cancel", "deny_confirm", "deny_cancel", "set_model", "set_model_cancel"}
+        assert BotFeaturesHub.CALLBACK_PREFIXES == expected
+
+
 class TestListChatsHandler:
     @patch("modules.features_hub.config.ADMIN_USER_ID", 100)
     def test_admin_with_chats(self, hub):
