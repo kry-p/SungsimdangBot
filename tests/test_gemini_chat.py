@@ -59,7 +59,7 @@ class TestAsk:
         result = gc.ask(1, 1, "질문", "ko")
         assert result == [strings.ask_error_msg]
 
-    def test_long_response_split(self):
+    def test_long_response_not_split(self):
         gc = make_gemini_chat(allowlist={1: "test"})
         long_text = "a" * 5000
         mock_chat = MagicMock()
@@ -68,9 +68,7 @@ class TestAsk:
         gc.client.chats.create.return_value = mock_chat
 
         result = gc.ask(1, 1, "질문", "ko")
-        assert isinstance(result, list)
-        assert all(len(chunk) <= 4096 for chunk in result)
-        assert "".join(result) == long_text
+        assert result == [long_text]
 
     def test_separate_sessions_per_user_in_group(self):
         gc = make_gemini_chat(allowlist={100: "group"})

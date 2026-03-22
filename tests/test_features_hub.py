@@ -163,21 +163,36 @@ class TestAskHandler:
         msg.from_user.language_code = "ko"
         hub.ask_handler(msg)
         hub.gemini_chat.ask.assert_called_once_with(1, 1, "질문", "ko")
-        hub.bot.reply_to.assert_called_once_with(msg, "답변입니다")
+        hub.bot.reply_to.assert_called_once()
+        call_kwargs = hub.bot.reply_to.call_args
+        assert call_kwargs[0][1] == "답변입니다"
+        assert "entities" in call_kwargs.kwargs
 
-    def test_split_response(self, hub):
-        hub.gemini_chat.ask.return_value = ["part1", "part2"]
-        msg = make_message("/ask 긴 질문", user_id=1)
+    def test_markdown_response(self, hub):
+        hub.gemini_chat.ask.return_value = ["**bold** and `code`"]
+        msg = make_message("/ask 질문", user_id=1)
         msg.from_user.language_code = "ko"
         hub.ask_handler(msg)
-        assert hub.bot.reply_to.call_count == 2
+        hub.bot.reply_to.assert_called_once()
+        call_kwargs = hub.bot.reply_to.call_args
+        assert "entities" in call_kwargs.kwargs
+        entities = call_kwargs.kwargs["entities"]
+        assert len(entities) > 0
 
     def test_not_allowed(self, hub):
         hub.gemini_chat.ask.return_value = [strings.ask_not_allowed_msg]
         msg = make_message("/ask 질문", user_id=1)
         msg.from_user.language_code = "ko"
         hub.ask_handler(msg)
-        hub.bot.reply_to.assert_called_once_with(msg, strings.ask_not_allowed_msg)
+        hub.bot.reply_to.assert_called_once()
+
+    @patch("modules.features_hub.convert", side_effect=Exception("parse error"))
+    def test_convert_failure_fallback(self, mock_convert, hub):
+        hub.gemini_chat.ask.return_value = ["plain text response"]
+        msg = make_message("/ask 질문", user_id=1)
+        msg.from_user.language_code = "ko"
+        hub.ask_handler(msg)
+        hub.bot.reply_to.assert_called_once_with(msg, "plain text response")
 
 
 class TestClearChatHandler:

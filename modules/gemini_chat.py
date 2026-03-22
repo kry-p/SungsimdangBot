@@ -63,7 +63,7 @@ class GeminiChat:
             self._trim_history(session_key, language_code)
             managed.last_active = time.time()
 
-            return self.split_response(result)
+            return [result]
 
     def clear_session(self, chat_id, user_id):
         with self._lock:

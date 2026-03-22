@@ -8,14 +8,18 @@ import urllib.parse
 
 import requests
 import telebot
+from telegramify_markdown import convert, split_entities
 
 from config import config
+from modules import log
 from modules.calculator import Calculator
 from modules.database import PendingAction
 from modules.gemini_chat import GeminiChat
 from modules.random_based import RandomBasedFeatures
 from modules.web_based import WebManager
 from resources import strings
+
+logger = log.Logger()
 
 MAP_BASE_URL = "https://dapi.kakao.com/v2/local/geo/coord2address.json?"
 WEATHER_BASE_URL = "http://api.openweathermap.org/data/2.5/weather?"
@@ -165,7 +169,22 @@ class BotFeaturesHub:
         self.bot.send_chat_action(message.chat.id, "typing")
         result = self.gemini_chat.ask(message.chat.id, message.from_user.id, question, language_code)
         for chunk in result:
-            self.bot.reply_to(message, chunk)
+            self._reply_markdown(message, chunk)
+
+    def _reply_markdown(self, message, text):
+        try:
+            converted_text, entities = convert(text)
+            parts = split_entities(converted_text, entities, max_utf16_len=4090)
+            for part_text, part_entities in parts:
+                self.bot.reply_to(
+                    message,
+                    part_text,
+                    entities=[e.to_dict() for e in part_entities],
+                )
+        except Exception:
+            logger.log_error("Markdown conversion failed, sending as plain text.")
+            for plain_chunk in GeminiChat.split_response(text):
+                self.bot.reply_to(message, plain_chunk)
 
     # Clear chat 대화 초기화
     def clear_chat_handler(self, message):
