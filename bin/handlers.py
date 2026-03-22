@@ -42,7 +42,10 @@ def register_handlers(bot, hub, logger):
     # Callback query handler
     @bot.callback_query_handler(func=lambda call: True)
     def handle_callback(query):
-        bot.answer_callback_query(query.id)
+        try:
+            bot.answer_callback_query(query.id)
+        except Exception:
+            return
         if BotFeaturesHub.is_admin_callback(query.data):
             hub.handle_admin_callback(query)
             return
