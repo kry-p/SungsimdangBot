@@ -1,3 +1,4 @@
+import concurrent.futures
 import re
 import threading
 import time
@@ -5,6 +6,7 @@ from dataclasses import dataclass, field
 
 from google import genai
 from google.genai import types
+from google.genai.errors import ClientError, ServerError
 
 from config import config
 from modules import log
@@ -47,25 +49,37 @@ class GeminiChat:
             if not self.is_chat_allowed(chat_id):
                 return [strings.ask_not_allowed_msg]
 
-            if not self.check_rate_limit(chat_id):
+            if not self.check_rate_limit(chat_id, user_id):
                 return [strings.ask_rate_limit_msg]
 
             session_key = (chat_id, user_id)
             self._expire_session_if_needed(session_key)
             managed = self._get_or_create_session(session_key, language_code)
 
-            try:
-                response = managed.chat.send_message(question)
-                result = response.text
-            except Exception:
-                logger.log_error("Gemini API call failed.")
-                return [strings.ask_error_msg]
+        try:
+            with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+                future = executor.submit(managed.chat.send_message, question)
+                response = future.result(timeout=config.GEMINI_API_TIMEOUT)
+            result = response.text
+        except concurrent.futures.TimeoutError:
+            logger.log_error("Gemini API call timed out.")
+            return [strings.ask_timeout_msg]
+        except ClientError as e:
+            logger.log_error(f"Gemini API client error: {e}")
+            return [strings.ask_client_error_msg]
+        except ServerError as e:
+            logger.log_error(f"Gemini API server error: {e}")
+            return [strings.ask_error_msg]
+        except Exception as e:
+            logger.log_error(f"Gemini API call failed: {e}")
+            return [strings.ask_error_msg]
 
+        with self._lock:
             result = self._append_grounding_sources(response, result)
             self._trim_history(session_key, language_code)
             managed.last_active = time.time()
 
-            return [result]
+        return [result]
 
     def clear_session(self, chat_id, user_id):
         with self._lock:
@@ -123,17 +137,21 @@ class GeminiChat:
 
     # --- Rate limit ---
 
-    def check_rate_limit(self, chat_id):
+    def check_rate_limit(self, chat_id, user_id):
         now = time.time()
-        timestamps = self.request_counts.get(chat_id, [])
-        timestamps = [t for t in timestamps if now - t < 60]
-        if not timestamps:
-            self.request_counts.pop(chat_id, None)
-        if len(timestamps) >= config.GEMINI_RATE_LIMIT:
-            self.request_counts[chat_id] = timestamps
-            return False
-        timestamps.append(now)
-        self.request_counts[chat_id] = timestamps
+
+        for key in (chat_id, f"user:{user_id}"):
+            timestamps = self.request_counts.get(key, [])
+            timestamps = [t for t in timestamps if now - t < 60]
+            if not timestamps:
+                self.request_counts.pop(key, None)
+            if len(timestamps) >= config.GEMINI_RATE_LIMIT:
+                self.request_counts[key] = timestamps
+                return False
+            self.request_counts[key] = timestamps
+
+        self.request_counts[chat_id].append(now)
+        self.request_counts[f"user:{user_id}"].append(now)
         return True
 
     @staticmethod
@@ -204,6 +222,18 @@ class GeminiChat:
 
     def list_allowed_chats(self):
         return [{"id": row.chat_id, "name": row.name} for row in AllowedChat.select().order_by(AllowedChat.chat_id)]
+
+    # --- 정리 ---
+
+    def cleanup_expired(self):
+        with self._lock:
+            now = time.time()
+            expired = [k for k, v in self.sessions.items() if now - v.last_active > config.GEMINI_SESSION_TIMEOUT]
+            for k in expired:
+                del self.sessions[k]
+            expired_counts = [k for k, v in self.request_counts.items() if all(now - t >= 60 for t in v)]
+            for k in expired_counts:
+                del self.request_counts[k]
 
     # --- 응답 분할 ---
 

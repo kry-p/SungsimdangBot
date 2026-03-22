@@ -23,6 +23,7 @@ from modules.migration import migrate_json_to_db
 
 BOT_INTERVAL = 3
 BOT_TIMEOUT = 30
+CLEANUP_INTERVAL = 600
 
 # Initialize database
 init_db()
@@ -54,9 +55,17 @@ def bot_polling():
             break
 
 
-polling_thread = threading.Thread(target=bot_polling)
-polling_thread.daemon = True
+def periodic_cleanup():
+    while True:
+        sleep(CLEANUP_INTERVAL)
+        hub.gemini_chat.cleanup_expired()
+
+
+polling_thread = threading.Thread(target=bot_polling, daemon=True)
 polling_thread.start()
+
+cleanup_thread = threading.Thread(target=periodic_cleanup, daemon=True)
+cleanup_thread.start()
 
 if __name__ == "__main__":
     while True:

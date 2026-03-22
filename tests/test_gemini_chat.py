@@ -2,6 +2,8 @@ import threading
 import time
 from unittest.mock import MagicMock, patch
 
+from google.genai.errors import ClientError, ServerError
+
 from modules.database import AllowedChat
 from modules.gemini_chat import GeminiChat, ManagedSession
 from resources import strings
@@ -176,47 +178,43 @@ class TestRateLimit:
     def test_within_limit(self, mock_config):
         mock_config.GEMINI_RATE_LIMIT = 5
         gc = make_gemini_chat()
-        assert gc.check_rate_limit(1) is True
+        assert gc.check_rate_limit(1, 1) is True
 
     @patch("modules.gemini_chat.config")
-    def test_at_limit(self, mock_config):
+    def test_at_chat_limit(self, mock_config):
         mock_config.GEMINI_RATE_LIMIT = 5
         gc = make_gemini_chat()
         gc.request_counts = {1: [time.time() for _ in range(5)]}
-        assert gc.check_rate_limit(1) is False
+        assert gc.check_rate_limit(1, 1) is False
+
+    @patch("modules.gemini_chat.config")
+    def test_at_user_limit(self, mock_config):
+        mock_config.GEMINI_RATE_LIMIT = 5
+        gc = make_gemini_chat()
+        gc.request_counts = {"user:1": [time.time() for _ in range(5)]}
+        assert gc.check_rate_limit(1, 1) is False
+
+    @patch("modules.gemini_chat.config")
+    def test_user_limited_across_chats(self, mock_config):
+        mock_config.GEMINI_RATE_LIMIT = 5
+        gc = make_gemini_chat()
+        gc.request_counts = {"user:1": [time.time() for _ in range(5)]}
+        assert gc.check_rate_limit(2, 1) is False
 
     @patch("modules.gemini_chat.config")
     def test_expired_timestamps_cleared(self, mock_config):
         mock_config.GEMINI_RATE_LIMIT = 5
         gc = make_gemini_chat()
         gc.request_counts = {1: [time.time() - 61 for _ in range(5)]}
-        assert gc.check_rate_limit(1) is True
+        assert gc.check_rate_limit(1, 1) is True
 
     @patch("modules.gemini_chat.config")
-    def test_empty_timestamps_entry_removed(self, mock_config):
+    def test_records_both_chat_and_user(self, mock_config):
         mock_config.GEMINI_RATE_LIMIT = 5
         gc = make_gemini_chat()
-        gc.request_counts = {1: [time.time() - 61], 2: [time.time()]}
-        gc.check_rate_limit(1)
-        assert 1 in gc.request_counts  # re-added with new timestamp
-        gc.request_counts = {3: [time.time() - 61]}
-        gc.check_rate_limit(3)
-        # after filtering, empty list is removed then re-added
-        assert 3 in gc.request_counts
-
-    @patch("modules.gemini_chat.config")
-    def test_multiple_chats_partial_expiry(self, mock_config):
-        mock_config.GEMINI_RATE_LIMIT = 5
-        gc = make_gemini_chat()
-        gc.request_counts = {
-            1: [time.time() - 61],
-            2: [time.time()],
-            3: [time.time() - 61],
-        }
-        gc.check_rate_limit(1)
-        gc.check_rate_limit(3)
-        assert 2 in gc.request_counts
-        assert gc.request_counts[2] == gc.request_counts[2]  # untouched
+        gc.check_rate_limit(1, 42)
+        assert len(gc.request_counts[1]) == 1
+        assert len(gc.request_counts["user:42"]) == 1
 
 
 class TestAllowlist:
@@ -321,6 +319,76 @@ class TestSearchGrounding:
         assert gc.search_grounding is True
         assert gc.sessions == {}
         mock_settings().set.assert_called_with("modules.gemini_chat", "search_grounding", "True")
+
+
+class TestApiTimeout:
+    def test_timeout_returns_timeout_msg(self):
+        gc = make_gemini_chat(allowlist={1: "test"})
+        mock_chat = MagicMock()
+        mock_chat.send_message.side_effect = lambda q: time.sleep(10)
+        gc.client.chats.create.return_value = mock_chat
+
+        with patch("modules.gemini_chat.config") as mock_config:
+            mock_config.GEMINI_API_TIMEOUT = 0.1
+            mock_config.GEMINI_SESSION_TIMEOUT = 3600
+            mock_config.GEMINI_MAX_HISTORY = 20
+            mock_config.GEMINI_RATE_LIMIT = 5
+            result = gc.ask(1, 1, "질문", "ko")
+        assert result == [strings.ask_timeout_msg]
+
+    def test_client_error_returns_client_error_msg(self):
+        gc = make_gemini_chat(allowlist={1: "test"})
+        mock_chat = MagicMock()
+        mock_chat.send_message.side_effect = ClientError(429, {"error": "quota"})
+        gc.client.chats.create.return_value = mock_chat
+
+        result = gc.ask(1, 1, "질문", "ko")
+        assert result == [strings.ask_client_error_msg]
+
+    def test_server_error_returns_error_msg(self):
+        gc = make_gemini_chat(allowlist={1: "test"})
+        mock_chat = MagicMock()
+        mock_chat.send_message.side_effect = ServerError(500, {"error": "internal"})
+        gc.client.chats.create.return_value = mock_chat
+
+        result = gc.ask(1, 1, "질문", "ko")
+        assert result == [strings.ask_error_msg]
+
+
+class TestCleanupExpired:
+    @patch("modules.gemini_chat.config")
+    def test_removes_expired_sessions(self, mock_config):
+        mock_config.GEMINI_SESSION_TIMEOUT = 3600
+        gc = make_gemini_chat()
+        gc.sessions = {
+            (1, 1): ManagedSession(chat=MagicMock(), last_active=time.time() - 7200),
+            (2, 2): ManagedSession(chat=MagicMock(), last_active=time.time()),
+        }
+        gc.cleanup_expired()
+        assert (1, 1) not in gc.sessions
+        assert (2, 2) in gc.sessions
+
+    def test_removes_expired_request_counts(self):
+        gc = make_gemini_chat()
+        gc.request_counts = {
+            1: [time.time() - 120],
+            2: [time.time()],
+        }
+        gc.cleanup_expired()
+        assert 1 not in gc.request_counts
+        assert 2 in gc.request_counts
+
+    @patch("modules.gemini_chat.config")
+    def test_empty_after_full_cleanup(self, mock_config):
+        mock_config.GEMINI_SESSION_TIMEOUT = 3600
+        gc = make_gemini_chat()
+        gc.sessions = {
+            (1, 1): ManagedSession(chat=MagicMock(), last_active=time.time() - 7200),
+        }
+        gc.request_counts = {1: [time.time() - 120]}
+        gc.cleanup_expired()
+        assert gc.sessions == {}
+        assert gc.request_counts == {}
 
 
 class TestSplitResponse:
