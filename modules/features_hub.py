@@ -2,6 +2,7 @@
 
 import datetime
 import json
+import re
 import time
 import urllib.parse
 
@@ -112,6 +113,27 @@ class BotFeaturesHub:
             self.bot.reply_to(message, result)
         except Exception:
             self.bot.reply_to(message, strings.geolocation_error_msg)
+
+    # Search 검색
+    def search_handler(self, message):
+        try:
+            result = self.web_manager.daum_search(message, None)
+            result_contents = ""
+
+            for doc in result["documents"][:5]:
+                result_contents += re.sub(
+                    "<.+?>",
+                    "",
+                    "*" + doc["title"] + "*\n" + doc["contents"] + "\n" + "[더 보기](" + doc["url"] + ")\n\n",
+                    count=0,
+                    flags=re.IGNORECASE | re.DOTALL,
+                )
+            text = strings.search_result_header_msg + re.sub(
+                "<.+?>", "", result_contents, count=0, flags=re.IGNORECASE | re.DOTALL
+            )
+            self.bot.reply_to(message, text, parse_mode="Markdown")
+        except Exception:
+            self.bot.reply_to(message, strings.search_error_msg)
 
     # Calculator 계산기
     def calculator_handler(self, message):

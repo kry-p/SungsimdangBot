@@ -1,5 +1,3 @@
-import re
-
 import telebot
 
 from modules.features_hub import BotFeaturesHub
@@ -94,24 +92,7 @@ def register_handlers(bot, hub, logger):
     # Search
     @bot.message_handler(commands=["search"])
     def handle_search(message):
-        try:
-            result = hub.web_manager.daum_search(message, None)
-            result_contents = ""
-
-            for doc in result["documents"][:5]:
-                result_contents += re.sub(
-                    "<.+?>",
-                    "",
-                    "*" + doc["title"] + "*\n" + doc["contents"] + "\n" + "[더 보기](" + doc["url"] + ")\n\n",
-                    count=0,
-                    flags=re.IGNORECASE | re.DOTALL,
-                )
-            text = strings.search_result_header_msg + re.sub(
-                "<.+?>", "", result_contents, count=0, flags=re.IGNORECASE | re.DOTALL
-            )
-            bot.reply_to(message, text, parse_mode="Markdown")
-        except Exception:
-            bot.reply_to(message, strings.search_error_msg)
+        hub.search_handler(message)
 
     @bot.message_handler(commands=["namu"])
     def handle_namu(message):
