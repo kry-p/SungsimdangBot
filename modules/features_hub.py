@@ -1,7 +1,6 @@
 # Bot features script
 
 import datetime
-import re
 
 from telegramify_markdown import convert, split_entities
 
@@ -10,6 +9,7 @@ from modules.admin import AdminManager
 from modules.calculator import Calculator
 from modules.gemini_chat import GeminiChat
 from modules.random_based import RandomBasedFeatures
+from modules.utils import strip_html_tags
 from modules.web_based import WebManager
 from resources import strings
 
@@ -104,16 +104,10 @@ class BotFeaturesHub:
             result_contents = ""
 
             for doc in result["documents"][:5]:
-                result_contents += re.sub(
-                    "<.+?>",
-                    "",
-                    "*" + doc["title"] + "*\n" + doc["contents"] + "\n" + "[더 보기](" + doc["url"] + ")\n\n",
-                    count=0,
-                    flags=re.IGNORECASE | re.DOTALL,
+                result_contents += strip_html_tags(
+                    "*" + doc["title"] + "*\n" + doc["contents"] + "\n" + "[더 보기](" + doc["url"] + ")\n\n"
                 )
-            text = strings.search_result_header_msg + re.sub(
-                "<.+?>", "", result_contents, count=0, flags=re.IGNORECASE | re.DOTALL
-            )
+            text = strings.search_result_header_msg + strip_html_tags(result_contents)
             self.bot.reply_to(message, text, parse_mode="Markdown")
         except Exception:
             self.bot.reply_to(message, strings.search_error_msg)

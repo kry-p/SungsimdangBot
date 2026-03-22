@@ -1,7 +1,18 @@
+from unittest.mock import MagicMock
+
 import pytest
 
 from modules.database import AllowedChat, PendingAction, RouletteGame, Setting, db
 from modules.settings import Settings
+
+
+def make_message(text, chat_id=1, user_id=1):
+    msg = MagicMock()
+    msg.text = text
+    msg.chat.id = chat_id
+    msg.from_user.id = user_id
+    return msg
+
 
 MODELS = [Setting, AllowedChat, PendingAction, RouletteGame]
 

@@ -1,12 +1,12 @@
 import datetime
 import json
-import re
 import urllib.parse
 
 import requests
 
 from config import config
 from modules import log
+from modules.utils import extract_command_args, strip_html_tags
 from resources import strings
 
 # Initialize logger module
@@ -54,13 +54,7 @@ class WebManager:
 
     # Search from Daum and returns result by JSON
     def daum_search(self, message, site):
-        command = message.text.split()
-        keyword = ""
-        for i in range(1, len(command)):
-            if i < len(command) - 1:
-                keyword += command[i] + " "
-            else:
-                keyword += command[i]
+        keyword = extract_command_args(message.text)
 
         # Sends request
         search_args = {"query": keyword if site is None else keyword + " site:" + site}
@@ -81,14 +75,7 @@ class WebManager:
 
     # Search from Namu.wiki
     def namuwiki_search(self, message):
-        command = message.text.split()
-        keyword = ""
-        for i in range(1, len(command)):
-            if i < len(command) - 1:
-                keyword += command[i] + " "
-            else:
-                keyword += command[i]
-
+        keyword = extract_command_args(message.text)
         url = NAMUWIKI_BASE_URL + urllib.parse.quote(keyword)
 
         documents = self.daum_search(message, "namu.wiki")["documents"]
@@ -99,10 +86,10 @@ class WebManager:
         result_contents = result["contents"]
         result_url = result["url"]
 
-        text = re.sub("<.+?>", "", result_contents, count=0, flags=re.IGNORECASE | re.DOTALL)
+        text = strip_html_tags(result_contents)
 
         if result_url != url:
-            result_title = re.sub("<.+?>", "", result["title"], count=0, flags=re.IGNORECASE | re.DOTALL)
+            result_title = strip_html_tags(result["title"])
             return (
                 strings.search_mismatch_msg.format(keyword=keyword)
                 + "["

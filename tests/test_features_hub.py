@@ -5,6 +5,7 @@ import pytest
 
 from modules.features_hub import BotFeaturesHub
 from resources import strings
+from tests.conftest import make_message
 
 
 @pytest.fixture
@@ -17,14 +18,6 @@ def hub():
     ):
         h = BotFeaturesHub(bot)
     return h
-
-
-def make_message(text, chat_id=1, user_id=1):
-    msg = MagicMock()
-    msg.text = text
-    msg.chat.id = chat_id
-    msg.from_user.id = user_id
-    return msg
 
 
 class TestDDay:

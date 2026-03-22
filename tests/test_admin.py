@@ -6,6 +6,7 @@ import pytest
 from modules.admin import AdminManager
 from modules.database import PendingAction
 from resources import strings
+from tests.conftest import make_message
 
 
 @pytest.fixture
@@ -13,14 +14,6 @@ def admin():
     bot = MagicMock()
     gemini_chat = MagicMock()
     return AdminManager(bot, gemini_chat)
-
-
-def make_message(text, chat_id=1, user_id=1):
-    msg = MagicMock()
-    msg.text = text
-    msg.chat.id = chat_id
-    msg.from_user.id = user_id
-    return msg
 
 
 class TestAllowChatHandler:

@@ -7,12 +7,7 @@ import pytest
 
 from modules.web_based import WebManager
 from resources import strings
-
-
-def make_message(text):
-    msg = MagicMock()
-    msg.text = text
-    return msg
+from tests.conftest import make_message
 
 
 class TestWebManagerInit:
