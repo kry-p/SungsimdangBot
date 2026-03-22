@@ -1,19 +1,13 @@
 # Bot features script
 
 import datetime
-import json
 import re
-import time
-import urllib.parse
 
-import requests
-import telebot
 from telegramify_markdown import convert, split_entities
 
-from config import config
 from modules import log
+from modules.admin import AdminManager
 from modules.calculator import Calculator
-from modules.database import PendingAction
 from modules.gemini_chat import GeminiChat
 from modules.random_based import RandomBasedFeatures
 from modules.web_based import WebManager
@@ -21,45 +15,48 @@ from resources import strings
 
 logger = log.Logger()
 
-MAP_BASE_URL = "https://dapi.kakao.com/v2/local/geo/coord2address.json?"
-WEATHER_BASE_URL = "http://api.openweathermap.org/data/2.5/weather?"
-
 
 class BotFeaturesHub:
-    CALLBACK_PREFIXES = frozenset(
-        {
-            "allow_confirm",
-            "allow_cancel",
-            "deny_confirm",
-            "deny_cancel",
-            "ask_settings",
-            "ask_settings_cancel",
-            "set_model",
-            "set_model_cancel",
-            "set_search",
-            "set_search_cancel",
-            "set_prompt",
-            "set_prompt_cancel",
-        }
-    )
+    CALLBACK_PREFIXES = AdminManager.CALLBACK_PREFIXES
 
     @staticmethod
     def is_admin_callback(data):
-        return bool(data and ":" in data and data.split(":")[0] in BotFeaturesHub.CALLBACK_PREFIXES)
-
-    PROMPT_INPUT_TIMEOUT = 300
+        return AdminManager.is_admin_callback(data)
 
     # init
     def __init__(self, bot):
         self.bot = bot
-        self._pending_prompt = None  # (user_id, chat_id, timestamp)
 
         self.random_based_features = RandomBasedFeatures()
         self.web_manager = WebManager()
         self.calculator = Calculator()
         self.gemini_chat = GeminiChat()
+        self.admin = AdminManager(bot, self.gemini_chat)
 
-    # Get current river temperature 현재 강물 온도 정보 획득
+    # --- Admin delegation ---
+
+    @staticmethod
+    def is_admin(user_id):
+        return AdminManager.is_admin(user_id)
+
+    def handle_admin_callback(self, call):
+        self.admin.handle_admin_callback(call)
+
+    def allow_chat_handler(self, message):
+        self.admin.allow_chat_handler(message)
+
+    def deny_chat_handler(self, message):
+        self.admin.deny_chat_handler(message)
+
+    def ask_settings_handler(self, message):
+        self.admin.ask_settings_handler(message)
+
+    def handle_prompt_reply(self, message):
+        self.admin.handle_prompt_reply(message)
+
+    # --- Features ---
+
+    # Get current river temperature
     def get_temp(self):
         self.web_manager.update_suon()
         provided_suon = self.web_manager.provide_suon_v2()
@@ -70,15 +67,15 @@ class BotFeaturesHub:
 
     # D-day
     def d_day(self, message):
-        now = datetime.datetime.now()  # today
+        now = datetime.datetime.now()
         today = datetime.date(now.year, now.month, now.day)
 
         split = message.text.split()
         split = [item for item in split if "/dday" not in item]
 
         try:
-            split = list(map(int, split))  # String to calculable integer values
-            dest = datetime.date(split[0], split[1], split[2])  # date that user entered
+            split = list(map(int, split))
+            dest = datetime.date(split[0], split[1], split[2])
 
             result = (dest - today).days
 
@@ -89,45 +86,18 @@ class BotFeaturesHub:
             elif result < 0:
                 self.bot.reply_to(message, str(-1 * result) + strings.day_passed_msg)
 
-        except (ValueError, IndexError):  # wrong input
+        except (ValueError, IndexError):
             self.bot.reply_to(message, strings.day_out_of_range_msg)
 
-    # Geolocation information　위치 기반 정보 제공
+    # Geolocation information
     def geolocation_info(self, message, latitude, longitude):
         try:
-            # location info
-            map_args = {"x": longitude, "y": latitude}
-            map_url = MAP_BASE_URL + urllib.parse.urlencode(map_args)
-            map_headers = {"Authorization": "KakaoAK " + config.KAKAO_TOKEN}
-            map_request = requests.get(map_url, headers=map_headers, timeout=10)
-
-            # weather info (by OpenWeatherMap)
-            weather_args = {"lang": "kr", "appid": config.WEATHER_TOKEN, "lat": latitude, "lon": longitude}
-            weather_url = WEATHER_BASE_URL + urllib.parse.urlencode(weather_args)
-            weather_request = requests.get(weather_url, timeout=10)
-            weather_json = json.loads(weather_request.text)
-
-            # temporarily store weather info
-            weather = weather_json["weather"][0]["description"]
-            temp = str(round(weather_json["main"]["temp"] - 273.15)) + "°C"
-            feels_temp = str(round(weather_json["main"]["feels_like"] - 273.15)) + "°C"
-            humidity = str(round(weather_json["main"]["humidity"])) + "%"
-
-            # makes script and sends message
-            weather_result = (
-                "날씨 " + weather + ", " + "기온 " + temp + ", " + "체감온도 " + feels_temp + ", " + "습도 " + humidity
-            )
-
-            map_location = json.loads(map_request.text)["documents"][0]["address"]["address_name"]
-            geo_location = "위도 : " + str(latitude) + ", 경도 : " + str(longitude)
-
-            result = geo_location + "\n" + map_location + "\n\n" + weather_result
-
+            result = self.web_manager.geolocation_info(latitude, longitude)
             self.bot.reply_to(message, result)
         except Exception:
             self.bot.reply_to(message, strings.geolocation_error_msg)
 
-    # Search 검색
+    # Search
     def search_handler(self, message):
         try:
             result = self.web_manager.daum_search(message, None)
@@ -148,18 +118,15 @@ class BotFeaturesHub:
         except Exception:
             self.bot.reply_to(message, strings.search_error_msg)
 
-    # Calculator 계산기
+    # Calculator
     def calculator_handler(self, message):
-        # cut command string
         command = message.text.split()[0]
 
         if len(message.text.split()) >= 2:
             actual_text = message.text[len(command) :]
 
-            # calculate
             result = self.calculator.operation(actual_text)
 
-            # error handling
             if result == "syntax error":
                 self.bot.reply_to(message, strings.calc_syntax_error_msg)
             elif result == "division by zero error":
@@ -167,7 +134,7 @@ class BotFeaturesHub:
             else:
                 self.bot.reply_to(message, result)
 
-    # Ask handler AI 질문
+    # Ask handler
     def ask_handler(self, message):
         command = message.text.split()[0]
         if len(message.text.strip()) <= len(command):
@@ -195,297 +162,15 @@ class BotFeaturesHub:
             for plain_chunk in GeminiChat.split_response(text):
                 self.bot.reply_to(message, plain_chunk)
 
-    # Clear chat 대화 초기화
+    # Clear chat
     def clear_chat_handler(self, message):
         self.gemini_chat.clear_session(message.chat.id, message.from_user.id)
         self.bot.reply_to(message, strings.ask_clear_msg)
 
-    # Admin check 관리자 확인
-    @staticmethod
-    def is_admin(user_id):
-        return user_id == config.ADMIN_USER_ID
-
-    # Allow chat 채팅 허용
-    def allow_chat_handler(self, message):
-        if not self.is_admin(message.from_user.id):
-            self.bot.reply_to(message, strings.admin_only_msg)
-            return
-        parts = message.text.split()
-        if len(parts) < 2:
-            chat_id = message.chat.id
-            name = getattr(message.chat, "title", None) or getattr(message.chat, "first_name", "") or ""
-        else:
-            try:
-                chat_id = int(parts[1])
-            except ValueError:
-                self.bot.reply_to(message, strings.admin_allow_usage_msg)
-                return
-            try:
-                chat_info = self.bot.get_chat(chat_id)
-                name = getattr(chat_info, "title", None) or getattr(chat_info, "first_name", "") or ""
-            except Exception:
-                name = ""
-        keyboard = telebot.types.InlineKeyboardMarkup()
-        keyboard.row(
-            telebot.types.InlineKeyboardButton(strings.admin_confirm_btn, callback_data="allow_confirm:0"),
-            telebot.types.InlineKeyboardButton(strings.admin_cancel_btn, callback_data="allow_cancel:0"),
-        )
-        sent = self.bot.reply_to(
-            message,
-            strings.admin_allow_confirm_msg.format(name=name or chat_id, chat_id=chat_id),
-            reply_markup=keyboard,
-        )
-        msg_id = sent.message_id
-        PendingAction.create(msg_id=msg_id, action="allow", chat_id=chat_id, name=name, timestamp=time.time())
-        self.bot.edit_message_reply_markup(
-            sent.chat.id,
-            msg_id,
-            reply_markup=self._build_admin_keyboard(f"allow_confirm:{msg_id}", f"allow_cancel:{msg_id}"),
-        )
-
-    # Deny chat 채팅 거부
-    def deny_chat_handler(self, message):
-        if not self.is_admin(message.from_user.id):
-            self.bot.reply_to(message, strings.admin_only_msg)
-            return
-        parts = message.text.split()
-        if len(parts) < 2:
-            chat_id = message.chat.id
-        else:
-            try:
-                chat_id = int(parts[1])
-            except ValueError:
-                self.bot.reply_to(message, strings.admin_deny_usage_msg)
-                return
-        if not self.gemini_chat.is_chat_allowed(chat_id):
-            self.bot.reply_to(message, strings.admin_deny_chat_not_found_msg.format(chat_id=chat_id))
-            return
-        name = self.gemini_chat.get_chat_name(chat_id)
-        keyboard = telebot.types.InlineKeyboardMarkup()
-        keyboard.row(
-            telebot.types.InlineKeyboardButton(strings.admin_confirm_btn, callback_data="deny_confirm:0"),
-            telebot.types.InlineKeyboardButton(strings.admin_cancel_btn, callback_data="deny_cancel:0"),
-        )
-        sent = self.bot.reply_to(
-            message,
-            strings.admin_deny_confirm_msg.format(name=name or chat_id, chat_id=chat_id),
-            reply_markup=keyboard,
-        )
-        msg_id = sent.message_id
-        PendingAction.create(msg_id=msg_id, action="deny", chat_id=chat_id, name=name, timestamp=time.time())
-        self.bot.edit_message_reply_markup(
-            sent.chat.id,
-            msg_id,
-            reply_markup=self._build_admin_keyboard(f"deny_confirm:{msg_id}", f"deny_cancel:{msg_id}"),
-        )
-
-    # Admin callback 관리자 콜백 처리
-    PENDING_TIMEOUT = 300
-
-    def handle_admin_callback(self, call):
-        if not self.is_admin(call.from_user.id):
-            return
-        self._cleanup_expired_pending()
-        action, value = call.data.split(":", 1)
-
-        # ask_settings 메뉴 콜백
-        if action == "ask_settings":
-            self._handle_ask_settings_callback(call, value)
-            return
-        if action in ("ask_settings_cancel", "set_model_cancel", "set_search_cancel", "set_prompt_cancel"):
-            self.bot.edit_message_text(
-                strings.admin_cancel_msg,
-                call.message.chat.id,
-                call.message.message_id,
-            )
-            return
-        if action == "set_model":
-            self.gemini_chat.set_model(value)
-            self.bot.edit_message_text(
-                strings.set_model_done_msg.format(model=value),
-                call.message.chat.id,
-                call.message.message_id,
-            )
-            return
-        if action == "set_search":
-            enabled = value == "true"
-            self.gemini_chat.set_search_grounding(enabled)
-            msg = strings.set_search_enabled_msg if enabled else strings.set_search_disabled_msg
-            self.bot.edit_message_text(msg, call.message.chat.id, call.message.message_id)
-            return
-        if action == "set_prompt":
-            if value == "edit":
-                self._pending_prompt = (call.from_user.id, call.message.chat.id, time.time())
-                self.bot.edit_message_text(strings.set_prompt_input_msg, call.message.chat.id, call.message.message_id)
-                self.bot.send_message(
-                    call.message.chat.id,
-                    strings.set_prompt_input_msg,
-                    reply_markup=telebot.types.ForceReply(selective=True),
-                )
-            elif value == "clear":
-                self.gemini_chat.set_custom_prompt("")
-                self.bot.edit_message_text(
-                    strings.set_prompt_cleared_msg, call.message.chat.id, call.message.message_id
-                )
-            return
-
-        msg_id = int(value)
-        pending = PendingAction.get_or_none(PendingAction.msg_id == msg_id)
-        if not pending:
-            return
-        chat_id = pending.chat_id
-        name = pending.name
-        pending.delete_instance()
-        if action == "allow_confirm":
-            self.gemini_chat.allow_chat(chat_id, name)
-            self.bot.edit_message_text(
-                strings.admin_allow_chat_msg.format(name=name or chat_id, chat_id=chat_id),
-                call.message.chat.id,
-                call.message.message_id,
-            )
-        elif action == "deny_confirm":
-            self.gemini_chat.deny_chat(chat_id)
-            self.bot.edit_message_text(
-                strings.admin_deny_chat_msg.format(name=name or chat_id, chat_id=chat_id),
-                call.message.chat.id,
-                call.message.message_id,
-            )
-        elif action in ("allow_cancel", "deny_cancel"):
-            self.bot.edit_message_text(
-                strings.admin_cancel_msg,
-                call.message.chat.id,
-                call.message.message_id,
-            )
-
-    def _cleanup_expired_pending(self):
-        now = time.time()
-        PendingAction.delete().where(PendingAction.timestamp < now - self.PENDING_TIMEOUT).execute()
-
-    @staticmethod
-    def _build_admin_keyboard(confirm_data, cancel_data):
-        keyboard = telebot.types.InlineKeyboardMarkup()
-        keyboard.row(
-            telebot.types.InlineKeyboardButton(strings.admin_confirm_btn, callback_data=confirm_data),
-            telebot.types.InlineKeyboardButton(strings.admin_cancel_btn, callback_data=cancel_data),
-        )
-        return keyboard
-
-    # Ask settings AI 질문 설정
-    def ask_settings_handler(self, message):
-        if not self.is_admin(message.from_user.id):
-            self.bot.reply_to(message, strings.admin_only_msg)
-            return
-        keyboard = telebot.types.InlineKeyboardMarkup()
-        keyboard.row(
-            telebot.types.InlineKeyboardButton(strings.ask_settings_model_btn, callback_data="ask_settings:model"),
-        )
-        keyboard.row(
-            telebot.types.InlineKeyboardButton(strings.ask_settings_search_btn, callback_data="ask_settings:search"),
-        )
-        keyboard.row(
-            telebot.types.InlineKeyboardButton(strings.ask_settings_prompt_btn, callback_data="ask_settings:prompt"),
-        )
-        keyboard.row(
-            telebot.types.InlineKeyboardButton(
-                strings.ask_settings_allowlist_btn, callback_data="ask_settings:allowlist"
-            ),
-        )
-        keyboard.row(
-            telebot.types.InlineKeyboardButton(strings.admin_cancel_btn, callback_data="ask_settings_cancel:0"),
-        )
-        status = self._build_ask_settings_status()
-        self.bot.reply_to(message, status, reply_markup=keyboard)
-
-    def _build_ask_settings_status(self):
-        model = self.gemini_chat.model
-        search = "활성화" if self.gemini_chat.search_grounding else "비활성화"
-        prompt = self.gemini_chat.custom_prompt or "(없음)"
-        if len(prompt) > 50:
-            prompt = prompt[:50] + "..."
-        return strings.ask_settings_msg.format(model=model, search=search, prompt=prompt)
-
-    def _handle_ask_settings_callback(self, call, value):
-        chat_id = call.message.chat.id
-        msg_id = call.message.message_id
-        if value == "model":
-            models = self.gemini_chat.list_models()
-            if not models:
-                self.bot.edit_message_text(strings.set_model_error_msg, chat_id, msg_id)
-                return
-            keyboard = telebot.types.InlineKeyboardMarkup()
-            for model_name in models:
-                callback_data = f"set_model:{model_name}"
-                if len(callback_data.encode()) > 64:
-                    continue
-                keyboard.row(telebot.types.InlineKeyboardButton(model_name, callback_data=callback_data))
-            if not keyboard.keyboard:
-                self.bot.edit_message_text(strings.set_model_error_msg, chat_id, msg_id)
-                return
-            keyboard.row(
-                telebot.types.InlineKeyboardButton(strings.admin_cancel_btn, callback_data="set_model_cancel:0"),
-            )
-            self.bot.edit_message_text(
-                strings.set_model_msg.format(model=self.gemini_chat.model), chat_id, msg_id, reply_markup=keyboard
-            )
-        elif value == "search":
-            status = "활성화" if self.gemini_chat.search_grounding else "비활성화"
-            keyboard = telebot.types.InlineKeyboardMarkup()
-            keyboard.row(
-                telebot.types.InlineKeyboardButton(strings.admin_enable_btn, callback_data="set_search:true"),
-                telebot.types.InlineKeyboardButton(strings.admin_disable_btn, callback_data="set_search:false"),
-            )
-            keyboard.row(
-                telebot.types.InlineKeyboardButton(strings.admin_cancel_btn, callback_data="set_search_cancel:0"),
-            )
-            self.bot.edit_message_text(
-                strings.set_search_msg.format(status=status), chat_id, msg_id, reply_markup=keyboard
-            )
-        elif value == "allowlist":
-            chats = self.gemini_chat.list_allowed_chats()
-            if not chats:
-                self.bot.edit_message_text(strings.admin_list_chats_empty_msg, chat_id, msg_id)
-            else:
-                chat_list = "\n".join(f"{c['id']} ({c['name']})" if c["name"] else str(c["id"]) for c in chats)
-                self.bot.edit_message_text(strings.admin_list_chats_msg.format(chat_list), chat_id, msg_id)
-        elif value == "prompt":
-            current = self.gemini_chat.custom_prompt or "(없음)"
-            keyboard = telebot.types.InlineKeyboardMarkup()
-            keyboard.row(
-                telebot.types.InlineKeyboardButton(
-                    strings.ask_settings_prompt_edit_btn, callback_data="set_prompt:edit"
-                ),
-                telebot.types.InlineKeyboardButton(
-                    strings.ask_settings_prompt_clear_btn, callback_data="set_prompt:clear"
-                ),
-            )
-            keyboard.row(
-                telebot.types.InlineKeyboardButton(strings.admin_cancel_btn, callback_data="set_prompt_cancel:0"),
-            )
-            self.bot.edit_message_text(
-                strings.set_prompt_msg.format(prompt=current), chat_id, msg_id, reply_markup=keyboard
-            )
-
-    # ForceReply 응답 처리
-    def handle_prompt_reply(self, message):
-        if not self._pending_prompt:
-            return
-        user_id, chat_id, timestamp = self._pending_prompt
-        if message.from_user.id != user_id or message.chat.id != chat_id:
-            return
-        if time.time() - timestamp > self.PROMPT_INPUT_TIMEOUT:
-            self._pending_prompt = None
-            return
-        self._pending_prompt = None
-        new_prompt = message.text.strip()
-        self.gemini_chat.set_custom_prompt(new_prompt)
-        self.bot.reply_to(message, strings.set_prompt_done_msg)
-
-    # Handling ordinary message 일반 메시지 처리
+    # Handling ordinary message
     def ordinary_message(self, message):
-        # location-based message if user sent message that includes '수온' or '자살'
         if ("수온" in message.text) or ("자살" in message.text):
             self.bot.reply_to(message, self.get_temp())
 
-        # randomly select magic conch message if user sent message that includes '마법의 소라고둥/동'
         if ("마법의 소라고둥" in message.text) or ("마법의 소라고동" in message.text):
             self.bot.reply_to(message, self.random_based_features.magic_conch())

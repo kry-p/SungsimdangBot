@@ -14,6 +14,8 @@ logger = log.Logger()
 
 NAMUWIKI_BASE_URL = config.NAMUWIKI_BASE_URL
 SEARCH_BASE_URL = config.SEARCH_BASE_URL
+MAP_BASE_URL = "https://dapi.kakao.com/v2/local/geo/coord2address.json?"
+WEATHER_BASE_URL = "http://api.openweathermap.org/data/2.5/weather?"
 SUON_REFRESH_INTERVAL = 600  # seconds
 
 
@@ -112,6 +114,32 @@ class WebManager:
             )
         else:
             return "[" + keyword + " - 나무위키](" + url + ")\n\n" + text
+
+    # Geolocation information
+    def geolocation_info(self, latitude, longitude):
+        map_args = {"x": longitude, "y": latitude}
+        map_url = MAP_BASE_URL + urllib.parse.urlencode(map_args)
+        map_headers = {"Authorization": "KakaoAK " + config.KAKAO_TOKEN}
+        map_request = requests.get(map_url, headers=map_headers, timeout=10)
+
+        weather_args = {"lang": "kr", "appid": config.WEATHER_TOKEN, "lat": latitude, "lon": longitude}
+        weather_url = WEATHER_BASE_URL + urllib.parse.urlencode(weather_args)
+        weather_request = requests.get(weather_url, timeout=10)
+        weather_json = json.loads(weather_request.text)
+
+        weather = weather_json["weather"][0]["description"]
+        temp = str(round(weather_json["main"]["temp"] - 273.15)) + "°C"
+        feels_temp = str(round(weather_json["main"]["feels_like"] - 273.15)) + "°C"
+        humidity = str(round(weather_json["main"]["humidity"])) + "%"
+
+        weather_result = (
+            "날씨 " + weather + ", " + "기온 " + temp + ", " + "체감온도 " + feels_temp + ", " + "습도 " + humidity
+        )
+
+        map_location = json.loads(map_request.text)["documents"][0]["address"]["address_name"]
+        geo_location = "위도 : " + str(latitude) + ", 경도 : " + str(longitude)
+
+        return geo_location + "\n" + map_location + "\n\n" + weather_result
 
     # Provide temperature data to other methods (V2, 한강으로 고정)
     def provide_suon_v2(self):
