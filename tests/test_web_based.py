@@ -237,6 +237,8 @@ class TestGeolocationInfo:
             assert "맑음" in result
             assert "37.5" in result
 
+    @patch("modules.web_based.config.WEATHER_TOKEN", "test_weather")
+    @patch("modules.web_based.config.KAKAO_TOKEN", "test_kakao")
     @patch("modules.web_based.requests.get")
     def test_api_error(self, mock_get):
         mock_get.side_effect = ConnectionError("connection error")
