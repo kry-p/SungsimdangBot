@@ -105,7 +105,7 @@ class MessageProvider:
             query.data
             and ":" in query.data
             and query.data.split(":")[0]
-            in ("allow_confirm", "allow_cancel", "deny_confirm", "deny_cancel", "set_model")
+            in ("allow_confirm", "allow_cancel", "deny_confirm", "deny_cancel", "set_model", "set_model_cancel")
         ):
             bot_features.handle_admin_callback(query)
             return
