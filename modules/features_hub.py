@@ -135,8 +135,10 @@ class BotFeaturesHub:
             return
         question = message.text[len(command) :].strip()
         language_code = getattr(message.from_user, "language_code", None)
+        reply = getattr(message, "reply_to_message", None)
+        context = reply.text if reply and getattr(reply, "text", None) else None
         self.bot.send_chat_action(message.chat.id, "typing")
-        result = self.gemini_chat.ask(message.chat.id, message.from_user.id, question, language_code)
+        result = self.gemini_chat.ask(message.chat.id, message.from_user.id, question, language_code, context)
         for chunk in result:
             self._reply_markdown(message, chunk)
 
