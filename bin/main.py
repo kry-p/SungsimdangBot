@@ -4,10 +4,6 @@
 # https://gist.github.com/David-Lor/37e0ae02cd7fb1cd01085b2de553dde4
 
 
-# TODO
-# 봇이 정지된 동안의 메시지를 한꺼번에 받아서 처리하는 문제가 있습니다.
-# 정지된 동안에 수신된 메시지를 무시하도록 관련 처리가 필요합니다.
-# 여러 목적으로 활용하기 위한 로그를 작성할 예정입니다.
 import logging
 import signal
 import threading
@@ -60,7 +56,7 @@ def bot_polling():
     while True:
         try:
             logger.log_info("Bot instance is running")
-            bot.polling(none_stop=True, interval=BOT_INTERVAL, timeout=BOT_TIMEOUT)
+            bot.polling(none_stop=True, skip_pending=True, interval=BOT_INTERVAL, timeout=BOT_TIMEOUT)
         except Exception as ex:
             logger.log_error(f"Polling has failed. Retry in {BOT_TIMEOUT} sec.\n Error : {ex}\n")
             bot.stop_polling()
