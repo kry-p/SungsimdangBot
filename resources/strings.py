@@ -125,8 +125,10 @@ ask_help_msg = (
     "명령어 형식\n/ask [질문]\n\n"
     "설명\nAI에게 질문하면 답변을 제공합니다. "
     "대화 맥락이 유지되므로 이어서 질문할 수 있습니다.\n"
+    "다른 메시지에 답장하면서 /ask를 사용하면 해당 메시지를 참조하여 답변합니다.\n"
     "대화 초기화는 /clear_chat 명령어를 사용해 주세요."
 )
+ask_context_format = "[참조된 메시지]\n{context}\n\n[질문]\n{question}"
 ask_empty_msg = "질문을 입력해 주세요.\n\n예) /ask 오늘 날씨 어때?"
 ask_error_msg = "AI 응답을 가져오는 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요."
 ask_timeout_msg = "AI 응답 시간이 초과되었습니다. 잠시 후 다시 시도해 주세요."

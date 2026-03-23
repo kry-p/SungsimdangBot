@@ -76,6 +76,32 @@ class TestAsk:
         result = gc.ask(1, 1, "질문", "ko")
         assert result == [long_text]
 
+    def test_with_context(self):
+        gc = make_gemini_chat(allowlist={1: "test"})
+        mock_chat = MagicMock()
+        mock_chat.send_message.return_value.text = "요약입니다"
+        mock_chat.send_message.return_value.candidates = []
+        mock_chat.get_history.return_value = []
+        gc.client.chats.create.return_value = mock_chat
+
+        result = gc.ask(1, 1, "이거 요약해줘", "ko", context="원본 메시지")
+        assert result == ["요약입니다"]
+        sent = mock_chat.send_message.call_args[0][0]
+        assert "원본 메시지" in sent
+        assert "이거 요약해줘" in sent
+        assert sent == strings.ask_context_format.format(context="원본 메시지", question="이거 요약해줘")
+
+    def test_without_context(self):
+        gc = make_gemini_chat(allowlist={1: "test"})
+        mock_chat = MagicMock()
+        mock_chat.send_message.return_value.text = "답변"
+        mock_chat.send_message.return_value.candidates = []
+        mock_chat.get_history.return_value = []
+        gc.client.chats.create.return_value = mock_chat
+
+        gc.ask(1, 1, "질문", "ko", context=None)
+        mock_chat.send_message.assert_called_once_with("질문")
+
     def test_separate_sessions_per_user_in_group(self):
         gc = make_gemini_chat(allowlist={100: "group"})
         mock_chat_a = MagicMock()

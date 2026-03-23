@@ -137,11 +137,37 @@ class TestAskHandler:
         msg = make_message("/ask 질문", user_id=1)
         msg.from_user.language_code = "ko"
         hub.ask_handler(msg)
-        hub.gemini_chat.ask.assert_called_once_with(1, 1, "질문", "ko")
+        hub.gemini_chat.ask.assert_called_once_with(1, 1, "질문", "ko", None)
         hub.bot.reply_to.assert_called_once()
         call_kwargs = hub.bot.reply_to.call_args
         assert call_kwargs[0][1] == "답변입니다"
         assert "entities" in call_kwargs.kwargs
+
+    def test_reply_with_context(self, hub):
+        hub.gemini_chat.ask.return_value = ["요약입니다"]
+        msg = make_message("/ask 이거 요약해줘", user_id=1)
+        msg.from_user.language_code = "ko"
+        msg.reply_to_message = MagicMock()
+        msg.reply_to_message.text = "원본 메시지 내용"
+        hub.ask_handler(msg)
+        hub.gemini_chat.ask.assert_called_once_with(1, 1, "이거 요약해줘", "ko", "원본 메시지 내용")
+
+    def test_reply_without_text(self, hub):
+        hub.gemini_chat.ask.return_value = ["답변입니다"]
+        msg = make_message("/ask 질문", user_id=1)
+        msg.from_user.language_code = "ko"
+        msg.reply_to_message = MagicMock()
+        msg.reply_to_message.text = None
+        hub.ask_handler(msg)
+        hub.gemini_chat.ask.assert_called_once_with(1, 1, "질문", "ko", None)
+
+    def test_reply_empty_question_rejected(self, hub):
+        msg = make_message("/ask")
+        msg.reply_to_message = MagicMock()
+        msg.reply_to_message.text = "원본 메시지"
+        hub.ask_handler(msg)
+        hub.bot.reply_to.assert_called_once_with(msg, strings.ask_empty_msg)
+        hub.gemini_chat.ask.assert_not_called()
 
     def test_markdown_response(self, hub):
         hub.gemini_chat.ask.return_value = ["**bold** and `code`"]

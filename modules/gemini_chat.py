@@ -49,7 +49,7 @@ class GeminiChat:
 
     # --- 핵심 기능 ---
 
-    def ask(self, chat_id, user_id, question, language_code):
+    def ask(self, chat_id, user_id, question, language_code, context=None):
         with self._lock:
             if not self.client:
                 return [strings.ask_error_msg]
@@ -64,9 +64,11 @@ class GeminiChat:
             self._expire_session_if_needed(session_key)
             managed = self._get_or_create_session(session_key, language_code)
 
+        prompt = strings.ask_context_format.format(context=context, question=question) if context else question
+
         try:
             with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
-                future = executor.submit(managed.chat.send_message, question)
+                future = executor.submit(managed.chat.send_message, prompt)
                 response = future.result(timeout=config.GEMINI_API_TIMEOUT)
             result = response.text
         except concurrent.futures.TimeoutError:
