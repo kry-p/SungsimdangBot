@@ -102,6 +102,44 @@ class TestAsk:
         gc.ask(1, 1, "질문", "ko", context=None)
         mock_chat.send_message.assert_called_once_with("질문")
 
+    def test_with_image(self):
+        gc = make_gemini_chat(allowlist={1: "test"})
+        mock_chat = MagicMock()
+        mock_chat.send_message.return_value.text = "이미지 설명"
+        mock_chat.send_message.return_value.candidates = []
+        mock_chat.get_history.return_value = []
+        gc.client.chats.create.return_value = mock_chat
+
+        result = gc.ask(1, 1, "이게 뭐야", "ko", image=b"fake_image")
+        assert result == ["이미지 설명"]
+        sent = mock_chat.send_message.call_args[0][0]
+        assert isinstance(sent, list)
+        assert len(sent) == 2
+
+    def test_with_image_and_context(self):
+        gc = make_gemini_chat(allowlist={1: "test"})
+        mock_chat = MagicMock()
+        mock_chat.send_message.return_value.text = "답변"
+        mock_chat.send_message.return_value.candidates = []
+        mock_chat.get_history.return_value = []
+        gc.client.chats.create.return_value = mock_chat
+
+        gc.ask(1, 1, "질문", "ko", context="컨텍스트", image=b"fake_image")
+        sent = mock_chat.send_message.call_args[0][0]
+        assert isinstance(sent, list)
+        assert len(sent) == 2
+
+    def test_without_image(self):
+        gc = make_gemini_chat(allowlist={1: "test"})
+        mock_chat = MagicMock()
+        mock_chat.send_message.return_value.text = "답변"
+        mock_chat.send_message.return_value.candidates = []
+        mock_chat.get_history.return_value = []
+        gc.client.chats.create.return_value = mock_chat
+
+        gc.ask(1, 1, "질문", "ko", image=None)
+        mock_chat.send_message.assert_called_once_with("질문")
+
     def test_separate_sessions_per_user_in_group(self):
         gc = make_gemini_chat(allowlist={100: "group"})
         mock_chat_a = MagicMock()

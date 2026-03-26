@@ -108,6 +108,10 @@ def register_handlers(bot, hub, logger):
         hub.calculator_handler(message)
 
     # Gemini Q&A
+    @bot.message_handler(commands=["ask"], content_types=["photo"])
+    def handle_ask_photo(message):
+        hub.ask_handler(message)
+
     @bot.message_handler(commands=["ask"])
     def handle_ask(message):
         hub.ask_handler(message)

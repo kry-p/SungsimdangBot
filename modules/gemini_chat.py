@@ -59,7 +59,7 @@ class GeminiChat:
 
     # --- 핵심 기능 ---
 
-    def ask(self, chat_id, user_id, question, language_code, context=None):
+    def ask(self, chat_id, user_id, question, language_code, context=None, image=None):
         with self._lock:
             if not self.client:
                 return [strings.ask_error_msg]
@@ -74,7 +74,7 @@ class GeminiChat:
             self._expire_session_if_needed(session_key)
             managed = self._get_or_create_session(session_key, language_code)
 
-        prompt = strings.ask_context_format.format(context=context, question=question) if context else question
+        prompt = self._build_prompt(question, context, image)
 
         try:
             with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
@@ -100,6 +100,16 @@ class GeminiChat:
             managed.last_active = time.time()
 
         return [result]
+
+    @staticmethod
+    def _build_prompt(question, context, image):
+        text = strings.ask_context_format.format(context=context, question=question) if context else question
+        if image:
+            return [
+                types.Part.from_bytes(data=image, mime_type="image/jpeg"),
+                types.Part.from_text(text=text),
+            ]
+        return text
 
     def clear_session(self, chat_id, user_id):
         with self._lock:
