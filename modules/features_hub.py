@@ -143,10 +143,16 @@ class BotFeaturesHub:
         reply = getattr(message, "reply_to_message", None)
         if photo_list:
             image = self._download_photo(photo_list)
+            if image is None:
+                self.bot.reply_to(message, strings.ask_photo_download_error_msg)
+                return
         elif reply:
             reply_photo = getattr(reply, "photo", None)
             if reply_photo:
                 image = self._download_photo(reply_photo)
+                if image is None:
+                    self.bot.reply_to(message, strings.ask_photo_download_error_msg)
+                    return
             context = getattr(reply, "text", None) or getattr(reply, "caption", None)
 
         self.bot.send_chat_action(message.chat.id, "typing")
@@ -155,8 +161,12 @@ class BotFeaturesHub:
             self._reply_markdown(message, chunk)
 
     def _download_photo(self, photo_list):
-        file_info = self.bot.get_file(photo_list[-1].file_id)
-        return self.bot.download_file(file_info.file_path)
+        try:
+            file_info = self.bot.get_file(photo_list[-1].file_id)
+            return self.bot.download_file(file_info.file_path)
+        except Exception:
+            logger.log_error("Failed to download photo.")
+            return None
 
     def _reply_markdown(self, message, text):
         try:
