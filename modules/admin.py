@@ -97,7 +97,7 @@ class AdminManager:
     def _handle_set_prompt(self, call, value):
         if value == "edit":
             self._pending_prompt = (call.from_user.id, call.message.chat.id, time.time())
-            self.bot.edit_message_text(strings.set_prompt_input_msg, call.message.chat.id, call.message.message_id)
+            self.bot.edit_message_reply_markup(call.message.chat.id, call.message.message_id, reply_markup=None)
             self.bot.send_message(
                 call.message.chat.id,
                 strings.set_prompt_input_msg,
