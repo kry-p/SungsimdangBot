@@ -32,6 +32,7 @@ def register_commands(bot):
             telebot.types.BotCommand("namu", "나무위키 검색"),
             telebot.types.BotCommand("ask", "AI 질문"),
             telebot.types.BotCommand("clear_chat", "AI 대화 초기화"),
+            telebot.types.BotCommand("ask_settings", "AI 설정 확인"),
             telebot.types.BotCommand("myid", "내 사용자 ID 확인"),
             telebot.types.BotCommand("ping", "봇 상태 확인"),
         ]
@@ -107,6 +108,13 @@ def register_handlers(bot, hub, logger):
         hub.calculator_handler(message)
 
     # Gemini Q&A
+    @bot.message_handler(
+        func=lambda m: m.caption and m.caption.startswith("/ask"),
+        content_types=["photo"],
+    )
+    def handle_ask_photo(message):
+        hub.ask_handler(message)
+
     @bot.message_handler(commands=["ask"])
     def handle_ask(message):
         hub.ask_handler(message)

@@ -129,18 +129,44 @@ class BotFeaturesHub:
 
     # Ask handler
     def ask_handler(self, message):
-        command = message.text.split()[0]
-        if len(message.text.strip()) <= len(command):
+        text = message.text or message.caption or ""
+        command = text.split()[0] if text.split() else ""
+        if len(text.strip()) <= len(command):
             self.bot.reply_to(message, strings.ask_empty_msg)
             return
-        question = message.text[len(command) :].strip()
+        question = text[len(command) :].strip()
         language_code = getattr(message.from_user, "language_code", None)
+
+        image = None
+        context = None
+        photo_list = getattr(message, "photo", None)
         reply = getattr(message, "reply_to_message", None)
-        context = reply.text if reply and getattr(reply, "text", None) else None
+        if photo_list:
+            image = self._download_photo(photo_list)
+            if image is None:
+                self.bot.reply_to(message, strings.ask_photo_download_error_msg)
+                return
+        elif reply:
+            reply_photo = getattr(reply, "photo", None)
+            if reply_photo:
+                image = self._download_photo(reply_photo)
+                if image is None:
+                    self.bot.reply_to(message, strings.ask_photo_download_error_msg)
+                    return
+            context = getattr(reply, "text", None) or getattr(reply, "caption", None)
+
         self.bot.send_chat_action(message.chat.id, "typing")
-        result = self.gemini_chat.ask(message.chat.id, message.from_user.id, question, language_code, context)
+        result = self.gemini_chat.ask(message.chat.id, message.from_user.id, question, language_code, context, image)
         for chunk in result:
             self._reply_markdown(message, chunk)
+
+    def _download_photo(self, photo_list):
+        try:
+            file_info = self.bot.get_file(photo_list[-1].file_id)
+            return self.bot.download_file(file_info.file_path)
+        except Exception:
+            logger.log_error("Failed to download photo.")
+            return None
 
     def _reply_markdown(self, message, text):
         try:
