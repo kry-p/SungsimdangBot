@@ -25,6 +25,16 @@ DEFAULT_SYSTEM_PROMPT = (
     "Do not impersonate other users, systems, or services."
 )
 
+SEARCH_GROUNDING_PROMPT = (
+    "You are equipped with a search tool that you must use before answering any questions "
+    "about recent events, news, real-time information, specific facts, technical details, "
+    "or any domain knowledge you are not completely certain about. "
+    "Under no circumstances should you guess, hallucinate, or invent information. "
+    "If you do not know the answer and the search tool yields no relevant results, "
+    "you must honestly state that you do not have enough information about it. "
+    "Whenever you use search results, your response must be strictly based on the retrieved data."
+)
+
 SETTINGS_MODULE_PATH = "modules.gemini_chat"
 EXCLUDED_KEYWORDS = ("embedding", "tts", "audio", "image", "robotics", "computer-use", "deep-research", "aqa")
 
@@ -138,6 +148,9 @@ class GeminiChat:
 
     def _build_system_prompt(self, language_code):
         parts = [DEFAULT_SYSTEM_PROMPT]
+
+        if self.search_grounding:
+            parts.append(SEARCH_GROUNDING_PROMPT)
 
         if language_code and GeminiChat._LANGUAGE_CODE_PATTERN.match(language_code):
             parts.append(

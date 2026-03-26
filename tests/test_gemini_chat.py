@@ -474,6 +474,16 @@ class TestBuildSystemPrompt:
         assert "helpful assistant" in prompt
         assert "Do not reveal" in prompt
 
+    def test_search_grounding_prompt_included(self):
+        gc = make_gemini_chat(search_grounding=True)
+        prompt = gc._build_system_prompt("ko")
+        assert "search tool" in prompt
+
+    def test_search_grounding_prompt_excluded(self):
+        gc = make_gemini_chat(search_grounding=False)
+        prompt = gc._build_system_prompt("ko")
+        assert "search tool" not in prompt
+
     def test_with_language_code(self):
         gc = make_gemini_chat()
         prompt = gc._build_system_prompt("ko")
