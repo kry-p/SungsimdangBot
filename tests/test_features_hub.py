@@ -137,7 +137,7 @@ class TestAskHandler:
         msg = make_message("/ask 질문", user_id=1)
         msg.from_user.language_code = "ko"
         hub.ask_handler(msg)
-        hub.gemini_chat.ask.assert_called_once_with(1, 1, "질문", "ko", None)
+        hub.gemini_chat.ask.assert_called_once_with(1, 1, "질문", "ko", None, None)
         hub.bot.reply_to.assert_called_once()
         call_kwargs = hub.bot.reply_to.call_args
         assert call_kwargs[0][1] == "답변입니다"
@@ -149,8 +149,10 @@ class TestAskHandler:
         msg.from_user.language_code = "ko"
         msg.reply_to_message = MagicMock()
         msg.reply_to_message.text = "원본 메시지 내용"
+        msg.reply_to_message.photo = None
+        msg.reply_to_message.caption = None
         hub.ask_handler(msg)
-        hub.gemini_chat.ask.assert_called_once_with(1, 1, "이거 요약해줘", "ko", "원본 메시지 내용")
+        hub.gemini_chat.ask.assert_called_once_with(1, 1, "이거 요약해줘", "ko", "원본 메시지 내용", None)
 
     def test_reply_without_text(self, hub):
         hub.gemini_chat.ask.return_value = ["답변입니다"]
@@ -158,8 +160,68 @@ class TestAskHandler:
         msg.from_user.language_code = "ko"
         msg.reply_to_message = MagicMock()
         msg.reply_to_message.text = None
+        msg.reply_to_message.photo = None
+        msg.reply_to_message.caption = None
         hub.ask_handler(msg)
-        hub.gemini_chat.ask.assert_called_once_with(1, 1, "질문", "ko", None)
+        hub.gemini_chat.ask.assert_called_once_with(1, 1, "질문", "ko", None, None)
+
+    def test_photo_caption(self, hub):
+        hub.gemini_chat.ask.return_value = ["이미지 설명"]
+        msg = make_message(None, user_id=1)
+        msg.text = None
+        msg.caption = "/ask 이게 뭐야"
+        msg.from_user.language_code = "ko"
+        photo = MagicMock()
+        photo.file_id = "photo_123"
+        msg.photo = [photo]
+        hub.bot.get_file.return_value.file_path = "photos/file.jpg"
+        hub.bot.download_file.return_value = b"fake_image_data"
+        hub.ask_handler(msg)
+        hub.bot.get_file.assert_called_once_with("photo_123")
+        hub.gemini_chat.ask.assert_called_once_with(1, 1, "이게 뭐야", "ko", None, b"fake_image_data")
+
+    def test_reply_to_photo(self, hub):
+        hub.gemini_chat.ask.return_value = ["사진 분석"]
+        msg = make_message("/ask 이 사진 설명해줘", user_id=1)
+        msg.from_user.language_code = "ko"
+        reply_photo = MagicMock()
+        reply_photo.file_id = "reply_photo_123"
+        msg.reply_to_message = MagicMock()
+        msg.reply_to_message.text = None
+        msg.reply_to_message.photo = [reply_photo]
+        msg.reply_to_message.caption = "원본 캡션"
+        hub.bot.get_file.return_value.file_path = "photos/reply.jpg"
+        hub.bot.download_file.return_value = b"reply_image_data"
+        hub.ask_handler(msg)
+        hub.bot.get_file.assert_called_once_with("reply_photo_123")
+        hub.gemini_chat.ask.assert_called_once_with(1, 1, "이 사진 설명해줘", "ko", "원본 캡션", b"reply_image_data")
+
+    def test_photo_download_failure(self, hub):
+        msg = make_message(None, user_id=1)
+        msg.text = None
+        msg.caption = "/ask 이게 뭐야"
+        msg.from_user.language_code = "ko"
+        photo = MagicMock()
+        photo.file_id = "photo_123"
+        msg.photo = [photo]
+        hub.bot.get_file.side_effect = Exception("download error")
+        hub.ask_handler(msg)
+        hub.bot.reply_to.assert_called_once_with(msg, strings.ask_photo_download_error_msg)
+        hub.gemini_chat.ask.assert_not_called()
+
+    def test_reply_photo_download_failure(self, hub):
+        msg = make_message("/ask 설명해줘", user_id=1)
+        msg.from_user.language_code = "ko"
+        reply_photo = MagicMock()
+        reply_photo.file_id = "reply_photo_123"
+        msg.reply_to_message = MagicMock()
+        msg.reply_to_message.text = None
+        msg.reply_to_message.photo = [reply_photo]
+        msg.reply_to_message.caption = None
+        hub.bot.get_file.side_effect = Exception("download error")
+        hub.ask_handler(msg)
+        hub.bot.reply_to.assert_called_once_with(msg, strings.ask_photo_download_error_msg)
+        hub.gemini_chat.ask.assert_not_called()
 
     def test_reply_empty_question_rejected(self, hub):
         msg = make_message("/ask")

@@ -197,10 +197,16 @@ class TestAskSettingsHandler:
         assert "reply_markup" in call_args.kwargs
 
     @patch("modules.admin.config.ADMIN_USER_ID", 100)
-    def test_non_admin_rejected(self, admin):
+    def test_non_admin_sees_status_without_keyboard(self, admin):
+        admin.gemini_chat.model = "gemini-2.5-flash"
+        admin.gemini_chat.search_grounding = False
+        admin.gemini_chat.custom_prompt = ""
         msg = make_message("/ask_settings", user_id=999)
         admin.ask_settings_handler(msg)
-        admin.bot.reply_to.assert_called_once_with(msg, strings.admin_only_msg)
+        admin.bot.reply_to.assert_called_once()
+        call_args = admin.bot.reply_to.call_args
+        assert "gemini-2.5-flash" in call_args[0][1]
+        assert "reply_markup" not in call_args.kwargs
 
     @patch("modules.admin.config.ADMIN_USER_ID", 100)
     def test_model_callback(self, admin):
