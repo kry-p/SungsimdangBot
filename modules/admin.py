@@ -197,8 +197,9 @@ class AdminManager:
     # --- Ask settings menu ---
 
     def ask_settings_handler(self, message):
+        status = self._build_ask_settings_status()
         if not self.is_admin(message.from_user.id):
-            self.bot.reply_to(message, strings.admin_only_msg)
+            self.bot.reply_to(message, status)
             return
         keyboard = telebot.types.InlineKeyboardMarkup()
         keyboard.row(
@@ -218,7 +219,6 @@ class AdminManager:
         keyboard.row(
             telebot.types.InlineKeyboardButton(strings.admin_cancel_btn, callback_data="ask_settings_cancel:0"),
         )
-        status = self._build_ask_settings_status()
         self.bot.reply_to(message, status, reply_markup=keyboard)
 
     def _build_ask_settings_status(self):
