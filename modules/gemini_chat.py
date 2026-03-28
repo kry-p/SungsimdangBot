@@ -181,14 +181,10 @@ class GeminiChat:
         now = time.time()
 
         for key in (chat_id, f"user:{user_id}"):
-            timestamps = self.request_counts.get(key, [])
-            timestamps = [t for t in timestamps if now - t < 60]
-            if not timestamps:
-                self.request_counts.pop(key, None)
-            if len(timestamps) >= config.GEMINI_RATE_LIMIT:
-                self.request_counts[key] = timestamps
-                return False
+            timestamps = [t for t in self.request_counts.get(key, []) if now - t < 60]
             self.request_counts[key] = timestamps
+            if len(timestamps) >= config.GEMINI_RATE_LIMIT:
+                return False
 
         self.request_counts[chat_id].append(now)
         self.request_counts[f"user:{user_id}"].append(now)
