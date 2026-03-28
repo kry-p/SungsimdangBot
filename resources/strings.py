@@ -203,6 +203,20 @@ grounding_sources_label = "\n\n참고한 자료"
 # user info message
 myid_msg = "사용자 ID: {}"
 
+# --- Laftel ---
+
+laftel_portal_msg = "Laftel 기능을 선택해 주세요."
+laftel_schedule_btn = "신작 편성표"
+laftel_day_select_msg = "요일을 선택해 주세요."
+laftel_day_today_btn = "오늘"
+laftel_schedule_header_msg = "{} 신작 편성표\n\n"
+laftel_schedule_entry_msg = "* {name}\n  {genres} | {rating}\n\n"
+laftel_schedule_empty_msg = "{}에 편성된 신작이 없습니다."
+laftel_error_msg = "Laftel 정보를 가져오는 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요."
+laftel_schedule_footer_msg = "(총 {}개)"
+laftel_schedule_truncated_msg = "... 더 많은 작품은 laftel.net에서 확인해 주세요."
+laftel_help_msg = "/laftel 명령어로 Laftel 애니 편성표를 확인할 수 있습니다."
+
 # Resources
 
 # Customized keyboards (inline)
@@ -230,6 +244,9 @@ main_keyboard.row(
 main_keyboard.row(
     telebot.types.InlineKeyboardButton("검색", callback_data="search"),
     telebot.types.InlineKeyboardButton("나무위키 검색", callback_data="namu"),
+)
+main_keyboard.row(
+    telebot.types.InlineKeyboardButton("라프텔", callback_data="laftel_menu:portal"),
 )
 
 
