@@ -163,7 +163,8 @@ class LaftelService:
         entries = []
         for item in items:
             genres = _escape_markdown(", ".join(item.get("genres", [])))
-            rating = _escape_markdown(item.get("content_rating", ""))
+            raw_rating = item.get("content_rating", "")
+            rating = _escape_markdown("청소년 이용불가" if raw_rating == "성인 이용가" else raw_rating)
             entry = strings.laftel_schedule_entry_msg.format(
                 name=_escape_markdown(item.get("name", "")),
                 genres=genres,
