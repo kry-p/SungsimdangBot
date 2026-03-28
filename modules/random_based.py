@@ -10,7 +10,6 @@ class RandomBasedFeatures:
     # Random picker 랜덤픽
     @staticmethod
     def picker(msg):
-        random.seed()
         split = msg.split()
         split = [item for item in split if "/pick" not in item]
 
@@ -24,13 +23,11 @@ class RandomBasedFeatures:
     # Coin toss-up 동전뒤집기
     @staticmethod
     def coin_toss():
-        random.seed()
         return strings.coin_toss_prefix_msg + random.choice(strings.coin_toss_result)
 
     # Spongebob SquarePants magic conch 마법의 소라고동
     @staticmethod
     def magic_conch():
-        random.seed()
         init_rand = random.randrange(0, 3)
         return strings.magic_conch_sentence[init_rand][
             random.randrange(0, len(strings.magic_conch_sentence[init_rand]))
@@ -39,14 +36,15 @@ class RandomBasedFeatures:
     # Russian roulette 러시안 룰렛
     def russian_roulette(self, chat_id, message):
         try:
-            if message.split()[1].isdigit() and message.split()[2].isdigit():
-                if message.split()[1] == "0" and message.split()[2] == "0":
+            parts = message.split()
+            if parts[1].isdigit() and parts[2].isdigit():
+                if parts[1] == "0" and parts[2] == "0":
                     # IMMEDIATE: /shoot 동시 호출과의 경합 방지
                     with db.atomic("IMMEDIATE"):
                         RouletteGame.delete().where(RouletteGame.chat_id == chat_id).execute()
                     return strings.roulette_flush_msg
-                total = int(message.split()[1])
-                bullets = int(message.split()[2])
+                total = int(parts[1])
+                bullets = int(parts[2])
                 if bullets > total:
                     return strings.roulette_bullet_overflow_msg
                 bullet_list = [True] * bullets + [False] * (total - bullets)
