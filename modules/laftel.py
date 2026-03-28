@@ -1,0 +1,177 @@
+import datetime
+
+import requests
+import telebot
+
+from modules import log
+from resources import strings
+
+logger = log.Logger()
+
+LAFTEL_BASE_URL = "https://laftel.net/api/"
+LAFTEL_HEADERS = {"laftel": "TeJava"}
+CACHE_INTERVAL = 3600
+MAX_MESSAGE_LENGTH = 4096
+
+SETTINGS_MODULE_PATH = "modules.laftel"
+
+CALLBACK_PREFIXES = frozenset({"laftel_menu", "laftel_schedule"})
+
+DAYS_OF_WEEK = ("월요일", "화요일", "수요일", "목요일", "금요일", "토요일", "일요일")
+DAY_CODES = {
+    "mon": "월요일",
+    "tue": "화요일",
+    "wed": "수요일",
+    "thu": "목요일",
+    "fri": "금요일",
+    "sat": "토요일",
+    "sun": "일요일",
+}
+DAY_SHORT_LABELS = ("월", "화", "수", "목", "금", "토", "일")
+DAY_CODE_KEYS = ("mon", "tue", "wed", "thu", "fri", "sat", "sun")
+
+
+class LaftelService:
+    def __init__(self, bot):
+        self.bot = bot
+        # 캐시: GIL이 참조 할당의 원자성을 보장하므로 별도 락 불필요 (WebManager 동일 패턴)
+        self._schedule_cache = None
+        self._last_fetch_time = None
+
+    # --- 콜백 라우팅 ---
+
+    @staticmethod
+    def is_laftel_callback(data):
+        return bool(data and ":" in data and data.split(":")[0] in CALLBACK_PREFIXES)
+
+    def handle_laftel_callback(self, call):
+        action, value = call.data.split(":", 1)
+        if action == "laftel_menu":
+            self._handle_menu(call, value)
+        elif action == "laftel_schedule":
+            self._handle_schedule(call, value)
+
+    def _handle_menu(self, call, value):
+        if value == "portal":
+            self.bot.edit_message_text(
+                strings.laftel_portal_msg,
+                call.message.chat.id,
+                call.message.message_id,
+                reply_markup=self._build_portal_keyboard(),
+            )
+        elif value == "schedule":
+            self.bot.edit_message_text(
+                strings.laftel_day_select_msg,
+                call.message.chat.id,
+                call.message.message_id,
+                reply_markup=self._build_day_selection_keyboard(),
+            )
+
+    def _handle_schedule(self, call, value):
+        day = value
+        if day == "today":
+            day = DAY_CODE_KEYS[datetime.datetime.now().weekday()]
+        day_name = DAY_CODES.get(day)
+        if not day_name:
+            return
+        result = self._get_schedule_by_day(day_name)
+        self.bot.edit_message_text(
+            result,
+            call.message.chat.id,
+            call.message.message_id,
+        )
+
+    # --- 포털 ---
+
+    def show_portal(self, chat_id):
+        self.bot.send_message(
+            chat_id,
+            strings.laftel_portal_msg,
+            reply_markup=self._build_portal_keyboard(),
+        )
+
+    # --- 키보드 ---
+
+    @staticmethod
+    def _build_portal_keyboard():
+        keyboard = telebot.types.InlineKeyboardMarkup()
+        keyboard.row(
+            telebot.types.InlineKeyboardButton(strings.laftel_schedule_btn, callback_data="laftel_menu:schedule"),
+        )
+        return keyboard
+
+    @staticmethod
+    def _build_day_selection_keyboard():
+        keyboard = telebot.types.InlineKeyboardMarkup()
+        keyboard.row(
+            *[
+                telebot.types.InlineKeyboardButton(label, callback_data=f"laftel_schedule:{code}")
+                for label, code in zip(DAY_SHORT_LABELS, DAY_CODE_KEYS, strict=True)
+            ]
+        )
+        keyboard.row(
+            telebot.types.InlineKeyboardButton(strings.laftel_day_today_btn, callback_data="laftel_schedule:today"),
+        )
+        return keyboard
+
+    # --- 편성표 데이터 ---
+
+    def _fetch_daily_schedule(self):
+        now = datetime.datetime.now()
+        if self._schedule_cache is not None and self._last_fetch_time:
+            elapsed = (now - self._last_fetch_time).total_seconds()
+            if elapsed < CACHE_INTERVAL:
+                return
+
+        try:
+            response = requests.get(
+                LAFTEL_BASE_URL + "search/v2/daily/",
+                headers=LAFTEL_HEADERS,
+                timeout=10,
+            )
+            data = response.json()
+            grouped = {}
+            for item in data:
+                day = item.get("distributed_air_time", "")
+                if day not in grouped:
+                    grouped[day] = []
+                grouped[day].append(item)
+            self._schedule_cache = grouped
+            self._last_fetch_time = now
+        except Exception:
+            logger.log_error("Failed to fetch Laftel daily schedule.")
+            if self._schedule_cache is None:
+                self._schedule_cache = {}
+
+    def _get_schedule_by_day(self, day_name):
+        self._fetch_daily_schedule()
+
+        items = self._schedule_cache.get(day_name, [])
+        if not items:
+            return strings.laftel_schedule_empty_msg.format(day_name)
+
+        header = strings.laftel_schedule_header_msg.format(day_name)
+        entries = []
+        for item in items:
+            genres = ", ".join(item.get("genres", []))
+            rating = item.get("content_rating", "")
+            entry = strings.laftel_schedule_entry_msg.format(
+                name=item.get("name", ""),
+                genres=genres,
+                rating=rating,
+            )
+            entries.append(entry)
+
+        footer = strings.laftel_schedule_footer_msg.format(len(items))
+        text = header + "".join(entries) + footer
+
+        if len(text) > MAX_MESSAGE_LENGTH:
+            truncated = header
+            for entry in entries:
+                remaining = len(footer) + len(strings.laftel_schedule_truncated_msg)
+                if len(truncated) + len(entry) + remaining > MAX_MESSAGE_LENGTH:
+                    break
+                truncated += entry
+            text = truncated + strings.laftel_schedule_truncated_msg + "\n" + footer
+
+        return text
