@@ -31,6 +31,12 @@ DAY_SHORT_LABELS = ("월", "화", "수", "목", "금", "토", "일")
 DAY_CODE_KEYS = ("mon", "tue", "wed", "thu", "fri", "sat", "sun")
 
 
+def _escape_markdown(text):
+    for ch in ("*", "_", "`", "["):
+        text = text.replace(ch, "\\" + ch)
+    return text
+
+
 class LaftelService:
     def __init__(self, bot):
         self.bot = bot
@@ -60,10 +66,14 @@ class LaftelService:
                 reply_markup=self._build_portal_keyboard(),
             )
         elif value == "schedule":
+            today_code = DAY_CODE_KEYS[datetime.datetime.now().weekday()]
+            today_name = DAY_CODES[today_code]
+            result = self._get_schedule_by_day(today_name)
             self.bot.edit_message_text(
-                strings.laftel_day_select_msg,
+                result,
                 call.message.chat.id,
                 call.message.message_id,
+                parse_mode="Markdown",
                 reply_markup=self._build_day_selection_keyboard(),
             )
 
@@ -79,6 +89,8 @@ class LaftelService:
             result,
             call.message.chat.id,
             call.message.message_id,
+            parse_mode="Markdown",
+            reply_markup=self._build_day_selection_keyboard(),
         )
 
     # --- 포털 ---
@@ -102,16 +114,13 @@ class LaftelService:
 
     @staticmethod
     def _build_day_selection_keyboard():
+        today_idx = datetime.datetime.now().weekday()
         keyboard = telebot.types.InlineKeyboardMarkup()
-        keyboard.row(
-            *[
-                telebot.types.InlineKeyboardButton(label, callback_data=f"laftel_schedule:{code}")
-                for label, code in zip(DAY_SHORT_LABELS, DAY_CODE_KEYS, strict=True)
-            ]
-        )
-        keyboard.row(
-            telebot.types.InlineKeyboardButton(strings.laftel_day_today_btn, callback_data="laftel_schedule:today"),
-        )
+        buttons = []
+        for i, (label, code) in enumerate(zip(DAY_SHORT_LABELS, DAY_CODE_KEYS, strict=True)):
+            text = f"[{label}]" if i == today_idx else label
+            buttons.append(telebot.types.InlineKeyboardButton(text, callback_data=f"laftel_schedule:{code}"))
+        keyboard.row(*buttons)
         return keyboard
 
     # --- 편성표 데이터 ---
@@ -153,12 +162,13 @@ class LaftelService:
         header = strings.laftel_schedule_header_msg.format(day_name)
         entries = []
         for item in items:
-            genres = ", ".join(item.get("genres", []))
-            rating = item.get("content_rating", "")
+            genres = _escape_markdown(", ".join(item.get("genres", [])))
+            rating = _escape_markdown(item.get("content_rating", ""))
             entry = strings.laftel_schedule_entry_msg.format(
-                name=item.get("name", ""),
+                name=_escape_markdown(item.get("name", "")),
                 genres=genres,
                 rating=rating,
+                item_id=item.get("id", ""),
             )
             entries.append(entry)
 

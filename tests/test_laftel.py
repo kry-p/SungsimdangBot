@@ -104,8 +104,8 @@ class TestGetScheduleByDay:
     def test_normal_output(self):
         cache = {
             "월요일": [
-                {"name": "애니A", "genres": ["액션", "판타지"], "content_rating": "15세 이용가"},
-                {"name": "애니B", "genres": ["로맨스"], "content_rating": "12세 이용가"},
+                {"id": 1, "name": "애니A", "genres": ["액션", "판타지"], "content_rating": "15세 이용가"},
+                {"id": 2, "name": "애니B", "genres": ["로맨스"], "content_rating": "12세 이용가"},
             ]
         }
         svc = _make_service(_schedule_cache=cache, _last_fetch_time=datetime.datetime.now())
@@ -115,7 +115,8 @@ class TestGetScheduleByDay:
         assert "애니A" in result
         assert "애니B" in result
         assert "액션, 판타지" in result
-        assert "(총 2개)" in result
+        assert "총 2개" in result
+        assert "laftel.net/item/1" in result
 
     def test_empty_day(self):
         svc = _make_service(_schedule_cache={}, _last_fetch_time=datetime.datetime.now())
@@ -126,6 +127,7 @@ class TestGetScheduleByDay:
     def test_truncation_on_long_list(self):
         items = [
             {
+                "id": i,
                 "name": f"매우 긴 제목의 애니메이션 {i}",
                 "genres": ["장르A", "장르B", "장르C"],
                 "content_rating": "15세 이용가",
@@ -170,15 +172,22 @@ class TestBuildKeyboards:
         assert any(btn.callback_data == "laftel_menu:schedule" for btn in buttons)
         assert any(btn.text == strings.laftel_schedule_btn for btn in buttons)
 
-    def test_day_selection_has_all_days_and_today(self):
+    def test_day_selection_has_all_days(self):
         keyboard = LaftelService._build_day_selection_keyboard()
         buttons = [btn for row in keyboard.keyboard for btn in row]
         callback_data_set = {btn.callback_data for btn in buttons}
 
         for code in DAY_CODES:
             assert f"laftel_schedule:{code}" in callback_data_set
-        assert "laftel_schedule:today" in callback_data_set
-        assert len(buttons) == 8  # 7 days + today
+        assert len(buttons) == 7
+
+    @patch("modules.laftel.datetime")
+    def test_today_is_highlighted(self, mock_dt):
+        mock_dt.datetime.now.return_value.weekday.return_value = 2  # Wednesday
+        keyboard = LaftelService._build_day_selection_keyboard()
+        buttons = [btn for row in keyboard.keyboard for btn in row]
+        assert buttons[2].text == "[수]"
+        assert buttons[0].text == "월"
 
 
 class TestIsLaftelCallback:
@@ -195,8 +204,13 @@ class TestIsLaftelCallback:
 
 
 class TestHandleLaftelCallback:
-    def test_menu_schedule_shows_day_keyboard(self):
+    @patch("modules.laftel.datetime")
+    def test_menu_schedule_shows_today_schedule(self, mock_dt):
+        mock_dt.datetime.now.return_value.weekday.return_value = 4  # Friday
+
         svc = _make_service()
+        svc._get_schedule_by_day = MagicMock(return_value="금요일 편성표")
+
         call = MagicMock()
         call.data = "laftel_menu:schedule"
         call.message.chat.id = 1
@@ -204,13 +218,12 @@ class TestHandleLaftelCallback:
 
         svc.handle_laftel_callback(call)
 
+        svc._get_schedule_by_day.assert_called_once_with("금요일")
         svc.bot.edit_message_text.assert_called_once()
-        args = svc.bot.edit_message_text.call_args
-        assert args[0][0] == strings.laftel_day_select_msg
-        assert args[1]["reply_markup"] is not None
+        assert svc.bot.edit_message_text.call_args[1]["reply_markup"] is not None
 
     def test_schedule_day_shows_formatted_text(self):
-        cache = {"월요일": [{"name": "테스트", "genres": ["액션"], "content_rating": "15세 이용가"}]}
+        cache = {"월요일": [{"id": 1, "name": "테스트", "genres": ["액션"], "content_rating": "15세 이용가"}]}
         svc = _make_service(_schedule_cache=cache, _last_fetch_time=datetime.datetime.now())
 
         call = MagicMock()
