@@ -156,3 +156,26 @@ class TestHandlerDelegation:
         msg = make_message("hello")
         handlers["text"](msg)
         hub.ordinary_message.assert_called_once_with(msg)
+
+    def test_laftel_delegates_to_hub(self):
+        hub = MagicMock()
+        logger = MagicMock()
+        _, handlers = _capture_handlers(hub, logger)
+
+        msg = make_message("/laftel")
+        handlers["laftel"](msg)
+        hub.laftel.show_portal.assert_called_once_with(msg.chat.id)
+
+
+class TestCallbackErrorBoundary:
+    def test_callback_exception_is_logged(self):
+        hub = MagicMock()
+        hub.handle_admin_callback.side_effect = Exception("db error")
+        logger = MagicMock()
+        bot, handlers = _capture_handlers(hub, logger)
+
+        query = MagicMock()
+        query.data = "allow_confirm:123"
+        handlers["callback"](query)
+
+        logger.log_error.assert_called_once()
