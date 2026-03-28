@@ -27,6 +27,13 @@ DAY_CODES = {
     "sat": "토요일",
     "sun": "일요일",
 }
+RATING_LABELS = {
+    "전체 이용가": "ALL",
+    "7세 이용가": "7+",
+    "12세 이용가": "12+",
+    "15세 이용가": "15+",
+    "성인 이용가": "19+",
+}
 DAY_SHORT_LABELS = ("월", "화", "수", "목", "금", "토", "일")
 DAY_CODE_KEYS = ("mon", "tue", "wed", "thu", "fri", "sat", "sun")
 
@@ -164,11 +171,22 @@ class LaftelService:
         for item in items:
             genres = _escape_markdown(", ".join(item.get("genres", [])))
             raw_rating = item.get("content_rating", "")
-            rating = _escape_markdown("청소년 이용불가" if raw_rating == "성인 이용가" else raw_rating)
+            rating = RATING_LABELS.get(raw_rating, raw_rating)
+
+            tags = []
+            if item.get("is_laftel_only") or item.get("is_exclusive"):
+                tags.append("[독점]")
+            if item.get("is_dubbed"):
+                tags.append("[더빙]")
+            if item.get("is_ending"):
+                tags.append("[완결]")
+            tags_str = _escape_markdown(" ".join(tags))
+
             entry = strings.laftel_schedule_entry_msg.format(
                 name=_escape_markdown(item.get("name", "")),
                 genres=genres,
                 rating=rating,
+                tags=tags_str,
                 item_id=item.get("id", ""),
             )
             entries.append(entry)

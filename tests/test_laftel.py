@@ -104,8 +104,26 @@ class TestGetScheduleByDay:
     def test_normal_output(self):
         cache = {
             "월요일": [
-                {"id": 1, "name": "애니A", "genres": ["액션", "판타지"], "content_rating": "15세 이용가"},
-                {"id": 2, "name": "애니B", "genres": ["로맨스"], "content_rating": "12세 이용가"},
+                {
+                    "id": 1,
+                    "name": "애니A",
+                    "genres": ["액션", "판타지"],
+                    "content_rating": "15세 이용가",
+                    "is_laftel_only": True,
+                    "is_ending": False,
+                    "is_dubbed": False,
+                    "is_exclusive": False,
+                },
+                {
+                    "id": 2,
+                    "name": "애니B",
+                    "genres": ["로맨스"],
+                    "content_rating": "성인 이용가",
+                    "is_laftel_only": False,
+                    "is_ending": True,
+                    "is_dubbed": True,
+                    "is_exclusive": False,
+                },
             ]
         }
         svc = _make_service(_schedule_cache=cache, _last_fetch_time=datetime.datetime.now())
@@ -115,6 +133,11 @@ class TestGetScheduleByDay:
         assert "애니A" in result
         assert "애니B" in result
         assert "액션, 판타지" in result
+        assert "15+" in result
+        assert "19+" in result
+        assert "독점" in result
+        assert "완결" in result
+        assert "더빙" in result
         assert "총 2개" in result
         assert "laftel.net/item/1" in result
 
@@ -223,7 +246,20 @@ class TestHandleLaftelCallback:
         assert svc.bot.edit_message_text.call_args[1]["reply_markup"] is not None
 
     def test_schedule_day_shows_formatted_text(self):
-        cache = {"월요일": [{"id": 1, "name": "테스트", "genres": ["액션"], "content_rating": "15세 이용가"}]}
+        cache = {
+            "월요일": [
+                {
+                    "id": 1,
+                    "name": "테스트",
+                    "genres": ["액션"],
+                    "content_rating": "15세 이용가",
+                    "is_laftel_only": False,
+                    "is_ending": False,
+                    "is_dubbed": False,
+                    "is_exclusive": False,
+                }
+            ]
+        }
         svc = _make_service(_schedule_cache=cache, _last_fetch_time=datetime.datetime.now())
 
         call = MagicMock()
