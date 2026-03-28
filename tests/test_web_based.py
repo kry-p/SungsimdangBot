@@ -76,6 +76,20 @@ class TestUpdateSuon:
             wm.update_suon()
             mock_get.assert_not_called()
 
+    @patch("modules.web_based.requests.get")
+    def test_refresh_after_over_24_hours(self, mock_get):
+        response = MagicMock()
+        response.text = json.dumps({"WPOSInformationTime": {"row": [{"WATT": "21.0"}]}})
+        mock_get.return_value = response
+
+        with patch.object(WebManager, "__init__", lambda self: None):
+            wm = WebManager()
+            wm.suon_v2 = "20.0"
+            wm.last_update_time = datetime.datetime.now() - datetime.timedelta(hours=25)
+            wm.update_suon()
+            mock_get.assert_called_once()
+            assert wm.suon_v2 == "21.0"
+
 
 class TestDaumSearch:
     @patch("modules.web_based.config.KAKAO_TOKEN", "test_token")
