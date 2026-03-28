@@ -39,7 +39,7 @@ class WebManager:
     def update_suon(self):
         # check recently update temperature info 최근에 업데이트하였는지 확인
         self.current_time = datetime.datetime.now()
-        interval = (self.current_time - self.last_update_time).seconds
+        interval = (self.current_time - self.last_update_time).total_seconds()
 
         if self.suon_v2 and interval < SUON_REFRESH_INTERVAL:
             return
