@@ -4,7 +4,6 @@
 # https://gist.github.com/David-Lor/37e0ae02cd7fb1cd01085b2de553dde4
 
 
-import logging
 import signal
 import threading
 from time import sleep
@@ -52,7 +51,7 @@ signal.signal(signal.SIGINT, shutdown_handler)
 
 
 def bot_polling():
-    logging.info("Starts polling")
+    logger.log_info("Starts polling")
     while True:
         try:
             logger.log_info("Bot instance is running")

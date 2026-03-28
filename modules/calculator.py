@@ -21,8 +21,6 @@ class Calculator:
             "acos": math.acos,
             "atan": math.atan,
         }
-        self.tokenized_notation = []
-        self.postfix_notation = []
 
     # 계산 작업
     def operation(self, expression):
@@ -30,12 +28,12 @@ class Calculator:
             check = self.wrong_syntax_checker(expression)
             if check == "syntax error":
                 return "syntax error"
-            self.tokenize(expression)
-            self.infix_to_postfix()
+            tokens = self.tokenize(expression)
+            postfix = self.infix_to_postfix(tokens)
 
-            result = self.calculate_postfix()
+            result = self.calculate_postfix(postfix)
 
-            if type(result) is int:
+            if isinstance(result, int):
                 return result
             else:
                 return round(result, 4)
@@ -126,7 +124,7 @@ class Calculator:
         if depth != 0:
             raise SyntaxError
 
-        self.tokenized_notation = list(map(self.string_to_number, result))
+        return list(map(self.string_to_number, result))
 
     # String 형태의 숫자를 정수와 실수로 변환
     @staticmethod
@@ -148,13 +146,13 @@ class Calculator:
                 return string
 
     # 중위 표현식을 후위 표현식으로 변환
-    def infix_to_postfix(self):
+    def infix_to_postfix(self, tokenized_notation):
         stack = []
         result = []
 
-        for i in self.tokenized_notation:
+        for i in tokenized_notation:
             # 숫자는 그대로 내보냄
-            if type(i) is int or type(i) is float or i in self.library["constant"]:
+            if isinstance(i, (int, float)) or i in self.library["constant"]:
                 result.append(i)
 
             # 연산자 처리하기
@@ -165,12 +163,11 @@ class Calculator:
                 # ')' 이면 '(' 가 나올 때까지 모두 pop
                 # stack 은 연산 우선순위의 역순으로 정렬되어 pop 시 우선 순위대로 나오게 됨
                 elif i == ")":
-                    for _j in range(len(stack)):
+                    while stack:
                         if stack[-1] == "(":
                             stack.pop()
                             break
-                        else:
-                            result.append(stack.pop())
+                        result.append(stack.pop())
                 else:
                     while (
                         stack
@@ -183,18 +180,18 @@ class Calculator:
                         result.append(stack.pop())
                     stack.append(i)
 
-        for _i in range(len(stack)):
+        while stack:
             result.append(stack.pop())
 
-        self.postfix_notation = result
+        return result
 
     # 후위 표현식을 계산
-    def calculate_postfix(self):
+    def calculate_postfix(self, postfix_notation):
         stack = []
         temp = None
 
-        for i in self.postfix_notation:
-            if type(i) is int or type(i) is float or i in self.library["constant"]:
+        for i in postfix_notation:
+            if isinstance(i, (int, float)) or i in self.library["constant"]:
                 stack.append(i)
 
             # 스택에서 차례로 pop 한 뒤 연산

@@ -113,9 +113,10 @@ class BotFeaturesHub:
 
     # Calculator
     def calculator_handler(self, message):
-        command = message.text.split()[0]
+        parts = message.text.split()
+        command = parts[0]
 
-        if len(message.text.split()) >= 2:
+        if len(parts) >= 2:
             actual_text = message.text[len(command) :]
 
             result = self.calculator.operation(actual_text)
@@ -130,7 +131,8 @@ class BotFeaturesHub:
     # Ask handler
     def ask_handler(self, message):
         text = message.text or message.caption or ""
-        command = text.split()[0] if text.split() else ""
+        parts = text.split()
+        command = parts[0] if parts else ""
         if len(text.strip()) <= len(command):
             self.bot.reply_to(message, strings.ask_empty_msg)
             return
