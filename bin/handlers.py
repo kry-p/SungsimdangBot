@@ -36,7 +36,7 @@ def register_commands(bot):
             telebot.types.BotCommand("ask_settings", "AI 설정 확인"),
             telebot.types.BotCommand("myid", "내 사용자 ID 확인"),
             telebot.types.BotCommand("ping", "봇 상태 확인"),
-            telebot.types.BotCommand("laftel", "Laftel 애니 정보"),
+            telebot.types.BotCommand("laftel", "라프텔 애니 정보"),
         ]
     )
 
