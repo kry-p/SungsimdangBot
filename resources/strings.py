@@ -8,6 +8,9 @@ import telebot
 # Message for checking bot status
 working_msg = "성심당봇이 정상 작동 중입니다."
 
+# Generic error message
+generic_error_msg = "요청을 처리하는 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요."
+
 # Guideline message
 start_msg = (
     "성심당봇이에요! 무엇을 도와드릴까요?\n\n"

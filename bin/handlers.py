@@ -40,6 +40,19 @@ def register_commands(bot):
 
 
 def register_handlers(bot, hub, logger):
+    def safe_handler(func):
+        def wrapper(message):
+            try:
+                func(message)
+            except Exception:
+                logger.log_error(f"Handler {func.__name__} failed for message: {getattr(message, 'text', None)}")
+                try:
+                    bot.reply_to(message, strings.generic_error_msg)
+                except Exception:
+                    pass
+
+        return wrapper
+
     # Callback query handler
     @bot.callback_query_handler(func=lambda call: True)
     def handle_callback(query):
@@ -95,10 +108,12 @@ def register_handlers(bot, hub, logger):
 
     # Search
     @bot.message_handler(commands=["search"])
+    @safe_handler
     def handle_search(message):
         hub.search_handler(message)
 
     @bot.message_handler(commands=["namu"])
+    @safe_handler
     def handle_namu(message):
         bot.reply_to(message, hub.web_manager.namuwiki_search(message), parse_mode="Markdown")
 
@@ -112,10 +127,12 @@ def register_handlers(bot, hub, logger):
         func=lambda m: m.caption and m.caption.startswith("/ask"),
         content_types=["photo"],
     )
+    @safe_handler
     def handle_ask_photo(message):
         hub.ask_handler(message)
 
     @bot.message_handler(commands=["ask"])
+    @safe_handler
     def handle_ask(message):
         hub.ask_handler(message)
 
@@ -138,11 +155,13 @@ def register_handlers(bot, hub, logger):
 
     # D-day
     @bot.message_handler(commands=["dday"])
+    @safe_handler
     def handle_dday(message):
         hub.d_day(message)
 
     # Location
     @bot.message_handler(content_types=["location"])
+    @safe_handler
     def handle_location(message):
         hub.geolocation_info(message, message.location.latitude, message.location.longitude)
 
@@ -153,6 +172,7 @@ def register_handlers(bot, hub, logger):
 
     # Ordinary message
     @bot.message_handler(content_types=["text"])
+    @safe_handler
     def handle_text(message):
         if message.text.startswith("/"):
             return
