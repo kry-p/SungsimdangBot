@@ -2,8 +2,10 @@ import datetime
 
 import requests
 import telebot
+from pydantic import TypeAdapter
 
 from modules import log
+from modules.api_models import LaftelAnime
 from resources import strings
 
 logger = log.Logger()
@@ -145,10 +147,10 @@ class LaftelService:
                 headers=LAFTEL_HEADERS,
                 timeout=10,
             )
-            data = response.json()
+            anime_list = TypeAdapter(list[LaftelAnime]).validate_json(response.content)
             grouped = {}
-            for item in data:
-                day = item.get("distributed_air_time", "")
+            for item in anime_list:
+                day = item.distributed_air_time
                 if day not in grouped:
                     grouped[day] = []
                 grouped[day].append(item)
@@ -169,25 +171,24 @@ class LaftelService:
         header = strings.laftel_schedule_header_msg.format(day_name)
         entries = []
         for item in items:
-            genres = _escape_markdown(", ".join(item.get("genres", [])))
-            raw_rating = item.get("content_rating", "")
-            rating = RATING_LABELS.get(raw_rating, raw_rating)
+            genres = _escape_markdown(", ".join(item.genres))
+            rating = RATING_LABELS.get(item.content_rating, item.content_rating)
 
             tags = []
-            if item.get("is_laftel_only") or item.get("is_exclusive"):
+            if item.is_laftel_only or item.is_exclusive:
                 tags.append("[독점]")
-            if item.get("is_dubbed"):
+            if item.is_dubbed:
                 tags.append("[더빙]")
-            if item.get("is_ending"):
+            if item.is_ending:
                 tags.append("[완결]")
             tags_str = _escape_markdown(" ".join(tags))
 
             entry = strings.laftel_schedule_entry_msg.format(
-                name=_escape_markdown(item.get("name", "")),
+                name=_escape_markdown(item.name),
                 genres=genres,
                 rating=rating,
                 tags=tags_str,
-                item_id=item.get("id", ""),
+                item_id=item.id,
             )
             entries.append(entry)
 

@@ -1,6 +1,7 @@
 import datetime
 from unittest.mock import MagicMock, patch
 
+from modules.api_models import LaftelAnime
 from modules.laftel import CACHE_INTERVAL, DAY_CODES, DAYS_OF_WEEK, LaftelService
 from resources import strings
 
@@ -43,8 +44,10 @@ def _make_service(**overrides):
 class TestFetchDailySchedule:
     @patch("modules.laftel.requests.get")
     def test_success_groups_by_day(self, mock_get):
+        import json
+
         response = MagicMock()
-        response.json.return_value = SAMPLE_SCHEDULE
+        response.content = json.dumps(SAMPLE_SCHEDULE).encode()
         mock_get.return_value = response
 
         svc = _make_service()
@@ -88,7 +91,7 @@ class TestFetchDailySchedule:
     @patch("modules.laftel.requests.get")
     def test_cache_expired_refetches(self, mock_get):
         response = MagicMock()
-        response.json.return_value = []
+        response.content = b"[]"
         mock_get.return_value = response
 
         svc = _make_service(
@@ -104,26 +107,12 @@ class TestGetScheduleByDay:
     def test_normal_output(self):
         cache = {
             "월요일": [
-                {
-                    "id": 1,
-                    "name": "애니A",
-                    "genres": ["액션", "판타지"],
-                    "content_rating": "15세 이용가",
-                    "is_laftel_only": True,
-                    "is_ending": False,
-                    "is_dubbed": False,
-                    "is_exclusive": False,
-                },
-                {
-                    "id": 2,
-                    "name": "애니B",
-                    "genres": ["로맨스"],
-                    "content_rating": "성인 이용가",
-                    "is_laftel_only": False,
-                    "is_ending": True,
-                    "is_dubbed": True,
-                    "is_exclusive": False,
-                },
+                LaftelAnime(
+                    id=1, name="애니A", genres=["액션", "판타지"], content_rating="15세 이용가", is_laftel_only=True
+                ),
+                LaftelAnime(
+                    id=2, name="애니B", genres=["로맨스"], content_rating="성인 이용가", is_ending=True, is_dubbed=True
+                ),
             ]
         }
         svc = _make_service(_schedule_cache=cache, _last_fetch_time=datetime.datetime.now())
@@ -149,12 +138,12 @@ class TestGetScheduleByDay:
 
     def test_truncation_on_long_list(self):
         items = [
-            {
-                "id": i,
-                "name": f"매우 긴 제목의 애니메이션 {i}",
-                "genres": ["장르A", "장르B", "장르C"],
-                "content_rating": "15세 이용가",
-            }
+            LaftelAnime(
+                id=i,
+                name=f"매우 긴 제목의 애니메이션 {i}",
+                genres=["장르A", "장르B", "장르C"],
+                content_rating="15세 이용가",
+            )
             for i in range(200)
         ]
         svc = _make_service(_schedule_cache={"월요일": items}, _last_fetch_time=datetime.datetime.now())
@@ -246,20 +235,7 @@ class TestHandleLaftelCallback:
         assert svc.bot.edit_message_text.call_args[1]["reply_markup"] is not None
 
     def test_schedule_day_shows_formatted_text(self):
-        cache = {
-            "월요일": [
-                {
-                    "id": 1,
-                    "name": "테스트",
-                    "genres": ["액션"],
-                    "content_rating": "15세 이용가",
-                    "is_laftel_only": False,
-                    "is_ending": False,
-                    "is_dubbed": False,
-                    "is_exclusive": False,
-                }
-            ]
-        }
+        cache = {"월요일": [LaftelAnime(id=1, name="테스트", genres=["액션"], content_rating="15세 이용가")]}
         svc = _make_service(_schedule_cache=cache, _last_fetch_time=datetime.datetime.now())
 
         call = MagicMock()
