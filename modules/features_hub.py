@@ -8,6 +8,7 @@ from modules import log
 from modules.admin import AdminManager
 from modules.calculator import Calculator
 from modules.gemini_chat import GeminiChat
+from modules.laftel import LaftelService
 from modules.random_based import RandomBasedFeatures
 from modules.utils import strip_html_tags
 from modules.web_based import WebManager
@@ -17,11 +18,13 @@ logger = log.Logger()
 
 
 class BotFeaturesHub:
-    CALLBACK_PREFIXES = AdminManager.CALLBACK_PREFIXES
-
     @staticmethod
     def is_admin_callback(data):
         return AdminManager.is_admin_callback(data)
+
+    @staticmethod
+    def is_laftel_callback(data):
+        return LaftelService.is_laftel_callback(data)
 
     # init
     def __init__(self, bot):
@@ -32,6 +35,7 @@ class BotFeaturesHub:
         self.calculator = Calculator()
         self.gemini_chat = GeminiChat()
         self.admin = AdminManager(bot, self.gemini_chat)
+        self.laftel = LaftelService(bot)
 
     # --- Admin delegation ---
 
@@ -41,6 +45,9 @@ class BotFeaturesHub:
 
     def handle_admin_callback(self, call):
         self.admin.handle_admin_callback(call)
+
+    def handle_laftel_callback(self, call):
+        self.laftel.handle_laftel_callback(call)
 
     def allow_chat_handler(self, message):
         self.admin.allow_chat_handler(message)

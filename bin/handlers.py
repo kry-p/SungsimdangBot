@@ -14,6 +14,7 @@ QUERY_STRINGS = {
     "ask": strings.ask_help_msg,
     "search": strings.search_help_msg,
     "namu": strings.namu_help_msg,
+    "laftel": strings.laftel_help_msg,
 }
 
 
@@ -35,6 +36,7 @@ def register_commands(bot):
             telebot.types.BotCommand("ask_settings", "AI 설정 확인"),
             telebot.types.BotCommand("myid", "내 사용자 ID 확인"),
             telebot.types.BotCommand("ping", "봇 상태 확인"),
+            telebot.types.BotCommand("laftel", "라프텔 애니 정보"),
         ]
     )
 
@@ -60,13 +62,19 @@ def register_handlers(bot, hub, logger):
             bot.answer_callback_query(query.id)
         except Exception:
             return
-        if BotFeaturesHub.is_admin_callback(query.data):
-            hub.handle_admin_callback(query)
-            return
-        result = QUERY_STRINGS.get(query.data)
-        if result is not None:
-            bot.send_chat_action(query.message.chat.id, "typing")
-            bot.send_message(query.message.chat.id, result)
+        try:
+            if BotFeaturesHub.is_admin_callback(query.data):
+                hub.handle_admin_callback(query)
+                return
+            if BotFeaturesHub.is_laftel_callback(query.data):
+                hub.handle_laftel_callback(query)
+                return
+            result = QUERY_STRINGS.get(query.data)
+            if result is not None:
+                bot.send_chat_action(query.message.chat.id, "typing")
+                bot.send_message(query.message.chat.id, result)
+        except Exception:
+            logger.log_error(f"Callback handler failed for data: {query.data}")
 
     # Bot status
     @bot.message_handler(commands=["ping"])
@@ -139,6 +147,12 @@ def register_handlers(bot, hub, logger):
     @bot.message_handler(commands=["clear_chat"])
     def handle_clear_chat(message):
         hub.clear_chat_handler(message)
+
+    # Laftel
+    @bot.message_handler(commands=["laftel"])
+    @safe_handler
+    def handle_laftel(message):
+        hub.laftel.show_portal(message.chat.id)
 
     # Admin commands
     @bot.message_handler(commands=["allow_chat"])
