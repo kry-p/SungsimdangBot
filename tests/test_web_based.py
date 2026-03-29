@@ -5,6 +5,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from modules.api_models import KakaoSearchDocument, KakaoSearchResponse
 from modules.web_based import WebManager
 from resources import strings
 from tests.conftest import make_message
@@ -105,7 +106,7 @@ class TestDaumSearch:
             wm = WebManager()
             msg = make_message("/search test")
             result = wm.daum_search(msg, None)
-            assert len(result["documents"]) == 1
+            assert len(result.documents) == 1
 
     @patch("modules.web_based.config.KAKAO_TOKEN", "test_token")
     @patch("modules.web_based.requests.get")
@@ -118,7 +119,7 @@ class TestDaumSearch:
             wm = WebManager()
             msg = make_message("/search nothing")
             result = wm.daum_search(msg, None)
-            assert result["documents"] == []
+            assert result.documents == []
 
     @patch("modules.web_based.config.KAKAO_TOKEN", "test_token")
     @patch("modules.web_based.requests.get")
@@ -129,7 +130,7 @@ class TestDaumSearch:
             wm = WebManager()
             msg = make_message("/search fail")
             result = wm.daum_search(msg, None)
-            assert result == {"documents": []}
+            assert result.documents == []
 
 
 class TestDaumSearchMultiWord:
@@ -154,15 +155,9 @@ class TestDaumSearchMultiWord:
 class TestNamuwikiSearch:
     @patch.object(WebManager, "daum_search")
     def test_normal_result(self, mock_daum):
-        mock_daum.return_value = {
-            "documents": [
-                {
-                    "title": "test",
-                    "contents": "<b>content</b>",
-                    "url": "https://namu.wiki/w/test",
-                }
-            ]
-        }
+        mock_daum.return_value = KakaoSearchResponse(
+            documents=[KakaoSearchDocument(title="test", contents="<b>content</b>", url="https://namu.wiki/w/test")]
+        )
 
         with patch.object(WebManager, "__init__", lambda self: None):
             wm = WebManager()
@@ -172,7 +167,7 @@ class TestNamuwikiSearch:
 
     @patch.object(WebManager, "daum_search")
     def test_empty_documents(self, mock_daum):
-        mock_daum.return_value = {"documents": []}
+        mock_daum.return_value = KakaoSearchResponse()
 
         with patch.object(WebManager, "__init__", lambda self: None):
             wm = WebManager()
@@ -185,15 +180,15 @@ class TestNamuwikiSearchMultiWord:
     @patch.object(WebManager, "daum_search")
     def test_multi_word_keyword(self, mock_daum):
         encoded = urllib.parse.quote("hello world")
-        mock_daum.return_value = {
-            "documents": [
-                {
-                    "title": "hello world",
-                    "contents": "<b>some content</b>",
-                    "url": "https://namu.wiki/w/" + encoded,
-                }
+        mock_daum.return_value = KakaoSearchResponse(
+            documents=[
+                KakaoSearchDocument(
+                    title="hello world",
+                    contents="<b>some content</b>",
+                    url="https://namu.wiki/w/" + encoded,
+                )
             ]
-        }
+        )
 
         with patch.object(WebManager, "__init__", lambda self: None):
             wm = WebManager()
@@ -206,15 +201,15 @@ class TestNamuwikiSearchMultiWord:
 class TestNamuwikiSearchUrlMismatch:
     @patch.object(WebManager, "daum_search")
     def test_url_mismatch_shows_actual_result(self, mock_daum):
-        mock_daum.return_value = {
-            "documents": [
-                {
-                    "title": "<b>Different</b> Page",
-                    "contents": "<b>content</b> here",
-                    "url": "https://namu.wiki/w/different_page",
-                }
+        mock_daum.return_value = KakaoSearchResponse(
+            documents=[
+                KakaoSearchDocument(
+                    title="<b>Different</b> Page",
+                    contents="<b>content</b> here",
+                    url="https://namu.wiki/w/different_page",
+                )
             ]
-        }
+        )
 
         with patch.object(WebManager, "__init__", lambda self: None):
             wm = WebManager()

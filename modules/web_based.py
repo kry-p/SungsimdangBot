@@ -1,11 +1,16 @@
 import datetime
-import json
 import urllib.parse
 
 import requests
 
 from config import config
 from modules import log
+from modules.api_models import (
+    HangangWaterResponse,
+    KakaoAddressResponse,
+    KakaoSearchResponse,
+    WeatherResponse,
+)
 from modules.utils import extract_command_args, strip_html_tags
 from resources import strings
 
@@ -46,8 +51,8 @@ class WebManager:
         else:
             try:
                 search_request = requests.get(config.SEOUL_HANGANG_WATER_URL, timeout=10)
-                result = json.loads(search_request.text)
-                self.suon_v2 = result["WPOSInformationTime"]["row"][0]["WATT"]
+                parsed = HangangWaterResponse.model_validate_json(search_request.text)
+                self.suon_v2 = parsed.WPOSInformationTime.row[0].WATT
             except Exception:
                 logger.log_error("Retreiving water information of Hangang failed. Please check API Status.")
                 self.suon_v2 = None
@@ -63,33 +68,33 @@ class WebManager:
 
         try:
             search_request = requests.get(search_url, headers=search_headers, timeout=10)
-            result = json.loads(search_request.text)
+            parsed = KakaoSearchResponse.model_validate_json(search_request.text)
         except Exception:
-            return {"documents": []}
+            return KakaoSearchResponse()
 
-        for i in result["documents"]:
-            urlinfo = urllib.parse.urlsplit(i["url"])
-            i["url"] = f"{urlinfo.scheme}://{urlinfo.netloc}{urllib.parse.quote(urlinfo.path, safe='/:@!$&*+,;=%')}"
+        for doc in parsed.documents:
+            urlinfo = urllib.parse.urlsplit(doc.url)
+            doc.url = f"{urlinfo.scheme}://{urlinfo.netloc}{urllib.parse.quote(urlinfo.path, safe='/:@!$&*+,;=%')}"
 
-        return result
+        return parsed
 
     # Search from Namu.wiki
     def namuwiki_search(self, message):
         keyword = extract_command_args(message.text)
         url = NAMUWIKI_BASE_URL + urllib.parse.quote(keyword)
 
-        documents = self.daum_search(message, "namu.wiki")["documents"]
+        documents = self.daum_search(message, "namu.wiki").documents
         if not documents:
             return strings.search_no_result_msg
 
         result = documents[0]
-        result_contents = result["contents"]
-        result_url = result["url"]
+        result_contents = result.contents
+        result_url = result.url
 
         text = strip_html_tags(result_contents)
 
         if result_url != url:
-            result_title = strip_html_tags(result["title"])
+            result_title = strip_html_tags(result.title)
             return (
                 strings.search_mismatch_msg.format(keyword=keyword)
                 + "["
@@ -112,18 +117,19 @@ class WebManager:
         weather_args = {"lang": "kr", "appid": config.WEATHER_TOKEN, "lat": latitude, "lon": longitude}
         weather_url = WEATHER_BASE_URL + urllib.parse.urlencode(weather_args)
         weather_request = requests.get(weather_url, timeout=10)
-        weather_json = json.loads(weather_request.text)
+        weather_data = WeatherResponse.model_validate_json(weather_request.text)
 
-        weather = weather_json["weather"][0]["description"]
-        temp = str(round(weather_json["main"]["temp"] - 273.15)) + "°C"
-        feels_temp = str(round(weather_json["main"]["feels_like"] - 273.15)) + "°C"
-        humidity = str(round(weather_json["main"]["humidity"])) + "%"
+        weather = weather_data.weather[0].description
+        temp = str(round(weather_data.main.temp - 273.15)) + "°C"
+        feels_temp = str(round(weather_data.main.feels_like - 273.15)) + "°C"
+        humidity = str(round(weather_data.main.humidity)) + "%"
 
         weather_result = strings.geolocation_weather_msg.format(
             weather=weather, temp=temp, feels_temp=feels_temp, humidity=humidity
         )
 
-        map_location = json.loads(map_request.text)["documents"][0]["address"]["address_name"]
+        map_parsed = KakaoAddressResponse.model_validate_json(map_request.text)
+        map_location = map_parsed.documents[0].address.address_name
         geo_location = strings.geolocation_coords_msg.format(latitude=latitude, longitude=longitude)
 
         return geo_location + "\n" + map_location + "\n\n" + weather_result

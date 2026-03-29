@@ -110,9 +110,9 @@ class BotFeaturesHub:
             result = self.web_manager.daum_search(message, None)
             result_contents = ""
 
-            for doc in result["documents"][:5]:
-                link = f"[{strings.search_more_link_msg}]({doc['url']})"
-                result_contents += strip_html_tags(f"*{doc['title']}*\n{doc['contents']}\n{link}\n\n")
+            for doc in result.documents[:5]:
+                link = f"[{strings.search_more_link_msg}]({doc.url})"
+                result_contents += strip_html_tags(f"*{doc.title}*\n{doc.contents}\n{link}\n\n")
             text = strings.search_result_header_msg + strip_html_tags(result_contents)
             self.bot.reply_to(message, text, parse_mode="Markdown")
         except Exception:
