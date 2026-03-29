@@ -68,7 +68,7 @@ class BotFeaturesHub:
         self.web_manager.update_suon()
         provided_suon = self.web_manager.provide_suon_v2()
 
-        if provided_suon == "점검중":
+        if provided_suon == strings.suon_maintenance_status:
             return strings.suon_unavailable_msg
         return strings.suon_result_msg.format(provided_suon)
 

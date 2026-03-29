@@ -69,6 +69,7 @@ shot_blind_msg = "이번 격발 결과는 공포탄입니다."
 coin_toss_prefix_msg = "동전뒤집기 결과 : "
 
 # suon (river temperature) message
+suon_maintenance_status = "점검중"
 suon_unavailable_msg = "현재 한강 수온 정보를 가져올 수 없습니다. (사유: 정보 미제공)"
 suon_result_msg = "현재 한강 수온은 {} 도입니다."
 

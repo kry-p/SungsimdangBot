@@ -20,6 +20,7 @@
 - 모든 사용자 대상 메시지(한국어)는 `resources/strings.py`에 정의
 - 모듈 코드에 사용자 대상 문자열을 하드코딩하지 않음 — `strings.xxx_msg` 참조
 - 도움말 메시지 패턴: `strings.xxx_help_msg` / 에러 메시지 패턴: `strings.xxx_error_msg`
+- 예외: 외부 API 응답값과 매핑하기 위한 한국어 상수(요일명 등)는 해당 모듈에 유지
 
 ## 에러 처리
 

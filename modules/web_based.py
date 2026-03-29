@@ -137,5 +137,5 @@ class WebManager:
     # Provide temperature data to other methods (V2, 한강으로 고정)
     def provide_suon_v2(self):
         if self.suon_v2 is None:
-            return "점검중"
+            return strings.suon_maintenance_status
         return self.suon_v2
