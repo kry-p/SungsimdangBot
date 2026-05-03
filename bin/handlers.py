@@ -1,4 +1,5 @@
 import telebot
+import tenacity
 
 from modules.features_hub import BotFeaturesHub
 from resources import strings
@@ -51,9 +52,14 @@ def register_handlers(bot, hub, logger):
             except Exception:
                 logger.log_error(f"Handler {func.__name__} failed for message: {getattr(message, 'text', None)}")
                 try:
-                    bot.reply_to(message, strings.generic_error_msg)
-                except Exception:
-                    pass
+                    for attempt in tenacity.Retrying(
+                        stop=tenacity.stop_after_attempt(3),
+                        wait=tenacity.wait_exponential(multiplier=1, min=1, max=8),
+                    ):
+                        with attempt:
+                            bot.reply_to(message, strings.generic_error_msg)
+                except tenacity.RetryError:
+                    logger.log_error(f"Failed to send error message for {func.__name__} after retries")
 
         return wrapper
 
