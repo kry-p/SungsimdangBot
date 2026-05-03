@@ -236,11 +236,11 @@ laftel_portal_btn = "포털로"
 laftel_help_msg = "/laftel 명령어로 라프텔 편성표, 랭킹, 검색 기능을 이용할 수 있습니다."
 
 # RSS feed translater message
-bfrss_help_msg = "번역된 rss를 보여줍니다. 주기는 오전 9시(딜레이 약 2분)에 갱신됩니다."
-bfrss_error_msg = "번역 서버에 연결할 수 없습니다."
+bfrss_help_msg = "번역된 rss를 보여줍니다. 피드는 외부 번역서버에서 설정한 주기로 갱신됩니다."
+bfrss_header_msg = " HACKER NEWS ({month}월 {day}일 {time_of_day})\n\n"
+bfrss_header_msg_no_time = " HACKER NEWS ({month}월 {day}일)\n\n"
 bfrss_am = "오전"
 bfrss_pm = "오후"
-bfrss_header_msg = " HACKER NEWS ({month}월 {day}일 {time_of_day})\n\n"
 
 # Resources
 

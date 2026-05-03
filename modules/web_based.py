@@ -146,8 +146,11 @@ class WebManager:
         try:
             res = requests.get(config.RSSF_URL, params={"token": config.RSSF_TOKEN}, timeout=10)
             data = RssfResponse.model_validate_json(res.text)
-            time_of_day = strings.bfrss_am if data.hour < 12 else strings.bfrss_pm
-            text = strings.bfrss_header_msg.format(month=data.date[4:6], day=data.date[6:], time_of_day=time_of_day)
+            if data.hour is not None:
+                time_of_day = strings.bfrss_am if data.hour < 12 else strings.bfrss_pm
+                text = strings.bfrss_header_msg.format(month=data.date[4:6], day=data.date[6:], time_of_day=time_of_day)
+            else:
+                text = strings.bfrss_header_msg_no_time.format(month=data.date[4:6], day=data.date[6:])
             text += "\n".join(
                 f'• <a href="{html.escape(e.link, quote=True)}">{html.escape(e.title)}</a>' for e in data.entries
             )
