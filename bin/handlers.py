@@ -1,3 +1,5 @@
+import re
+
 import telebot
 
 from modules.features_hub import BotFeaturesHub
@@ -179,7 +181,22 @@ def register_handlers(bot, hub, logger):
     @bot.message_handler(commands=["bfrss"])
     @safe_handler
     def handle_bfrss(message):
-        hub.rss_handler(message)
+        m = re.match(r"^/bfrss(?:@\w+)?(?:[ \t]+(\S+))?(?:\n(\S+))?", message.text or "")
+        arg1 = m.group(1) if m else None
+        arg2 = m.group(2) if m else None
+        if arg1 is None:
+            slug = "hn"
+        elif re.fullmatch(r"-\w+", arg1):
+            slug = arg1.lstrip("-").lower()
+        else:
+            slug = ""
+        if arg2 is not None:
+            date = "20" + arg2 if re.fullmatch(r"\d{6}", arg2) else ""
+            if not date:
+                slug = ""
+        else:
+            date = ""
+        hub.rss_handler(message, slug, date)
 
     # Location
     @bot.message_handler(content_types=["location"])
@@ -198,7 +215,6 @@ def register_handlers(bot, hub, logger):
     )
     def handle_laftel_search_reply(message):
         hub.laftel.handle_search_reply(message)
-
 
     # Ordinary message
     @bot.message_handler(content_types=["text"])
