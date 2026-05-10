@@ -108,5 +108,5 @@ class RssfEntry(BaseModel):
 class RssfResponse(BaseModel):
     model_config = ConfigDict(extra="ignore")
     date: str = ""
-    hour: int = 0
+    hour: int | None = None
     entries: list[RssfEntry] = []
