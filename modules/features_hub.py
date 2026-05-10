@@ -146,28 +146,37 @@ class BotFeaturesHub:
         question = text[len(command) :].strip()
         language_code = getattr(message.from_user, "language_code", None)
 
-        image = None
-        context = None
-        photo_list = getattr(message, "photo", None)
-        reply = getattr(message, "reply_to_message", None)
-        if photo_list:
-            image = self._download_photo(photo_list)
-            if image is None:
-                self.bot.reply_to(message, strings.ask_photo_download_error_msg)
-                return
-        elif reply:
-            reply_photo = getattr(reply, "photo", None)
-            if reply_photo:
-                image = self._download_photo(reply_photo)
-                if image is None:
-                    self.bot.reply_to(message, strings.ask_photo_download_error_msg)
-                    return
-            context = getattr(reply, "text", None) or getattr(reply, "caption", None)
+        image, context = self._extract_ask_params(message)
+        if image is False:
+            self.bot.reply_to(message, strings.ask_photo_download_error_msg)
+            return
 
         self.bot.send_chat_action(message.chat.id, "typing")
         result = self.gemini_chat.ask(message.chat.id, message.from_user.id, question, language_code, context, image)
         for chunk in result:
             self._reply_markdown(message, chunk)
+
+    def _extract_ask_params(self, message):
+        """메시지에서 이미지와 컨텍스트를 추출한다. 사진 다운로드 실패 시 (False, None)을 반환."""
+        photo_list = getattr(message, "photo", None)
+        reply = getattr(message, "reply_to_message", None)
+
+        if photo_list:
+            image = self._download_photo(photo_list)
+            return (image, None) if image is not None else (False, None)
+
+        if reply:
+            reply_photo = getattr(reply, "photo", None)
+            if reply_photo:
+                image = self._download_photo(reply_photo)
+                if image is None:
+                    return False, None
+            else:
+                image = None
+            context = getattr(reply, "text", None) or getattr(reply, "caption", None)
+            return image, context
+
+        return None, None
 
     def _download_photo(self, photo_list):
         try:
@@ -204,8 +213,8 @@ class BotFeaturesHub:
 
     # Handling ordinary message
     def ordinary_message(self, message):
-        if ("수온" in message.text) or ("자살" in message.text):
+        if any(keyword in message.text for keyword in strings.temp_keywords):
             self.bot.reply_to(message, self.get_temp())
 
-        if ("마법의 소라고둥" in message.text) or ("마법의 소라고동" in message.text):
+        if any(keyword in message.text for keyword in strings.magic_conch_keywords):
             self.bot.reply_to(message, self.random_based_features.magic_conch())
