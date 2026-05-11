@@ -142,25 +142,12 @@ class WebManager:
             return strings.suon_maintenance_status
         return self.suon_v2
 
-    def rss_handler(self, message, slug="hn", date=""):
-        if slug not in strings.bfrss_feed_names:
-            return strings.bfrss_unknown_feed_msg, None
+    def rss_handler(self, message):
         try:
-            params = {"token": config.RSSF_TOKEN}
-            if date:
-                params["date"] = date
-            res = requests.get(f"{config.RSSF_URL}/feed/{slug}", params=params, timeout=10)
+            res = requests.get(config.RSSF_URL, params={"token": config.RSSF_TOKEN}, timeout=10)
             data = RssfResponse.model_validate_json(res.text)
-            feed_name = strings.bfrss_feed_names[slug]
-            if data.hour is not None:
-                time_of_day = strings.bfrss_am if data.hour < 12 else strings.bfrss_pm
-                text = strings.bfrss_header_msg.format(
-                    feed_name=feed_name, month=data.date[4:6], day=data.date[6:], time_of_day=time_of_day
-                )
-            else:
-                text = strings.bfrss_header_msg_no_time.format(
-                    feed_name=feed_name, month=data.date[4:6], day=data.date[6:]
-                )
+            time_of_day = strings.bfrss_am if data.hour < 12 else strings.bfrss_pm
+            text = strings.bfrss_header_msg.format(month=data.date[4:6], day=data.date[6:], time_of_day=time_of_day)
             text += "\n".join(
                 f'• <a href="{html.escape(e.link, quote=True)}">{html.escape(e.title)}</a>' for e in data.entries
             )
