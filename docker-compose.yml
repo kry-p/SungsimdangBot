@@ -1,6 +1,6 @@
 services:
   bot:
-    image: ghcr.io/kry-p/sungsimdangbot:latest
+    image: ghcr.io/h1ghg3n/sungsimpork-bot:latest
     container_name: sungsimdangbot
     restart: unless-stopped
     env_file:

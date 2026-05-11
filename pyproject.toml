@@ -1,6 +1,6 @@
 [project]
 name = "sungsimdangbot"
-version = "1.6.0"
+version = "1.0.1"
 description = "Telegram bot with various utility features"
 requires-python = ">=3.10"
 dependencies = [
