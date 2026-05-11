@@ -273,34 +273,96 @@ class TestProvideSuonV2:
 
 
 class TestRssHandler:
-    @patch("modules.web_based.config.RSSF_URL", "http://test-server/hn")
+    _response_data = {
+        "date": "20260424",
+        "hour": 9,
+        "entries": [
+            {"title": "Test Article", "link": "https://example.com"},
+            {"title": "Article with <special> &chars", "link": "https://example.com/path?a=1&b=2"},
+        ],
+    }
+
+    @patch("modules.web_based.config.RSSF_URL", "http://test-server")
     @patch("modules.web_based.config.RSSF_TOKEN", "test_token")
     @patch("modules.web_based.requests.get")
     def test_success(self, mock_get):
         response = MagicMock()
-        response.text = json.dumps(
-            {
-                "date": "20260424",
-                "entries": [
-                    {"title": "Test Article", "link": "https://example.com"},
-                    {"title": "Article with <special> &chars", "link": "https://example.com/path?a=1&b=2"},
-                ],
-            }
-        )
+        response.text = json.dumps(self._response_data)
         mock_get.return_value = response
 
         with patch.object(WebManager, "__init__", lambda self: None):
             wm = WebManager()
             text, parse_mode = wm.rss_handler(MagicMock())
             assert parse_mode == "HTML"
-            assert "HACKER NEWS" in text
+            assert "THE HACKER NEWS" in text
             assert "Test Article" in text
             assert "&lt;special&gt;" in text
             assert "&amp;chars" in text
-            assert "04월 24일" in text
-            assert "•" in text
+            mock_get.assert_called_once_with(
+                "http://test-server/feed/hn",
+                params={"token": "test_token"},
+                timeout=10,
+            )
 
-    @patch("modules.web_based.config.RSSF_URL", "http://test-server/hn")
+    @patch("modules.web_based.config.RSSF_URL", "http://test-server")
+    @patch("modules.web_based.config.RSSF_TOKEN", "test_token")
+    @patch("modules.web_based.requests.get")
+    def test_slug(self, mock_get):
+        response = MagicMock()
+        response.text = json.dumps(self._response_data)
+        mock_get.return_value = response
+
+        with patch.object(WebManager, "__init__", lambda self: None):
+            wm = WebManager()
+            text, parse_mode = wm.rss_handler(MagicMock(), slug="lob")
+            assert parse_mode == "HTML"
+            assert "LOBSTERS" in text
+            mock_get.assert_called_once_with(
+                "http://test-server/feed/lob",
+                params={"token": "test_token"},
+                timeout=10,
+            )
+
+    @patch("modules.web_based.config.RSSF_URL", "http://test-server")
+    @patch("modules.web_based.config.RSSF_TOKEN", "test_token")
+    @patch("modules.web_based.requests.get")
+    def test_date_param(self, mock_get):
+        response = MagicMock()
+        response.text = json.dumps(self._response_data)
+        mock_get.return_value = response
+
+        with patch.object(WebManager, "__init__", lambda self: None):
+            wm = WebManager()
+            wm.rss_handler(MagicMock(), slug="lob", date="20260507")
+            mock_get.assert_called_once_with(
+                "http://test-server/feed/lob",
+                params={"token": "test_token", "date": "20260507"},
+                timeout=10,
+            )
+
+    @patch("modules.web_based.config.RSSF_URL", "http://test-server")
+    @patch("modules.web_based.config.RSSF_TOKEN", "test_token")
+    @patch("modules.web_based.requests.get")
+    def test_hour_none(self, mock_get):
+        response = MagicMock()
+        response.text = json.dumps({**self._response_data, "hour": None})
+        mock_get.return_value = response
+
+        with patch.object(WebManager, "__init__", lambda self: None):
+            wm = WebManager()
+            text, parse_mode = wm.rss_handler(MagicMock())
+            assert parse_mode == "HTML"
+            assert "오전" not in text
+            assert "오후" not in text
+
+    def test_unknown_slug(self):
+        with patch.object(WebManager, "__init__", lambda self: None):
+            wm = WebManager()
+            text, parse_mode = wm.rss_handler(MagicMock(), slug="xyz")
+            assert text == strings.bfrss_unknown_feed_msg
+            assert parse_mode is None
+
+    @patch("modules.web_based.config.RSSF_URL", "http://test-server")
     @patch("modules.web_based.config.RSSF_TOKEN", "test_token")
     @patch("modules.web_based.requests.get")
     def test_server_failure(self, mock_get):
