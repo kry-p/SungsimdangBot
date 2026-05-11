@@ -258,6 +258,43 @@ class TestAskHandler:
         hub.bot.reply_to.assert_called_once_with(msg, "plain text response")
 
 
+class TestParseBfrssArgs:
+    def test_no_args(self):
+        slug, date, error = BotFeaturesHub._parse_bfrss_args("/bfrss")
+        assert slug == "hn"
+        assert date == ""
+        assert error is None
+
+    def test_valid_slug(self):
+        slug, date, error = BotFeaturesHub._parse_bfrss_args("/bfrss -lob")
+        assert slug == "lob"
+        assert date == ""
+        assert error is None
+
+    def test_uppercase_slug(self):
+        slug, date, error = BotFeaturesHub._parse_bfrss_args("/bfrss -LOB")
+        assert slug == "lob"
+        assert error is None
+
+    def test_invalid_slug_format(self):
+        _, _, error = BotFeaturesHub._parse_bfrss_args("/bfrss abc")
+        assert error == "invalid_slug"
+
+    def test_valid_slug_and_date(self):
+        slug, date, error = BotFeaturesHub._parse_bfrss_args("/bfrss -lob 260507")
+        assert slug == "lob"
+        assert date == "20260507"
+        assert error is None
+
+    def test_invalid_date_short(self):
+        _, _, error = BotFeaturesHub._parse_bfrss_args("/bfrss -lob 2605")
+        assert error == "invalid_date"
+
+    def test_invalid_date_non_numeric(self):
+        _, _, error = BotFeaturesHub._parse_bfrss_args("/bfrss -lob 26050a")
+        assert error == "invalid_date"
+
+
 class TestClearChatHandler:
     def test_clear(self, hub):
         msg = make_message("/clear_chat")

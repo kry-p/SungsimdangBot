@@ -1,6 +1,7 @@
 # Bot features script
 
 import datetime
+import re
 
 from telegramify_markdown import convert, split_entities
 
@@ -202,8 +203,39 @@ class BotFeaturesHub:
                 self.bot.reply_to(message, plain_chunk)
 
     # RSS JSON request
-    def rss_handler(self, message, slug="hn", date=""):
-        text, parse_mode = self.web_manager.rss_handler(message, slug, date)
+    @staticmethod
+    def _parse_bfrss_args(text):
+        """메시지 텍스트에서 피드명과 날짜를 추출한다. 오류 시 (slug, date, error) 형태로 반환."""
+        m = re.match(r"^/bfrss(?:@\w+)?(?:[ \t]+(\S+))?(?:[ \t]+(\S+))?", text or "")
+        arg1 = m.group(1) if m else None
+        arg2 = m.group(2) if m else None
+
+        if arg1 is None:
+            slug = "hn"
+        elif re.fullmatch(r"-\w+", arg1):
+            slug = arg1.lstrip("-").lower()
+        else:
+            return "", "", "invalid_slug"
+
+        if arg2 is not None:
+            if re.fullmatch(r"\d{6}", arg2):
+                date = "20" + arg2
+            else:
+                return "", "", "invalid_date"
+        else:
+            date = ""
+
+        return slug, date, None
+
+    def rss_handler(self, message):
+        slug, date, error = self._parse_bfrss_args(message.text)
+        if error == "invalid_slug":
+            self.bot.reply_to(message, strings.bfrss_unknown_slug_msg)
+            return
+        if error == "invalid_date":
+            self.bot.reply_to(message, strings.bfrss_invalid_date_msg)
+            return
+        text, parse_mode = self.web_manager.rss_handler(slug, date)
         self.bot.reply_to(message, text, parse_mode=parse_mode)
 
     # Clear chat
