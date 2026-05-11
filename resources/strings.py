@@ -281,6 +281,7 @@ main_keyboard.row(
 )
 main_keyboard.row(
     telebot.types.InlineKeyboardButton("라프텔", callback_data="laftel_menu:portal"),
+    telebot.types.InlineKeyboardButton("해외 RSS", callback_data="bfrss"),
 )
 
 
