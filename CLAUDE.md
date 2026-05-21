@@ -114,6 +114,8 @@ development → PR → master (merge) → GitHub Release 생성
 | `SEOUL_HANGANG_WATER_TOKEN` | 서울 열린데이터 토큰 |
 | `GEMINI_API_KEY` | Google Gemini API 키 |
 | `ADMIN_USER_ID` | 관리자 텔레그램 사용자 ID |
+| `RSSF_TOKEN` | RSS 번역 서버 인증 토큰 |
+| `RSSF_URL` | RSS 번역 서버 URL |
 
 ## 커밋 컨벤션
 
