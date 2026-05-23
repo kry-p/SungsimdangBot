@@ -9,3 +9,10 @@ repos:
     rev: v8.24.0
     hooks:
       - id: gitleaks
+  - repo: local
+    hooks:
+      - id: detect-mojibake
+        name: detect Korean mojibake (CP949 → UTF-8 corruption)
+        entry: scripts/detect_mojibake.py
+        language: system
+        types: [text]

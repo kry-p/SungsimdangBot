@@ -186,6 +186,22 @@ class LaftelService:
             reply_markup=self._build_portal_keyboard(),
         )
 
+    # --- 유틸리티 ---
+
+    @staticmethod
+    def _truncate_message(header, entries, footer):
+        """메시지가 MAX_MESSAGE_LENGTH를 초과하면 항목을 잘라서 반환한다."""
+        text = header + "".join(entries) + footer
+        if len(text) > MAX_MESSAGE_LENGTH:
+            truncated = header
+            for entry in entries:
+                remaining = len(footer) + len(strings.laftel_schedule_truncated_msg)
+                if len(truncated) + len(entry) + remaining > MAX_MESSAGE_LENGTH:
+                    break
+                truncated += entry
+            text = truncated + strings.laftel_schedule_truncated_msg + "\n" + footer
+        return text
+
     # --- 키보드 ---
 
     @staticmethod
@@ -249,20 +265,9 @@ class LaftelService:
 
         header = strings.laftel_schedule_header_msg.format(day_name)
         entries = [_format_entry(item) for item in items]
-
         footer = strings.laftel_schedule_footer_msg.format(len(items))
-        text = header + "".join(entries) + footer
 
-        if len(text) > MAX_MESSAGE_LENGTH:
-            truncated = header
-            for entry in entries:
-                remaining = len(footer) + len(strings.laftel_schedule_truncated_msg)
-                if len(truncated) + len(entry) + remaining > MAX_MESSAGE_LENGTH:
-                    break
-                truncated += entry
-            text = truncated + strings.laftel_schedule_truncated_msg + "\n" + footer
-
-        return text
+        return self._truncate_message(header, entries, footer)
 
     # --- 랭킹 데이터 ---
 
@@ -298,20 +303,9 @@ class LaftelService:
 
         header = strings.laftel_ranking_header_msg.format(type_label)
         entries = [_format_entry(item, rank=rank) for rank, item in enumerate(items, 1)]
-
         footer = strings.laftel_ranking_footer_msg.format(len(items))
-        text = header + "".join(entries) + footer
 
-        if len(text) > MAX_MESSAGE_LENGTH:
-            truncated = header
-            for entry in entries:
-                remaining = len(footer) + len(strings.laftel_schedule_truncated_msg)
-                if len(truncated) + len(entry) + remaining > MAX_MESSAGE_LENGTH:
-                    break
-                truncated += entry
-            text = truncated + strings.laftel_schedule_truncated_msg + "\n" + footer
-
-        return text
+        return self._truncate_message(header, entries, footer)
 
     @staticmethod
     def _build_ranking_type_keyboard():
@@ -367,17 +361,6 @@ class LaftelService:
 
         header = strings.laftel_search_header_msg.format(_escape_markdown(keyword))
         entries = [_format_entry(item, rank=rank) for rank, item in enumerate(items, 1)]
-
         footer = strings.laftel_search_footer_msg.format(len(items))
-        text = header + "".join(entries) + footer
 
-        if len(text) > MAX_MESSAGE_LENGTH:
-            truncated = header
-            for entry in entries:
-                remaining = len(footer) + len(strings.laftel_schedule_truncated_msg)
-                if len(truncated) + len(entry) + remaining > MAX_MESSAGE_LENGTH:
-                    break
-                truncated += entry
-            text = truncated + strings.laftel_schedule_truncated_msg + "\n" + footer
-
-        return text
+        return self._truncate_message(header, entries, footer)

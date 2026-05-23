@@ -1,6 +1,7 @@
 # Bot features script
 
 import datetime
+import re
 
 from telegramify_markdown import convert, split_entities
 
@@ -146,28 +147,37 @@ class BotFeaturesHub:
         question = text[len(command) :].strip()
         language_code = getattr(message.from_user, "language_code", None)
 
-        image = None
-        context = None
-        photo_list = getattr(message, "photo", None)
-        reply = getattr(message, "reply_to_message", None)
-        if photo_list:
-            image = self._download_photo(photo_list)
-            if image is None:
-                self.bot.reply_to(message, strings.ask_photo_download_error_msg)
-                return
-        elif reply:
-            reply_photo = getattr(reply, "photo", None)
-            if reply_photo:
-                image = self._download_photo(reply_photo)
-                if image is None:
-                    self.bot.reply_to(message, strings.ask_photo_download_error_msg)
-                    return
-            context = getattr(reply, "text", None) or getattr(reply, "caption", None)
+        image, context = self._extract_ask_params(message)
+        if image is False:
+            self.bot.reply_to(message, strings.ask_photo_download_error_msg)
+            return
 
         self.bot.send_chat_action(message.chat.id, "typing")
         result = self.gemini_chat.ask(message.chat.id, message.from_user.id, question, language_code, context, image)
         for chunk in result:
             self._reply_markdown(message, chunk)
+
+    def _extract_ask_params(self, message):
+        """메시지에서 이미지와 컨텍스트를 추출한다. 사진 다운로드 실패 시 (False, None)을 반환."""
+        photo_list = getattr(message, "photo", None)
+        reply = getattr(message, "reply_to_message", None)
+
+        if photo_list:
+            image = self._download_photo(photo_list)
+            return (image, None) if image is not None else (False, None)
+
+        if reply:
+            reply_photo = getattr(reply, "photo", None)
+            if reply_photo:
+                image = self._download_photo(reply_photo)
+                if image is None:
+                    return False, None
+            else:
+                image = None
+            context = getattr(reply, "text", None) or getattr(reply, "caption", None)
+            return image, context
+
+        return None, None
 
     def _download_photo(self, photo_list):
         try:
@@ -192,6 +202,42 @@ class BotFeaturesHub:
             for plain_chunk in GeminiChat.split_response(text):
                 self.bot.reply_to(message, plain_chunk)
 
+    # RSS JSON request
+    @staticmethod
+    def _parse_bfrss_args(text):
+        """메시지 텍스트에서 피드명과 날짜를 추출한다. 오류 시 (slug, date, error) 형태로 반환."""
+        m = re.match(r"^/bfrss(?:@\w+)?(?:[ \t]+(\S+))?(?:[ \t]+(\S+))?", text or "")
+        arg1 = m.group(1) if m else None
+        arg2 = m.group(2) if m else None
+
+        if arg1 is None:
+            slug = "hn"
+        elif re.fullmatch(r"-\w+", arg1):
+            slug = arg1.lstrip("-").lower()
+        else:
+            return "", "", "invalid_slug"
+
+        if arg2 is not None:
+            if re.fullmatch(r"\d{6}", arg2):
+                date = "20" + arg2
+            else:
+                return "", "", "invalid_date"
+        else:
+            date = ""
+
+        return slug, date, None
+
+    def rss_handler(self, message):
+        slug, date, error = self._parse_bfrss_args(message.text)
+        if error == "invalid_slug":
+            self.bot.reply_to(message, strings.bfrss_unknown_slug_msg)
+            return
+        if error == "invalid_date":
+            self.bot.reply_to(message, strings.bfrss_invalid_date_msg)
+            return
+        text, parse_mode = self.web_manager.rss_handler(slug, date)
+        self.bot.reply_to(message, text, parse_mode=parse_mode)
+
     # Clear chat
     def clear_chat_handler(self, message):
         self.gemini_chat.clear_session(message.chat.id, message.from_user.id)
@@ -199,8 +245,8 @@ class BotFeaturesHub:
 
     # Handling ordinary message
     def ordinary_message(self, message):
-        if ("수온" in message.text) or ("자살" in message.text):
+        if any(kw in message.text for kw in strings.temp_keywords):
             self.bot.reply_to(message, self.get_temp())
 
-        if ("마법의 소라고둥" in message.text) or ("마법의 소라고동" in message.text):
+        if any(kw in message.text for kw in strings.magic_conch_keywords):
             self.bot.reply_to(message, self.random_based_features.magic_conch())

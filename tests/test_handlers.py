@@ -67,7 +67,8 @@ class TestSafeHandlerErrorBoundary:
         msg = make_message("/ask test")
         handlers["ask"](msg)
 
-        logger.log_error.assert_called_once()
+        assert logger.log_error.call_count == 2
+        assert bot.reply_to.call_count == 3
 
     def test_safe_handler_not_applied_to_ping(self):
         hub = MagicMock()

@@ -1,4 +1,5 @@
 import datetime
+import html
 import urllib.parse
 
 import requests
@@ -9,6 +10,7 @@ from modules.api_models import (
     HangangWaterResponse,
     KakaoAddressResponse,
     KakaoSearchResponse,
+    RssfResponse,
     WeatherResponse,
 )
 from modules.utils import extract_command_args, strip_html_tags
@@ -139,3 +141,30 @@ class WebManager:
         if self.suon_v2 is None:
             return strings.suon_maintenance_status
         return self.suon_v2
+
+    def rss_handler(self, slug="hn", date=""):
+        if slug not in strings.bfrss_feed_names:
+            return strings.bfrss_unknown_slug_msg, None
+        try:
+            params = {"token": config.RSSF_TOKEN}
+            if date:
+                params["date"] = date
+            res = requests.get(f"{config.RSSF_URL.rstrip('/')}/feed/{slug}", params=params, timeout=10)
+            data = RssfResponse.model_validate_json(res.text)
+            feed_name = strings.bfrss_feed_names[slug]
+            if data.hour is not None:
+                time_of_day = strings.bfrss_am if data.hour < 12 else strings.bfrss_pm
+                text = strings.bfrss_header_msg.format(
+                    feed_name=feed_name, month=data.date[4:6], day=data.date[6:], time_of_day=time_of_day
+                )
+            else:
+                text = strings.bfrss_header_msg_no_time.format(
+                    feed_name=feed_name, month=data.date[4:6], day=data.date[6:]
+                )
+            text += "\n".join(
+                f'• <a href="{html.escape(e.link, quote=True)}">{html.escape(e.title)}</a>' for e in data.entries
+            )
+            return text, "HTML"
+        except Exception as e:
+            logger.log_error(f"rss_handler failed: {e}")
+            return strings.bfrss_error_msg, None

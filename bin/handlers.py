@@ -1,4 +1,5 @@
 import telebot
+import tenacity
 
 from modules.features_hub import BotFeaturesHub
 from resources import strings
@@ -15,6 +16,7 @@ QUERY_STRINGS = {
     "search": strings.search_help_msg,
     "namu": strings.namu_help_msg,
     "laftel": strings.laftel_help_msg,
+    "bfrss": strings.bfrss_help_msg,
 }
 
 
@@ -37,6 +39,7 @@ def register_commands(bot):
             telebot.types.BotCommand("myid", "내 사용자 ID 확인"),
             telebot.types.BotCommand("ping", "봇 상태 확인"),
             telebot.types.BotCommand("laftel", "라프텔 애니 정보"),
+            telebot.types.BotCommand("bfrss", "해외 rss 번역수신"),
         ]
     )
 
@@ -49,9 +52,14 @@ def register_handlers(bot, hub, logger):
             except Exception:
                 logger.log_error(f"Handler {func.__name__} failed for message: {getattr(message, 'text', None)}")
                 try:
-                    bot.reply_to(message, strings.generic_error_msg)
-                except Exception:
-                    pass
+                    for attempt in tenacity.Retrying(
+                        stop=tenacity.stop_after_attempt(3),
+                        wait=tenacity.wait_exponential(multiplier=1, min=1, max=8),
+                    ):
+                        with attempt:
+                            bot.reply_to(message, strings.generic_error_msg)
+                except tenacity.RetryError:
+                    logger.log_error(f"Failed to send error message for {func.__name__} after retries")
 
         return wrapper
 
@@ -103,14 +111,17 @@ def register_handlers(bot, hub, logger):
 
     # Russian roulette
     @bot.message_handler(commands=["roulette"])
+    @safe_handler
     def handle_roulette(message):
         bot.send_message(message.chat.id, hub.random_based_features.russian_roulette(message.chat.id, message.text))
 
     @bot.message_handler(commands=["shoot"])
+    @safe_handler
     def handle_shoot(message):
         bot.send_message(message.chat.id, hub.random_based_features.trig_bullet(message.chat.id))
 
     @bot.message_handler(commands=["flush_bullet"])
+    @safe_handler
     def handle_flush_bullet(message):
         bot.send_message(message.chat.id, hub.random_based_features.russian_roulette(message.chat.id, "roulette 0 0"))
 
@@ -127,6 +138,7 @@ def register_handlers(bot, hub, logger):
 
     # Calculator
     @bot.message_handler(commands=["calc"])
+    @safe_handler
     def handle_calc(message):
         hub.calculator_handler(message)
 
@@ -145,6 +157,7 @@ def register_handlers(bot, hub, logger):
         hub.ask_handler(message)
 
     @bot.message_handler(commands=["clear_chat"])
+    @safe_handler
     def handle_clear_chat(message):
         hub.clear_chat_handler(message)
 
@@ -156,14 +169,17 @@ def register_handlers(bot, hub, logger):
 
     # Admin commands
     @bot.message_handler(commands=["allow_chat"])
+    @safe_handler
     def handle_allow_chat(message):
         hub.allow_chat_handler(message)
 
     @bot.message_handler(commands=["deny_chat"])
+    @safe_handler
     def handle_deny_chat(message):
         hub.deny_chat_handler(message)
 
     @bot.message_handler(commands=["ask_settings"])
+    @safe_handler
     def handle_ask_settings(message):
         hub.ask_settings_handler(message)
 
@@ -173,6 +189,12 @@ def register_handlers(bot, hub, logger):
     def handle_dday(message):
         hub.d_day(message)
 
+    # Send translated RSS feed to FASTAPI server
+    @bot.message_handler(commands=["bfrss"])
+    @safe_handler
+    def handle_bfrss(message):
+        hub.rss_handler(message)
+
     # Location
     @bot.message_handler(content_types=["location"])
     @safe_handler
@@ -181,6 +203,7 @@ def register_handlers(bot, hub, logger):
 
     # ForceReply handler for custom prompt input
     @bot.message_handler(func=lambda m: m.reply_to_message and m.reply_to_message.text == strings.set_prompt_input_msg)
+    @safe_handler
     def handle_prompt_reply(message):
         hub.handle_prompt_reply(message)
 
@@ -188,6 +211,7 @@ def register_handlers(bot, hub, logger):
     @bot.message_handler(
         func=lambda m: m.reply_to_message and m.reply_to_message.text == strings.laftel_search_input_msg
     )
+    @safe_handler
     def handle_laftel_search_reply(message):
         hub.laftel.handle_search_reply(message)
 

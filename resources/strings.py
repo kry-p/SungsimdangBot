@@ -68,6 +68,10 @@ shot_blind_msg = "이번 격발 결과는 공포탄입니다."
 # coin toss message
 coin_toss_prefix_msg = "동전뒤집기 결과 : "
 
+# keyword triggers
+temp_keywords = ("수온", "자살")
+magic_conch_keywords = ("마법의 소라고둥", "마법의 소라고동")
+
 # suon (river temperature) message
 suon_maintenance_status = "점검중"
 suon_unavailable_msg = "현재 한강 수온 정보를 가져올 수 없습니다. (사유: 정보 미제공)"
@@ -231,6 +235,24 @@ laftel_search_again_btn = "다시 검색"
 laftel_portal_btn = "포털로"
 laftel_help_msg = "/laftel 명령어로 라프텔 편성표, 랭킹, 검색 기능을 이용할 수 있습니다."
 
+# RSS feed translater message
+bfrss_help_msg = (
+    "번역된 RSS를 보여줍니다.\n"
+    "사용법: /bfrss -(피드) (YYMMDD)\n"
+    "❗❗주의❗❗: 피드 옵션과 날짜옵션 사이에는 공백이 필수입니다.\n"
+    "• 기본: hn (THE HACKER NEWS)\n"
+    "• -lob: Lobsters\n"
+    "• -reg: The Register"
+)
+bfrss_error_msg = "번역 서버에 연결할 수 없습니다."
+bfrss_unknown_slug_msg = "알 수 없는 피드입니다. 도움말을 다시 읽어주세요."
+bfrss_invalid_date_msg = "날짜형식이 정확하지 않습니다."
+bfrss_am = "오전"
+bfrss_pm = "오후"
+bfrss_header_msg = " {feed_name} ({month}월 {day}일 {time_of_day})\n\n"
+bfrss_header_msg_no_time = " {feed_name} ({month}월 {day}일)\n\n"
+bfrss_feed_names = {"hn": "THE HACKER NEWS", "lob": "LOBSTERS", "reg": "THE REGISTER"}
+
 # Resources
 
 # Customized keyboards (inline)
@@ -261,6 +283,7 @@ main_keyboard.row(
 )
 main_keyboard.row(
     telebot.types.InlineKeyboardButton("라프텔", callback_data="laftel_menu:portal"),
+    telebot.types.InlineKeyboardButton("해외 RSS", callback_data="bfrss"),
 )
 
 

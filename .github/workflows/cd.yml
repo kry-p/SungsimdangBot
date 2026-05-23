@@ -88,6 +88,8 @@ jobs:
             SEOUL_HANGANG_WATER_TOKEN=${{ secrets.SEOUL_HANGANG_WATER_TOKEN }}
             GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}
             ADMIN_USER_ID=${{ secrets.ADMIN_USER_ID }}
+            RSSF_TOKEN=${{ secrets.RSSF_TOKEN }}
+            RSSF_URL=${{ secrets.RSSF_URL }}
             EOF
             mkdir -p ~/sungsimdangbot/data
             docker compose pull

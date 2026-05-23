@@ -11,6 +11,7 @@ dependencies = [
     "pydantic>=2.9,<3",
     "peewee>=3.17,<5",
     "telegramify-markdown>=1.0,<2",
+    "tenacity>=8.0,<10",
 ]
 
 [project.optional-dependencies]
