@@ -79,15 +79,17 @@ GitHub Actions (`cd.yml`) — GitHub Release 생성 시 실행.
 development → PR → master (merge) → GitHub Release 생성
                                         ↓
                                CD workflow:
-                                 1. pyproject.toml 버전 자동 업데이트
+                                 1. Release 태그에서 추출한 버전을 빌드 컨텍스트의 pyproject.toml에 반영 (master에 commit하지 않음)
                                  2. Docker 이미지 빌드 (ARM64) → GHCR push (버전 태그 + latest)
                                  3. Tailscale VPN 연결
                                  4. SSH로 배포 서버 접속 → .env 갱신 + docker compose pull + up -d
 ```
 
+> master는 보호 브랜치라 CD가 직접 push할 수 없으므로, 버전은 빌드 컨텍스트에서만 갱신되어 이미지에 반영된다. master git의 `pyproject.toml` 버전을 최신으로 유지하려면 release PR(development → master)에서 직접 bump한다.
+
 | Job | 내용 |
 |-----|------|
-| `build-and-push` | Release 태그에서 버전 추출 → pyproject.toml 업데이트 → QEMU + Buildx로 ARM64 이미지 빌드, GHCR에 push |
+| `build-and-push` | Release 태그에서 버전 추출 → 빌드 컨텍스트 pyproject.toml에 반영 → QEMU + Buildx로 ARM64 이미지 빌드, GHCR에 push |
 | `deploy` | Tailscale VPN 연결 → SSH로 배포 서버에 .env 배포 + 컨테이너 재시작 |
 
 워크플로우 파일: `.github/workflows/cd.yml`

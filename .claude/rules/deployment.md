@@ -16,10 +16,12 @@
                              GitHub Release 생성 (vX.Y.Z)
                                       ↓
                              CD 자동 실행:
-                               1. pyproject.toml 버전 자동 업데이트
+                               1. Release 태그 버전을 빌드 컨텍스트 pyproject.toml에 반영 (master push 없음)
                                2. Docker 빌드 (amd64 + arm64) → GHCR push
                                3. 배포 서버에 SSH 배포
 ```
+
+> master는 보호 브랜치라 CD가 버전 bump 커밋을 직접 push하지 않는다. master의 `pyproject.toml` 버전을 최신으로 유지하려면 release PR에서 직접 bump한다.
 
 ## Release 생성
 
