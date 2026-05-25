@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ["3.10", "3.12"]
+        python-version: ["3.10", "3.14"]
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-python@v6
@@ -19,6 +19,8 @@ jobs:
           cache: pip
       - name: Install dependencies
         run: pip install -e ".[dev]"
+        env:
+          PIP_UPLOADED_PRIOR_TO: P3D
       - name: Lint
         run: ruff check .
       - name: Format check
@@ -26,7 +28,7 @@ jobs:
       - name: Test
         run: pytest -v --cov --cov-report=term-missing --cov-report=xml
       - name: Upload coverage
-        if: matrix.python-version == '3.12'
+        if: matrix.python-version == '3.14'
         uses: actions/upload-artifact@v7
         with:
           name: coverage-report
