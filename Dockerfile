@@ -1,6 +1,9 @@
-FROM python:3.12-slim
+FROM python:3.14-slim
 
 WORKDIR /app
+
+ENV PYTHONPATH=/app \
+    PIP_UPLOADED_PRIOR_TO=P3D
 
 # 의존성 레이어 (pyproject.toml 변경 시에만 재빌드)
 COPY pyproject.toml .
@@ -14,7 +17,6 @@ COPY . .
 RUN pip install --no-cache-dir --no-deps . && \
     useradd -m -u 1000 bot && \
     mkdir -p /app/data /app/log && chown -R bot:bot /app/data /app/log
-ENV PYTHONPATH=/app
 # NOTE: non-root 전환. 기존 root로 생성된 data/ 볼륨은 호스트에서
 # chown -R 1000:1000 ./data 실행 필요 (CD 워크플로우에서 자동 처리)
 USER bot
