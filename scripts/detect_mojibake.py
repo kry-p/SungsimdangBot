@@ -9,8 +9,8 @@ import sys
 # - "?" 직후 한글: CP949 바이트가 UTF-8로 디코딩될 때 흔한 패턴
 PATTERNS = [
     (re.compile(r"째[A-Za-z]"), "단위 깨짐 (°C/°F가 CP949로 깨진 형태)"),
-    (re.compile(r"\?[가-힣]"), "물음표 뒤 한글 (CP949 mojibake)"),
     (re.compile(r"\?\?[가-힣]"), "물음표 두 개 뒤 한글 (CP949 mojibake)"),
+    (re.compile(r"\?[가-힣]"), "물음표 뒤 한글 (CP949 mojibake)"),
 ]
 
 
@@ -28,6 +28,7 @@ def main(paths: list[str]) -> int:
                 if pattern.search(line):
                     print(f"{path}:{lineno}: {label}: {line.rstrip()}")
                     failed = True
+                    break
 
     if failed:
         print("\nmojibake detected. 파일이 CP949/EUC-KR로 저장된 채 커밋되었을 수 있습니다.")
