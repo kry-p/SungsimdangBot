@@ -292,7 +292,7 @@ class TestRssHandler:
 
         with patch.object(WebManager, "__init__", lambda self: None):
             wm = WebManager()
-            text, parse_mode = wm.rss_handler()
+            text, parse_mode = wm.fetch_rss()
             assert parse_mode == "HTML"
             assert "THE HACKER NEWS" in text
             assert "Test Article" in text
@@ -314,7 +314,7 @@ class TestRssHandler:
 
         with patch.object(WebManager, "__init__", lambda self: None):
             wm = WebManager()
-            text, parse_mode = wm.rss_handler(slug="lob")
+            text, parse_mode = wm.fetch_rss(slug="lob")
             assert parse_mode == "HTML"
             assert "LOBSTERS" in text
             mock_get.assert_called_once_with(
@@ -333,7 +333,7 @@ class TestRssHandler:
 
         with patch.object(WebManager, "__init__", lambda self: None):
             wm = WebManager()
-            wm.rss_handler(slug="lob", date="20260507")
+            wm.fetch_rss(slug="lob", date="20260507")
             mock_get.assert_called_once_with(
                 "http://test-server/feed/lob",
                 params={"token": "test_token", "date": "20260507"},
@@ -350,7 +350,7 @@ class TestRssHandler:
 
         with patch.object(WebManager, "__init__", lambda self: None):
             wm = WebManager()
-            text, parse_mode = wm.rss_handler()
+            text, parse_mode = wm.fetch_rss()
             assert parse_mode == "HTML"
             assert "오전" not in text
             assert "오후" not in text
@@ -358,7 +358,7 @@ class TestRssHandler:
     def test_unknown_slug(self):
         with patch.object(WebManager, "__init__", lambda self: None):
             wm = WebManager()
-            text, parse_mode = wm.rss_handler(slug="xyz")
+            text, parse_mode = wm.fetch_rss(slug="xyz")
             assert text == strings.bfrss_unknown_slug_msg
             assert parse_mode is None
 
@@ -370,6 +370,6 @@ class TestRssHandler:
 
         with patch.object(WebManager, "__init__", lambda self: None):
             wm = WebManager()
-            text, parse_mode = wm.rss_handler()
+            text, parse_mode = wm.fetch_rss()
             assert text == strings.bfrss_error_msg
             assert parse_mode is None

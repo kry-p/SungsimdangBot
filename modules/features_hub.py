@@ -235,7 +235,7 @@ class BotFeaturesHub:
         if error == "invalid_date":
             self.bot.reply_to(message, strings.bfrss_invalid_date_msg)
             return
-        text, parse_mode = self.web_manager.rss_handler(slug, date)
+        text, parse_mode = self.web_manager.fetch_rss(slug, date)
         self.bot.reply_to(message, text, parse_mode=parse_mode)
 
     # Clear chat
