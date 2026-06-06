@@ -1,3 +1,5 @@
+import pytest
+
 from modules.api_models import (
     KakaoSearchDocument,
     KakaoSearchResponse,
@@ -8,23 +10,17 @@ from modules.api_models import (
 )
 
 
-def test_list_defaults_are_independent():
-    first_search = KakaoSearchResponse()
-    second_search = KakaoSearchResponse()
-    first_search.documents.append(KakaoSearchDocument(title="first"))
-    assert second_search.documents == []
-
-    first_anime = LaftelAnime()
-    second_anime = LaftelAnime()
-    first_anime.genres.append("action")
-    assert second_anime.genres == []
-
-    first_laftel = LaftelSearchResponse()
-    second_laftel = LaftelSearchResponse()
-    first_laftel.results.append(LaftelAnime(id=1))
-    assert second_laftel.results == []
-
-    first_rssf = RssfResponse()
-    second_rssf = RssfResponse()
-    first_rssf.entries.append(RssfEntry(title="first"))
-    assert second_rssf.entries == []
+@pytest.mark.parametrize(
+    "model_cls, field, item",
+    [
+        (KakaoSearchResponse, "documents", KakaoSearchDocument(title="x")),
+        (LaftelAnime, "genres", "action"),
+        (LaftelSearchResponse, "results", LaftelAnime(id=1)),
+        (RssfResponse, "entries", RssfEntry(title="x")),
+    ],
+)
+def test_list_defaults_are_independent(model_cls, field, item):
+    first = model_cls()
+    second = model_cls()
+    getattr(first, field).append(item)
+    assert getattr(second, field) == []
