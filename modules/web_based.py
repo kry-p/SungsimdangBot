@@ -150,6 +150,7 @@ class WebManager:
             if date:
                 params["date"] = date
             res = requests.get(f"{config.RSSF_URL.rstrip('/')}/feed/{slug}", params=params, timeout=10)
+            res.raise_for_status()
             data = RssfResponse.model_validate_json(res.text)
             feed_name = strings.bfrss_feed_names[slug]
             if data.hour is not None:
