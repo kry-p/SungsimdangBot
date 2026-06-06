@@ -4,6 +4,7 @@ import urllib.parse
 from unittest.mock import MagicMock, patch
 
 import pytest
+import requests
 
 from modules.api_models import KakaoSearchDocument, KakaoSearchResponse
 from modules.web_based import WebManager
@@ -373,3 +374,18 @@ class TestRssHandler:
             text, parse_mode = wm.rss_handler()
             assert text == strings.bfrss_error_msg
             assert parse_mode is None
+
+    @patch("modules.web_based.config.RSSF_URL", "http://test-server")
+    @patch("modules.web_based.config.RSSF_TOKEN", "test_token")
+    @patch("modules.web_based.requests.get")
+    def test_http_error_response(self, mock_get):
+        response = MagicMock()
+        response.raise_for_status.side_effect = requests.HTTPError("500 Server Error")
+        mock_get.return_value = response
+
+        with patch.object(WebManager, "__init__", lambda self: None):
+            wm = WebManager()
+            text, parse_mode = wm.rss_handler()
+            assert text == strings.bfrss_error_msg
+            assert parse_mode is None
+            response.raise_for_status.assert_called_once()
