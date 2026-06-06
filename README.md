@@ -61,6 +61,8 @@ BOT_TOKEN=your_telegram_bot_token
 KAKAO_TOKEN=your_kakao_rest_api_token
 WEATHER_TOKEN=your_openweathermap_api_token
 SEOUL_HANGANG_WATER_TOKEN=your_seoul_open_api_token
+RSSF_TOKEN=your_rssf_token
+RSSF_URL=your_rssf_url
 ```
 
 ### 3. 실행
@@ -140,6 +142,8 @@ docker compose up -d
 | `KAKAO_TOKEN` | | 카카오 REST API 토큰 (위치 정보, 검색 기능) |
 | `WEATHER_TOKEN` | | OpenWeatherMap API 토큰 (위치 기반 날씨 정보) |
 | `SEOUL_HANGANG_WATER_TOKEN` | | 서울 열린데이터 광장 API 토큰 (한강 수온 정보) |
+| `RSSF_TOKEN` | | RSS 번역 서버 인증 토큰 |
+| `RSSF_URL` | | RSS 번역 서버 URL |
 
 ## 기여자
 
