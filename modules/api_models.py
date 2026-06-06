@@ -1,4 +1,4 @@
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 # --- 서울 한강 수온 ---
 
@@ -30,7 +30,7 @@ class KakaoSearchDocument(BaseModel):
 
 class KakaoSearchResponse(BaseModel):
     model_config = ConfigDict(extra="ignore")
-    documents: list[KakaoSearchDocument] = []
+    documents: list[KakaoSearchDocument] = Field(default_factory=list)
 
 
 # --- 카카오 좌표→주소 ---
@@ -80,7 +80,7 @@ class LaftelAnime(BaseModel):
 
     id: int = 0
     name: str | None = ""
-    genres: list[str] | None = []
+    genres: list[str] | None = Field(default_factory=list)
     content_rating: str | None = ""
     distributed_air_time: str | None = ""
     is_ending: bool | None = False
@@ -93,7 +93,7 @@ class LaftelSearchResponse(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
     count: int = 0
-    results: list[LaftelAnime] = []
+    results: list[LaftelAnime] = Field(default_factory=list)
 
 
 # --- RSS Feed (FastAPI) ---
@@ -109,4 +109,4 @@ class RssfResponse(BaseModel):
     model_config = ConfigDict(extra="ignore")
     date: str = ""
     hour: int | None = None
-    entries: list[RssfEntry] = []
+    entries: list[RssfEntry] = Field(default_factory=list)
