@@ -385,7 +385,7 @@ class TestRssHandler:
 
         with patch.object(WebManager, "__init__", lambda self: None):
             wm = WebManager()
-            text, parse_mode = wm.rss_handler()
+            text, parse_mode = wm.fetch_rss()
             assert text == strings.bfrss_error_msg
             assert parse_mode is None
             response.raise_for_status.assert_called_once()
