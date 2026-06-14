@@ -181,6 +181,7 @@ class TestCallbackPrefixes:
             "set_prompt_cancel",
             "set_provider",
             "set_provider_cancel",
+            "set_provider_unavailable",
         }
         assert AdminManager.CALLBACK_PREFIXES == expected
 

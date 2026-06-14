@@ -34,6 +34,7 @@ class AdminManager:
             "set_prompt_cancel",
             "set_provider",
             "set_provider_cancel",
+            "set_provider_unavailable",
         }
     )
 
@@ -75,6 +76,14 @@ class AdminManager:
         if action in CANCEL_ACTIONS:
             self.bot.edit_message_text(
                 strings.admin_cancel_msg,
+                call.message.chat.id,
+                call.message.message_id,
+            )
+            return
+
+        if action == "set_provider_unavailable":
+            self.bot.edit_message_text(
+                strings.set_provider_unavailable_msg,
                 call.message.chat.id,
                 call.message.message_id,
             )
@@ -273,7 +282,7 @@ class AdminManager:
             else:
                 keyboard.row(
                     telebot.types.InlineKeyboardButton(
-                        f"{name.capitalize()} (API 키 없음)", callback_data="set_provider_cancel:0"
+                        f"{name.capitalize()} (API 키 없음)", callback_data="set_provider_unavailable:0"
                     )
                 )
         keyboard.row(
