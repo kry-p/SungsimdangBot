@@ -181,15 +181,30 @@ class TestModelAndSearch:
 
     def test_list_models(self):
         p = make_provider()
-        ids = ["gpt-4o", "gpt-4o-mini", "text-embedding-ada-002", "dall-e-3", "whisper-1", "tts-1"]
+        ids = [
+            "gpt-4o",
+            "gpt-4o-mini",
+            "o3-mini",
+            "text-embedding-ada-002",
+            "dall-e-3",
+            "whisper-1",
+            "tts-1",
+            "gpt-4o-audio-preview",
+            "gpt-4o-realtime-preview",
+            "gpt-image-1",
+        ]
         p.client.models.list.return_value = [MagicMock(id=i) for i in ids]
         result = p.list_models()
         assert "gpt-4o" in result
         assert "gpt-4o-mini" in result
+        assert "o3-mini" in result
         assert "text-embedding-ada-002" not in result
         assert "dall-e-3" not in result
         assert "whisper-1" not in result
         assert "tts-1" not in result
+        assert "gpt-4o-audio-preview" not in result
+        assert "gpt-4o-realtime-preview" not in result
+        assert "gpt-image-1" not in result
 
     def test_list_models_no_client(self):
         p = make_provider(client=None)

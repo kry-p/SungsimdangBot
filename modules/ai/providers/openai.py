@@ -13,7 +13,18 @@ logger = log.Logger()
 
 DEFAULT_MODEL = "gpt-4o"
 
-EXCLUDED_KEYWORDS = ("embedding", "tts", "whisper", "dall-e", "moderation", "babbage", "davinci")
+EXCLUDED_KEYWORDS = (
+    "embedding",
+    "tts",
+    "whisper",
+    "dall-e",
+    "moderation",
+    "babbage",
+    "davinci",
+    "audio",
+    "realtime",
+    "image",
+)
 
 
 @dataclass
