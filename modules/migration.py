@@ -9,10 +9,12 @@ logger = log.Logger()
 SETTINGS_JSON_PATH = os.path.join("data", "settings.json")
 ALLOWLIST_JSON_PATH = os.path.join("data", "allowed_chats.json")
 MIGRATION_MARKER = os.path.join("data", ".migrated")
+SETTINGS_PATH_MIGRATION_MARKER = os.path.join("data", ".settings_path_migrated")
 
 
 def migrate_json_to_db():
     if os.path.exists(MIGRATION_MARKER):
+        migrate_settings_path()
         return
 
     migrated_any = False
@@ -23,6 +25,8 @@ def migrate_json_to_db():
         with open(MIGRATION_MARKER, "w") as f:
             f.write("migrated")
         logger.log_info("JSON to SQLite migration completed.")
+
+    migrate_settings_path()
 
 
 def _migrate_settings():
@@ -81,3 +85,34 @@ def _migrate_allowlist():
 
     logger.log_info(f"Migrated {len(data)} allowed chats from JSON.")
     return True
+
+
+def migrate_settings_path():
+    """modules.gemini_chat 설정 경로를 modules.ai.chat으로 이전."""
+    if os.path.exists(SETTINGS_PATH_MIGRATION_MARKER):
+        return
+
+    key_mapping = {
+        "model": "model",
+        "search_grounding": "search_enabled",
+        "custom_prompt": "custom_prompt",
+    }
+    old_path = "modules.gemini_chat"
+    new_path = "modules.ai.chat"
+
+    migrated = 0
+    with db.atomic():
+        for old_key, new_key in key_mapping.items():
+            row = Setting.get_or_none(Setting.module_path == old_path, Setting.key == old_key)
+            if row:
+                Setting.replace(module_path=new_path, key=new_key, value=row.value).execute()
+                migrated += 1
+
+        if not Setting.get_or_none(Setting.module_path == new_path, Setting.key == "provider"):
+            Setting.replace(module_path=new_path, key="provider", value="gemini").execute()
+
+    with open(SETTINGS_PATH_MIGRATION_MARKER, "w") as f:
+        f.write("migrated")
+
+    if migrated:
+        logger.log_info(f"Settings path migration: {migrated} keys migrated from {old_path} to {new_path}.")
