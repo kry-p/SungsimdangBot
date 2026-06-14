@@ -4,7 +4,7 @@ import time
 
 from config import config
 from modules import log
-from modules.ai.providers.base import AIClientError, AIServerError
+from modules.ai.providers.base import AIClientError
 from modules.ai.providers.gemini import DEFAULT_MODEL as GEMINI_DEFAULT_MODEL
 from modules.ai.providers.gemini import GeminiProvider
 from modules.ai.providers.openai import DEFAULT_MODEL as OPENAI_DEFAULT_MODEL
@@ -70,7 +70,7 @@ class AIChatManager:
             return [strings.ask_timeout_msg]
         except AIClientError:
             return [strings.ask_client_error_msg]
-        except (AIServerError, Exception):
+        except Exception:
             return [strings.ask_error_msg]
 
         return self.split_response(result)
@@ -112,7 +112,8 @@ class AIChatManager:
         return True
 
     def _init_provider(self, name: str, model: str | None = None, search_enabled: bool | None = None):
-        stored_model = model or Settings().get(SETTINGS_MODULE_PATH, "model", _PROVIDER_DEFAULT_MODELS.get(name, ""))
+        default_model = _PROVIDER_DEFAULT_MODELS.get(name, "")
+        stored_model = model if model is not None else Settings().get(SETTINGS_MODULE_PATH, "model", default_model)
         stored_search = (
             search_enabled
             if search_enabled is not None
@@ -216,7 +217,7 @@ class AIChatManager:
                 chunks.append(text)
                 break
             split_at = text.rfind("\n", 0, max_len)
-            if split_at == -1:
+            if split_at <= 0:
                 split_at = max_len
             chunks.append(text[:split_at])
             text = text[split_at:].lstrip("\n")
