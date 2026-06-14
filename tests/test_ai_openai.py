@@ -182,17 +182,29 @@ class TestModelAndSearch:
     def test_list_models(self):
         p = make_provider()
         ids = [
+            # 포함돼야 하는 것
             "gpt-4o",
             "gpt-4o-mini",
-            "o3-mini",
             "gpt-4-turbo",
+            "gpt-3.5-turbo",
+            "o1",
+            "o1-mini",
+            "o3",
+            "o3-mini",
+            "o4-mini",
+            "chatgpt-4o-latest",
+            # 제외돼야 하는 것 — 비텍스트 계열
             "text-embedding-ada-002",
             "dall-e-3",
             "whisper-1",
             "tts-1",
+            "babbage-002",
+            "davinci-002",
+            # 제외돼야 하는 것 — gpt- 내 특수 기능
             "gpt-4o-audio-preview",
             "gpt-4o-realtime-preview",
             "gpt-image-1",
+            # 제외돼야 하는 것 — 날짜 버전 / preview / instruct
             "gpt-4o-2024-05-13",
             "gpt-4-0613",
             "gpt-4-1106-preview",
@@ -201,22 +213,36 @@ class TestModelAndSearch:
         ]
         p.client.models.list.return_value = [MagicMock(id=i) for i in ids]
         result = p.list_models()
-        assert "gpt-4o" in result
-        assert "gpt-4o-mini" in result
-        assert "o3-mini" in result
-        assert "gpt-4-turbo" in result
-        assert "text-embedding-ada-002" not in result
-        assert "dall-e-3" not in result
-        assert "whisper-1" not in result
-        assert "tts-1" not in result
-        assert "gpt-4o-audio-preview" not in result
-        assert "gpt-4o-realtime-preview" not in result
-        assert "gpt-image-1" not in result
-        assert "gpt-4o-2024-05-13" not in result
-        assert "gpt-4-0613" not in result
-        assert "gpt-4-1106-preview" not in result
-        assert "gpt-3.5-turbo-instruct" not in result
-        assert "gpt-4-turbo-preview" not in result
+        for m in (
+            "gpt-4o",
+            "gpt-4o-mini",
+            "gpt-4-turbo",
+            "gpt-3.5-turbo",
+            "o1",
+            "o1-mini",
+            "o3",
+            "o3-mini",
+            "o4-mini",
+            "chatgpt-4o-latest",
+        ):
+            assert m in result, f"{m} should be included"
+        for m in (
+            "text-embedding-ada-002",
+            "dall-e-3",
+            "whisper-1",
+            "tts-1",
+            "babbage-002",
+            "davinci-002",
+            "gpt-4o-audio-preview",
+            "gpt-4o-realtime-preview",
+            "gpt-image-1",
+            "gpt-4o-2024-05-13",
+            "gpt-4-0613",
+            "gpt-4-1106-preview",
+            "gpt-3.5-turbo-instruct",
+            "gpt-4-turbo-preview",
+        ):
+            assert m not in result, f"{m} should be excluded"
 
     def test_list_models_no_client(self):
         p = make_provider(client=None)

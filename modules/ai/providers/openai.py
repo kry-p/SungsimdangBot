@@ -14,21 +14,11 @@ logger = log.Logger()
 
 DEFAULT_MODEL = "gpt-4o"
 
-EXCLUDED_KEYWORDS = (
-    "embedding",
-    "tts",
-    "whisper",
-    "dall-e",
-    "moderation",
-    "babbage",
-    "davinci",
-    "audio",
-    "realtime",
-    "image",
-    "preview",
-    "instruct",
-    "legacy",
-)
+# gpt-*, o1/o3/o4-* 계열 텍스트 생성 모델만 허용
+_CHAT_MODEL_RE = re.compile(r"^(gpt-|o\d|chatgpt-)")
+
+# 텍스트 생성과 무관한 특수 기능 모델 제외 (화이트리스트 통과 후 추가 필터)
+EXCLUDED_KEYWORDS = ("audio", "realtime", "image", "preview", "instruct")
 
 # -0613, -1106, -2024-05-13 같은 날짜 버전 suffix 제외
 _DATED_VERSION_RE = re.compile(r"-\d{4}")
@@ -114,7 +104,9 @@ class OpenAIProvider:
             return sorted(
                 m.id
                 for m in self.client.models.list()
-                if not any(kw in m.id for kw in EXCLUDED_KEYWORDS) and not _DATED_VERSION_RE.search(m.id)
+                if _CHAT_MODEL_RE.match(m.id)
+                and not any(kw in m.id for kw in EXCLUDED_KEYWORDS)
+                and not _DATED_VERSION_RE.search(m.id)
             )
         except Exception:
             logger.log_error("Failed to list OpenAI models.")
