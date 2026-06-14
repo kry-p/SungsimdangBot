@@ -1,4 +1,5 @@
 import base64
+import re
 import threading
 import time
 from dataclasses import dataclass, field
@@ -24,7 +25,13 @@ EXCLUDED_KEYWORDS = (
     "audio",
     "realtime",
     "image",
+    "preview",
+    "instruct",
+    "legacy",
 )
+
+# -0613, -1106, -2024-05-13 같은 날짜 버전 suffix 제외
+_DATED_VERSION_RE = re.compile(r"-\d{4}")
 
 
 @dataclass
@@ -104,7 +111,11 @@ class OpenAIProvider:
         if not self.client:
             return []
         try:
-            return sorted(m.id for m in self.client.models.list() if not any(kw in m.id for kw in EXCLUDED_KEYWORDS))
+            return sorted(
+                m.id
+                for m in self.client.models.list()
+                if not any(kw in m.id for kw in EXCLUDED_KEYWORDS) and not _DATED_VERSION_RE.search(m.id)
+            )
         except Exception:
             logger.log_error("Failed to list OpenAI models.")
             return []
