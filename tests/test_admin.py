@@ -12,8 +12,8 @@ from tests.conftest import make_message
 @pytest.fixture
 def admin():
     bot = MagicMock()
-    gemini_chat = MagicMock()
-    return AdminManager(bot, gemini_chat)
+    ai_chat = MagicMock()
+    return AdminManager(bot, ai_chat)
 
 
 class TestAllowChatHandler:
@@ -25,7 +25,7 @@ class TestAllowChatHandler:
         admin.bot.reply_to.return_value.message_id = 999
         admin.bot.reply_to.return_value.chat.id = 42
         admin.allow_chat_handler(msg)
-        admin.gemini_chat.allow_chat.assert_not_called()
+        admin.ai_chat.allow_chat.assert_not_called()
         row = PendingAction.get_or_none(PendingAction.msg_id == 999)
         assert row is not None
         assert row.action == "allow"
@@ -47,20 +47,20 @@ class TestAllowChatHandler:
 class TestDenyChatHandler:
     @patch("modules.admin.config.ADMIN_USER_ID", 100)
     def test_admin_deny_shows_confirmation(self, admin):
-        admin.gemini_chat.is_chat_allowed.return_value = True
-        admin.gemini_chat.get_chat_name.return_value = "테스트"
+        admin.ai_chat.is_chat_allowed.return_value = True
+        admin.ai_chat.get_chat_name.return_value = "테스트"
         msg = make_message("/deny_chat 42", user_id=100)
         admin.bot.reply_to.return_value.message_id = 888
         admin.bot.reply_to.return_value.chat.id = 1
         admin.deny_chat_handler(msg)
-        admin.gemini_chat.deny_chat.assert_not_called()
+        admin.ai_chat.deny_chat.assert_not_called()
         row = PendingAction.get_or_none(PendingAction.msg_id == 888)
         assert row is not None
         assert row.action == "deny"
 
     @patch("modules.admin.config.ADMIN_USER_ID", 100)
     def test_deny_not_in_list(self, admin):
-        admin.gemini_chat.is_chat_allowed.return_value = False
+        admin.ai_chat.is_chat_allowed.return_value = False
         msg = make_message("/deny_chat 42", user_id=100)
         admin.deny_chat_handler(msg)
         admin.bot.reply_to.assert_called_once_with(msg, strings.admin_deny_chat_not_found_msg.format(chat_id=42))
@@ -80,7 +80,7 @@ class TestAdminCallback:
         call.from_user.id = 100
         call.data = "allow_confirm:999"
         admin.handle_admin_callback(call)
-        admin.gemini_chat.allow_chat.assert_called_once_with(42, "테스트")
+        admin.ai_chat.allow_chat.assert_called_once_with(42, "테스트")
         admin.bot.edit_message_text.assert_called_once()
         assert PendingAction.get_or_none(PendingAction.msg_id == 999) is None
 
@@ -91,7 +91,7 @@ class TestAdminCallback:
         call.from_user.id = 100
         call.data = "deny_confirm:888"
         admin.handle_admin_callback(call)
-        admin.gemini_chat.deny_chat.assert_called_once_with(42)
+        admin.ai_chat.deny_chat.assert_called_once_with(42)
         admin.bot.edit_message_text.assert_called_once()
 
     @patch("modules.admin.config.ADMIN_USER_ID", 100)
@@ -101,7 +101,7 @@ class TestAdminCallback:
         call.from_user.id = 100
         call.data = "allow_cancel:999"
         admin.handle_admin_callback(call)
-        admin.gemini_chat.allow_chat.assert_not_called()
+        admin.ai_chat.allow_chat.assert_not_called()
         admin.bot.edit_message_text.assert_called_once()
         assert PendingAction.get_or_none(PendingAction.msg_id == 999) is None
 
@@ -112,7 +112,7 @@ class TestAdminCallback:
         call.from_user.id = 999
         call.data = "allow_confirm:999"
         admin.handle_admin_callback(call)
-        admin.gemini_chat.allow_chat.assert_not_called()
+        admin.ai_chat.allow_chat.assert_not_called()
         assert PendingAction.get_or_none(PendingAction.msg_id == 999) is not None
 
     @patch("modules.admin.config.ADMIN_USER_ID", 100)
@@ -121,7 +121,7 @@ class TestAdminCallback:
         call.from_user.id = 100
         call.data = "set_model:gemini-2.5-pro"
         admin.handle_admin_callback(call)
-        admin.gemini_chat.set_model.assert_called_once_with("gemini-2.5-pro")
+        admin.ai_chat.set_model.assert_called_once_with("gemini-2.5-pro")
         admin.bot.edit_message_text.assert_called_once()
 
     @patch("modules.admin.config.ADMIN_USER_ID", 100)
@@ -130,7 +130,7 @@ class TestAdminCallback:
         call.from_user.id = 100
         call.data = "set_model_cancel:0"
         admin.handle_admin_callback(call)
-        admin.gemini_chat.set_model.assert_not_called()
+        admin.ai_chat.set_model.assert_not_called()
         admin.bot.edit_message_text.assert_called_once_with(
             strings.admin_cancel_msg,
             call.message.chat.id,
@@ -161,7 +161,7 @@ class TestPendingExpiry:
         call.from_user.id = 100
         call.data = "allow_confirm:999"
         admin.handle_admin_callback(call)
-        admin.gemini_chat.allow_chat.assert_not_called()
+        admin.ai_chat.allow_chat.assert_not_called()
 
 
 class TestCallbackPrefixes:
@@ -179,6 +179,8 @@ class TestCallbackPrefixes:
             "set_search_cancel",
             "set_prompt",
             "set_prompt_cancel",
+            "set_provider",
+            "set_provider_cancel",
         }
         assert AdminManager.CALLBACK_PREFIXES == expected
 
@@ -186,9 +188,11 @@ class TestCallbackPrefixes:
 class TestAskSettingsHandler:
     @patch("modules.admin.config.ADMIN_USER_ID", 100)
     def test_shows_menu(self, admin):
-        admin.gemini_chat.model = "gemini-2.5-flash"
-        admin.gemini_chat.search_grounding = False
-        admin.gemini_chat.custom_prompt = ""
+        admin.ai_chat.provider_name = "gemini"
+        admin.ai_chat.model = "gemini-2.5-flash"
+        admin.ai_chat.search_enabled = False
+        admin.ai_chat.custom_prompt = ""
+        admin.ai_chat.supports_search.return_value = True
         msg = make_message("/ask_settings", user_id=100)
         admin.ask_settings_handler(msg)
         admin.bot.reply_to.assert_called_once()
@@ -198,9 +202,10 @@ class TestAskSettingsHandler:
 
     @patch("modules.admin.config.ADMIN_USER_ID", 100)
     def test_non_admin_sees_status_without_keyboard(self, admin):
-        admin.gemini_chat.model = "gemini-2.5-flash"
-        admin.gemini_chat.search_grounding = False
-        admin.gemini_chat.custom_prompt = ""
+        admin.ai_chat.provider_name = "gemini"
+        admin.ai_chat.model = "gemini-2.5-flash"
+        admin.ai_chat.search_enabled = False
+        admin.ai_chat.custom_prompt = ""
         msg = make_message("/ask_settings", user_id=999)
         admin.ask_settings_handler(msg)
         admin.bot.reply_to.assert_called_once()
@@ -210,8 +215,8 @@ class TestAskSettingsHandler:
 
     @patch("modules.admin.config.ADMIN_USER_ID", 100)
     def test_model_callback(self, admin):
-        admin.gemini_chat.model = "gemini-2.5-flash"
-        admin.gemini_chat.list_models.return_value = ["gemini-2.5-flash", "gemini-2.5-pro"]
+        admin.ai_chat.model = "gemini-2.5-flash"
+        admin.ai_chat.list_models.return_value = ["gemini-2.5-flash", "gemini-2.5-pro"]
         call = MagicMock()
         call.from_user.id = 100
         call.data = "ask_settings:model"
@@ -223,7 +228,7 @@ class TestAskSettingsHandler:
 
     @patch("modules.admin.config.ADMIN_USER_ID", 100)
     def test_search_callback(self, admin):
-        admin.gemini_chat.search_grounding = False
+        admin.ai_chat.search_enabled = False
         call = MagicMock()
         call.from_user.id = 100
         call.data = "ask_settings:search"
@@ -238,7 +243,7 @@ class TestAskSettingsHandler:
         call.from_user.id = 100
         call.data = "set_search:true"
         admin.handle_admin_callback(call)
-        admin.gemini_chat.set_search_grounding.assert_called_once_with(True)
+        admin.ai_chat.set_search.assert_called_once_with(True)
         admin.bot.edit_message_text.assert_called_once()
 
     @patch("modules.admin.config.ADMIN_USER_ID", 100)
@@ -247,11 +252,11 @@ class TestAskSettingsHandler:
         call.from_user.id = 100
         call.data = "set_search:false"
         admin.handle_admin_callback(call)
-        admin.gemini_chat.set_search_grounding.assert_called_once_with(False)
+        admin.ai_chat.set_search.assert_called_once_with(False)
 
     @patch("modules.admin.config.ADMIN_USER_ID", 100)
     def test_allowlist_callback(self, admin):
-        admin.gemini_chat.list_allowed_chats.return_value = [{"id": 1, "name": "A"}]
+        admin.ai_chat.list_allowed_chats.return_value = [{"id": 1, "name": "A"}]
         call = MagicMock()
         call.from_user.id = 100
         call.data = "ask_settings:allowlist"
@@ -260,7 +265,7 @@ class TestAskSettingsHandler:
 
     @patch("modules.admin.config.ADMIN_USER_ID", 100)
     def test_prompt_callback(self, admin):
-        admin.gemini_chat.custom_prompt = "Be formal."
+        admin.ai_chat.custom_prompt = "Be formal."
         call = MagicMock()
         call.from_user.id = 100
         call.data = "ask_settings:prompt"
@@ -276,7 +281,7 @@ class TestAskSettingsHandler:
         call.from_user.id = 100
         call.data = "set_prompt:clear"
         admin.handle_admin_callback(call)
-        admin.gemini_chat.set_custom_prompt.assert_called_once_with("")
+        admin.ai_chat.set_custom_prompt.assert_called_once_with("")
 
     @patch("modules.admin.config.ADMIN_USER_ID", 100)
     def test_set_prompt_edit_sends_force_reply(self, admin):
@@ -293,7 +298,7 @@ class TestAskSettingsHandler:
         admin._pending_prompt = (100, 1, time.time())
         msg = make_message("Always be polite.", chat_id=1, user_id=100)
         admin.handle_prompt_reply(msg)
-        admin.gemini_chat.set_custom_prompt.assert_called_once_with("Always be polite.")
+        admin.ai_chat.set_custom_prompt.assert_called_once_with("Always be polite.")
         admin.bot.reply_to.assert_called_once_with(msg, strings.set_prompt_done_msg)
         assert admin._pending_prompt is None
 
@@ -302,21 +307,21 @@ class TestAskSettingsHandler:
         admin._pending_prompt = (100, 1, time.time())
         msg = make_message("hack prompt", chat_id=1, user_id=999)
         admin.handle_prompt_reply(msg)
-        admin.gemini_chat.set_custom_prompt.assert_not_called()
+        admin.ai_chat.set_custom_prompt.assert_not_called()
 
     @patch("modules.admin.config.ADMIN_USER_ID", 100)
     def test_handle_prompt_reply_wrong_chat(self, admin):
         admin._pending_prompt = (100, 1, time.time())
         msg = make_message("prompt text", chat_id=999, user_id=100)
         admin.handle_prompt_reply(msg)
-        admin.gemini_chat.set_custom_prompt.assert_not_called()
+        admin.ai_chat.set_custom_prompt.assert_not_called()
 
     @patch("modules.admin.config.ADMIN_USER_ID", 100)
     def test_handle_prompt_reply_expired(self, admin):
         admin._pending_prompt = (100, 1, time.time() - 301)
         msg = make_message("late reply", chat_id=1, user_id=100)
         admin.handle_prompt_reply(msg)
-        admin.gemini_chat.set_custom_prompt.assert_not_called()
+        admin.ai_chat.set_custom_prompt.assert_not_called()
         assert admin._pending_prompt is None
 
     @patch("modules.admin.config.ADMIN_USER_ID", 100)
@@ -330,3 +335,39 @@ class TestAskSettingsHandler:
             call.message.chat.id,
             call.message.message_id,
         )
+
+    @patch("modules.admin.config.ADMIN_USER_ID", 100)
+    def test_set_provider_success(self, admin):
+        admin.ai_chat.switch_provider.return_value = True
+        call = MagicMock()
+        call.from_user.id = 100
+        call.data = "set_provider:openai"
+        admin.handle_admin_callback(call)
+        admin.ai_chat.switch_provider.assert_called_once_with("openai")
+        admin.bot.edit_message_text.assert_called_once()
+        call_args = admin.bot.edit_message_text.call_args
+        assert "openai" in call_args[0][0]
+
+    @patch("modules.admin.config.ADMIN_USER_ID", 100)
+    def test_set_provider_unavailable(self, admin):
+        admin.ai_chat.switch_provider.return_value = False
+        call = MagicMock()
+        call.from_user.id = 100
+        call.data = "set_provider:openai"
+        admin.handle_admin_callback(call)
+        admin.ai_chat.switch_provider.assert_called_once_with("openai")
+        admin.bot.edit_message_text.assert_called_once()
+        call_args = admin.bot.edit_message_text.call_args
+        assert call_args[0][0] == strings.set_provider_unavailable_msg
+
+    @patch("modules.admin.config.ADMIN_USER_ID", 100)
+    def test_provider_callback_shows_selection(self, admin):
+        admin.ai_chat.available_providers.return_value = ["gemini"]
+        admin.ai_chat.provider_name = "gemini"
+        call = MagicMock()
+        call.from_user.id = 100
+        call.data = "ask_settings:provider"
+        admin.handle_admin_callback(call)
+        admin.bot.edit_message_text.assert_called_once()
+        call_args = admin.bot.edit_message_text.call_args
+        assert "reply_markup" in call_args.kwargs

@@ -163,10 +163,14 @@ admin_confirm_btn = "확인"
 admin_cancel_btn = "취소"
 
 # /ask_settings message
-ask_settings_msg = "AI 질문 설정\n\n모델: {model}\n웹 검색: {search}\n추가 지시: {prompt}"
+ask_settings_msg = "AI 질문 설정\n\n프로바이더: {provider}\n모델: {model}\n웹 검색: {search}\n추가 지시: {prompt}"
+ask_settings_provider_btn = "프로바이더 변경"
 ask_settings_model_btn = "모델 변경"
 ask_settings_search_btn = "웹 검색 설정"
 ask_settings_allowlist_btn = "허용 목록 보기"
+set_provider_msg = "현재 프로바이더: {provider}\n변경할 프로바이더를 선택하세요. (API 키가 없는 항목은 비활성화됩니다)"
+set_provider_done_msg = "프로바이더를 {provider}로 변경했습니다. 세션과 모델이 초기화되었습니다."
+set_provider_unavailable_msg = "해당 프로바이더의 API 키가 설정되지 않았습니다."
 
 # model selection message
 set_model_msg = "현재 모델: {model}\n사용할 모델을 선택해주세요."
