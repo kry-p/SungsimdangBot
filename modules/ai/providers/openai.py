@@ -13,6 +13,8 @@ logger = log.Logger()
 
 DEFAULT_MODEL = "gpt-4o"
 
+EXCLUDED_KEYWORDS = ("embedding", "tts", "whisper", "dall-e", "moderation", "babbage", "davinci")
+
 
 @dataclass
 class OpenAISession:
@@ -91,7 +93,7 @@ class OpenAIProvider:
         if not self.client:
             return []
         try:
-            return sorted(m.id for m in self.client.models.list())
+            return sorted(m.id for m in self.client.models.list() if not any(kw in m.id for kw in EXCLUDED_KEYWORDS))
         except Exception:
             logger.log_error("Failed to list OpenAI models.")
             return []
