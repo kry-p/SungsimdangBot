@@ -11,6 +11,13 @@ def _int_env(key, default):
     return int(value) if value else default
 
 
+def _int_env_with_fallback(primary: str, fallback_key: str, default: int) -> int:
+    v = os.getenv(primary)
+    if v is not None:
+        return int(v)
+    return _int_env(fallback_key, default)
+
+
 # Telegram bot token 텔레그램 봇 토큰
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 # Kakao REST API token 카카오 REST API 토큰
@@ -30,10 +37,11 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 OPENAI_BASE_URL = os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1")
 
 # AI 공통 (AI_* 우선, 없으면 GEMINI_* fallback)
-AI_SESSION_TIMEOUT = int(os.getenv("AI_SESSION_TIMEOUT") or os.getenv("GEMINI_SESSION_TIMEOUT", "3600"))
-AI_MAX_HISTORY = int(os.getenv("AI_MAX_HISTORY") or os.getenv("GEMINI_MAX_HISTORY", "20"))
-AI_RATE_LIMIT = int(os.getenv("AI_RATE_LIMIT") or os.getenv("GEMINI_RATE_LIMIT", "5"))
-AI_API_TIMEOUT = int(os.getenv("AI_API_TIMEOUT") or os.getenv("GEMINI_API_TIMEOUT", "60"))
+AI_SESSION_TIMEOUT = _int_env_with_fallback("AI_SESSION_TIMEOUT", "GEMINI_SESSION_TIMEOUT", 3600)
+AI_MAX_HISTORY = _int_env_with_fallback("AI_MAX_HISTORY", "GEMINI_MAX_HISTORY", 20)
+AI_RATE_LIMIT = _int_env_with_fallback("AI_RATE_LIMIT", "GEMINI_RATE_LIMIT", 5)
+AI_API_TIMEOUT = _int_env_with_fallback("AI_API_TIMEOUT", "GEMINI_API_TIMEOUT", 60)
+
 ADMIN_USER_ID = _int_env("ADMIN_USER_ID", 0)
 
 # RSS feed translator API
