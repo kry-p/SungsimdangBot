@@ -18,6 +18,7 @@ DEFAULT_MODEL = "gpt-4o"
 class OpenAISession:
     messages: list = field(default_factory=list)
     last_active: float = field(default_factory=time.time)
+    _lock: threading.Lock = field(default_factory=threading.Lock, repr=False)
 
 
 class OpenAIProvider:
@@ -42,40 +43,36 @@ class OpenAIProvider:
 
         user_content = self._build_user_content(text, image)
 
-        with self._lock:
+        with session._lock:
             session.messages.append({"role": "user", "content": user_content})
             messages_snapshot = list(session.messages)
 
-        kwargs = {
-            "model": self.model,
-            "instructions": system_prompt,
-            "input": messages_snapshot,
-            "tools": [{"type": "web_search_preview"}] if self.search_enabled else [],
-        }
+            kwargs = {
+                "model": self.model,
+                "instructions": system_prompt,
+                "input": messages_snapshot,
+            }
+            if self.search_enabled:
+                kwargs["tools"] = [{"type": "web_search_preview"}]
 
-        try:
-            response = self.client.responses.create(**kwargs)
-        except openai_sdk.APITimeoutError as e:
-            logger.log_error(f"OpenAI API timeout: {e}")
-            with self._lock:
+            try:
+                response = self.client.responses.create(**kwargs)
+            except openai_sdk.APITimeoutError as e:
+                logger.log_error(f"OpenAI API timeout: {e}")
                 session.messages.pop()
-            raise TimeoutError("OpenAI API timeout") from e
-        except openai_sdk.APIStatusError as e:
-            logger.log_error(f"OpenAI API status error {e.status_code}: {e}")
-            with self._lock:
+                raise TimeoutError("OpenAI API timeout") from e
+            except openai_sdk.APIStatusError as e:
+                logger.log_error(f"OpenAI API status error {e.status_code}: {e}")
                 session.messages.pop()
-            if e.status_code < 500:
-                raise AIClientError(str(e)) from e
-            raise AIServerError(str(e)) from e
-        except Exception as e:
-            logger.log_error(f"OpenAI API call failed: {e}")
-            with self._lock:
+                if e.status_code < 500:
+                    raise AIClientError(str(e)) from e
+                raise AIServerError(str(e)) from e
+            except Exception as e:
+                logger.log_error(f"OpenAI API call failed: {e}")
                 session.messages.pop()
-            raise AIServerError(str(e)) from e
+                raise AIServerError(str(e)) from e
 
-        result = response.output_text
-
-        with self._lock:
+            result = response.output_text
             session.messages.append({"role": "assistant", "content": result})
             session.last_active = time.time()
             self._trim_history(session_key)
