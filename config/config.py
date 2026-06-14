@@ -24,10 +24,16 @@ SEOUL_HANGANG_WATER_TOKEN = os.getenv("SEOUL_HANGANG_WATER_TOKEN", "")
 
 # Gemini API
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
-GEMINI_SESSION_TIMEOUT = _int_env("GEMINI_SESSION_TIMEOUT", 3600)
-GEMINI_MAX_HISTORY = _int_env("GEMINI_MAX_HISTORY", 20)
-GEMINI_RATE_LIMIT = _int_env("GEMINI_RATE_LIMIT", 5)
-GEMINI_API_TIMEOUT = _int_env("GEMINI_API_TIMEOUT", 60)
+
+# OpenAI API
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
+OPENAI_BASE_URL = os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1")
+
+# AI 공통 (AI_* 우선, 없으면 GEMINI_* fallback)
+AI_SESSION_TIMEOUT = int(os.getenv("AI_SESSION_TIMEOUT") or os.getenv("GEMINI_SESSION_TIMEOUT", "3600"))
+AI_MAX_HISTORY = int(os.getenv("AI_MAX_HISTORY") or os.getenv("GEMINI_MAX_HISTORY", "20"))
+AI_RATE_LIMIT = int(os.getenv("AI_RATE_LIMIT") or os.getenv("GEMINI_RATE_LIMIT", "5"))
+AI_API_TIMEOUT = int(os.getenv("AI_API_TIMEOUT") or os.getenv("GEMINI_API_TIMEOUT", "60"))
 ADMIN_USER_ID = _int_env("ADMIN_USER_ID", 0)
 
 # RSS feed translator API
