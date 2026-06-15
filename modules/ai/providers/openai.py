@@ -83,6 +83,9 @@ class OpenAIProvider:
                 raise AIServerError(str(e)) from e
 
             result = response.output_text
+            if not result:
+                session.messages.pop()
+                raise AIServerError("Empty response from OpenAI")
             session.messages.append({"role": "assistant", "content": result})
             session.last_active = time.time()
             self._trim_history(session_key)

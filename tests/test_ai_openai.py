@@ -82,6 +82,16 @@ class TestAsk:
         tools = p.client.responses.create.call_args.kwargs.get("tools", [])
         assert any(t.get("type") == "web_search_preview" for t in tools)
 
+    def test_empty_output_text_raises_and_clears_user_message(self):
+        p = make_provider()
+        p.client.responses.create.return_value.output_text = None
+
+        with pytest.raises(AIServerError):
+            p.ask((1, 1), "system", "질문")
+
+        session = p.sessions.get((1, 1))
+        assert session is None or len(session.messages) == 0
+
     def test_search_disabled_no_tool(self):
         p = make_provider(search_enabled=False)
         p.client.responses.create.return_value.output_text = "답변"
