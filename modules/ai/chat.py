@@ -220,7 +220,7 @@ class AIChatManager:
                 chunks.append(text)
                 break
             split_at = text.rfind("\n", 0, max_len)
-            if split_at <= 0:
+            if split_at == -1:
                 split_at = max_len
             chunks.append(text[:split_at])
             text = text[split_at:].lstrip("\n")

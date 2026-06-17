@@ -252,3 +252,19 @@ class TestSplitResponse:
         assert len(result) == 2
         assert result[0] == "a" * 4000
         assert result[1] == "b" * 200
+
+    def test_newline_at_position_zero_is_valid_split(self):
+        # rfind returns 0 when the only newline within max_len is at position 0.
+        # This should split at position 0 (not fall back to max_len).
+        text = "\n" + "a" * 4096
+        result = AIChatManager.split_response(text)
+        assert len(result) == 2
+        assert result[0] == ""
+        assert result[1] == "a" * 4096
+
+    def test_no_newline_falls_back_to_max_len(self):
+        text = "a" * 5000
+        result = AIChatManager.split_response(text)
+        assert len(result) == 2
+        assert len(result[0]) == 4096
+        assert result[1] == "a" * 904
