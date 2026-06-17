@@ -165,3 +165,37 @@ def test_migrate_settings_path_idempotent(tmp_path, monkeypatch):
 
     migration.migrate_settings_path()
     migration.migrate_settings_path()  # should not raise
+
+
+def test_migrate_settings_path_deletes_old_rows(tmp_path, monkeypatch):
+    from modules import migration
+    from modules.database import Setting
+
+    monkeypatch.setattr(migration, "SETTINGS_PATH_MIGRATION_MARKER", str(tmp_path / ".settings_path_migrated"))
+
+    Setting.replace(module_path="modules.gemini_chat", key="model", value="gemini-2.5-pro").execute()
+    Setting.replace(module_path="modules.gemini_chat", key="search_grounding", value="False").execute()
+
+    migration.migrate_settings_path()
+
+    assert Setting.get_or_none(Setting.module_path == "modules.gemini_chat", Setting.key == "model") is None
+    assert Setting.get_or_none(Setting.module_path == "modules.gemini_chat", Setting.key == "search_grounding") is None
+
+
+def test_migrate_settings_path_does_not_overwrite_existing(tmp_path, monkeypatch):
+    from modules import migration
+    from modules.database import Setting
+
+    monkeypatch.setattr(migration, "SETTINGS_PATH_MIGRATION_MARKER", str(tmp_path / ".settings_path_migrated"))
+
+    # Simulate: DB committed but marker not written (crash scenario).
+    # modules.ai.chat already has updated value; modules.gemini_chat still has old value.
+    Setting.replace(module_path="modules.ai.chat", key="model", value="gemini-2.5-flash").execute()
+    Setting.replace(module_path="modules.gemini_chat", key="model", value="gemini-2.5-pro").execute()
+
+    migration.migrate_settings_path()
+
+    assert (
+        Setting.get_or_none(Setting.module_path == "modules.ai.chat", Setting.key == "model").value
+        == "gemini-2.5-flash"
+    )

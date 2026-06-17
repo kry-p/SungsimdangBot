@@ -105,8 +105,10 @@ def migrate_settings_path():
         for old_key, new_key in key_mapping.items():
             row = Setting.get_or_none(Setting.module_path == old_path, Setting.key == old_key)
             if row:
-                Setting.replace(module_path=new_path, key=new_key, value=row.value).execute()
-                migrated += 1
+                if not Setting.get_or_none(Setting.module_path == new_path, Setting.key == new_key):
+                    Setting.replace(module_path=new_path, key=new_key, value=row.value).execute()
+                    migrated += 1
+                Setting.delete().where(Setting.module_path == old_path, Setting.key == old_key).execute()
 
         if not Setting.get_or_none(Setting.module_path == new_path, Setting.key == "provider"):
             Setting.replace(module_path=new_path, key="provider", value="gemini").execute()
