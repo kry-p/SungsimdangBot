@@ -43,6 +43,9 @@ _PROVIDER_DEFAULT_MODELS = {
 }
 
 
+_MODEL_LIST_TTL = 300  # 5분
+
+
 class AIChatManager:
     def __init__(self):
         self._lock = threading.RLock()
@@ -50,6 +53,7 @@ class AIChatManager:
         self.custom_prompt: str = Settings().get(SETTINGS_MODULE_PATH, "custom_prompt", "")
         provider_name = Settings().get(SETTINGS_MODULE_PATH, "provider", "gemini")
         self.provider = self._init_provider(provider_name)
+        self._model_list_cache: tuple[float, list[str]] | None = None
 
     # --- Public API ---
 
@@ -109,6 +113,7 @@ class AIChatManager:
         default_model = _PROVIDER_DEFAULT_MODELS.get(name, "")
         with self._lock:
             self.provider = self._init_provider(name, model=default_model)
+            self._model_list_cache = None
             Settings().set(SETTINGS_MODULE_PATH, "provider", name)
             Settings().set(SETTINGS_MODULE_PATH, "model", default_model)
         return True
@@ -152,7 +157,12 @@ class AIChatManager:
             Settings().set(SETTINGS_MODULE_PATH, "custom_prompt", prompt)
 
     def list_models(self) -> list[str]:
-        return self.provider.list_models()
+        now = time.time()
+        if self._model_list_cache and now - self._model_list_cache[0] < _MODEL_LIST_TTL:
+            return self._model_list_cache[1]
+        models = self.provider.list_models()
+        self._model_list_cache = (now, models)
+        return models
 
     def supports_search(self) -> bool:
         return self.provider.supports_search()

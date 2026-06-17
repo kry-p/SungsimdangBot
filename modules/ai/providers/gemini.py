@@ -27,6 +27,7 @@ class GeminiSession:
 class GeminiProvider:
     def __init__(self, model: str = DEFAULT_MODEL, search_enabled: bool = False):
         self._lock = threading.RLock()
+        self._executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
         self.client = None
         if config.GEMINI_API_KEY:
             self.client = genai.Client(api_key=config.GEMINI_API_KEY)
@@ -45,9 +46,8 @@ class GeminiProvider:
         prompt = self._build_prompt(text, image)
 
         try:
-            with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
-                future = executor.submit(managed.chat.send_message, prompt)
-                response = future.result(timeout=config.AI_API_TIMEOUT)
+            future = self._executor.submit(managed.chat.send_message, prompt)
+            response = future.result(timeout=config.AI_API_TIMEOUT)
             result = response.text
         except concurrent.futures.TimeoutError:
             logger.log_error("Gemini API call timed out.")

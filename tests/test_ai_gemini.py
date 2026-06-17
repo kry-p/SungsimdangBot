@@ -1,3 +1,4 @@
+import concurrent.futures
 import threading
 import time
 from unittest.mock import MagicMock, patch
@@ -13,6 +14,7 @@ def make_provider(**kwargs):
     with patch.object(GeminiProvider, "__init__", lambda self, **kw: None):
         p = GeminiProvider()
         p._lock = threading.RLock()
+        p._executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
         p.client = MagicMock()
         p.model = "gemini-2.5-flash"
         p.search_enabled = False
