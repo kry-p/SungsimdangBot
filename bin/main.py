@@ -79,7 +79,7 @@ def periodic_cleanup():
     while True:
         sleep(CLEANUP_INTERVAL)
         try:
-            hub.gemini_chat.cleanup_expired()
+            hub.ai_chat.cleanup_expired()
         except Exception as e:
             logger.log_error(f"Cleanup failed: {e}")
 

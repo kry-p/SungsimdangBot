@@ -13,7 +13,7 @@ def hub():
     bot = MagicMock()
     with (
         patch("modules.features_hub.WebManager"),
-        patch("modules.features_hub.GeminiChat"),
+        patch("modules.features_hub.AIChatManager"),
         patch("modules.features_hub.AdminManager"),
     ):
         h = BotFeaturesHub(bot)
@@ -133,18 +133,18 @@ class TestAskHandler:
         hub.bot.reply_to.assert_called_once_with(msg, strings.ask_empty_msg)
 
     def test_normal_question(self, hub):
-        hub.gemini_chat.ask.return_value = ["답변입니다"]
+        hub.ai_chat.ask.return_value = ["답변입니다"]
         msg = make_message("/ask 질문", user_id=1)
         msg.from_user.language_code = "ko"
         hub.ask_handler(msg)
-        hub.gemini_chat.ask.assert_called_once_with(1, 1, "질문", "ko", None, None)
+        hub.ai_chat.ask.assert_called_once_with(1, 1, "질문", "ko", None, None)
         hub.bot.reply_to.assert_called_once()
         call_kwargs = hub.bot.reply_to.call_args
         assert call_kwargs[0][1] == "답변입니다"
         assert "entities" in call_kwargs.kwargs
 
     def test_reply_with_context(self, hub):
-        hub.gemini_chat.ask.return_value = ["요약입니다"]
+        hub.ai_chat.ask.return_value = ["요약입니다"]
         msg = make_message("/ask 이거 요약해줘", user_id=1)
         msg.from_user.language_code = "ko"
         msg.reply_to_message = MagicMock()
@@ -152,10 +152,10 @@ class TestAskHandler:
         msg.reply_to_message.photo = None
         msg.reply_to_message.caption = None
         hub.ask_handler(msg)
-        hub.gemini_chat.ask.assert_called_once_with(1, 1, "이거 요약해줘", "ko", "원본 메시지 내용", None)
+        hub.ai_chat.ask.assert_called_once_with(1, 1, "이거 요약해줘", "ko", "원본 메시지 내용", None)
 
     def test_reply_without_text(self, hub):
-        hub.gemini_chat.ask.return_value = ["답변입니다"]
+        hub.ai_chat.ask.return_value = ["답변입니다"]
         msg = make_message("/ask 질문", user_id=1)
         msg.from_user.language_code = "ko"
         msg.reply_to_message = MagicMock()
@@ -163,10 +163,10 @@ class TestAskHandler:
         msg.reply_to_message.photo = None
         msg.reply_to_message.caption = None
         hub.ask_handler(msg)
-        hub.gemini_chat.ask.assert_called_once_with(1, 1, "질문", "ko", None, None)
+        hub.ai_chat.ask.assert_called_once_with(1, 1, "질문", "ko", None, None)
 
     def test_photo_caption(self, hub):
-        hub.gemini_chat.ask.return_value = ["이미지 설명"]
+        hub.ai_chat.ask.return_value = ["이미지 설명"]
         msg = make_message(None, user_id=1)
         msg.text = None
         msg.caption = "/ask 이게 뭐야"
@@ -178,10 +178,10 @@ class TestAskHandler:
         hub.bot.download_file.return_value = b"fake_image_data"
         hub.ask_handler(msg)
         hub.bot.get_file.assert_called_once_with("photo_123")
-        hub.gemini_chat.ask.assert_called_once_with(1, 1, "이게 뭐야", "ko", None, b"fake_image_data")
+        hub.ai_chat.ask.assert_called_once_with(1, 1, "이게 뭐야", "ko", None, b"fake_image_data")
 
     def test_reply_to_photo(self, hub):
-        hub.gemini_chat.ask.return_value = ["사진 분석"]
+        hub.ai_chat.ask.return_value = ["사진 분석"]
         msg = make_message("/ask 이 사진 설명해줘", user_id=1)
         msg.from_user.language_code = "ko"
         reply_photo = MagicMock()
@@ -194,7 +194,7 @@ class TestAskHandler:
         hub.bot.download_file.return_value = b"reply_image_data"
         hub.ask_handler(msg)
         hub.bot.get_file.assert_called_once_with("reply_photo_123")
-        hub.gemini_chat.ask.assert_called_once_with(1, 1, "이 사진 설명해줘", "ko", "원본 캡션", b"reply_image_data")
+        hub.ai_chat.ask.assert_called_once_with(1, 1, "이 사진 설명해줘", "ko", "원본 캡션", b"reply_image_data")
 
     def test_photo_download_failure(self, hub):
         msg = make_message(None, user_id=1)
@@ -207,7 +207,7 @@ class TestAskHandler:
         hub.bot.get_file.side_effect = Exception("download error")
         hub.ask_handler(msg)
         hub.bot.reply_to.assert_called_once_with(msg, strings.ask_photo_download_error_msg)
-        hub.gemini_chat.ask.assert_not_called()
+        hub.ai_chat.ask.assert_not_called()
 
     def test_reply_photo_download_failure(self, hub):
         msg = make_message("/ask 설명해줘", user_id=1)
@@ -221,7 +221,7 @@ class TestAskHandler:
         hub.bot.get_file.side_effect = Exception("download error")
         hub.ask_handler(msg)
         hub.bot.reply_to.assert_called_once_with(msg, strings.ask_photo_download_error_msg)
-        hub.gemini_chat.ask.assert_not_called()
+        hub.ai_chat.ask.assert_not_called()
 
     def test_reply_empty_question_rejected(self, hub):
         msg = make_message("/ask")
@@ -229,10 +229,10 @@ class TestAskHandler:
         msg.reply_to_message.text = "원본 메시지"
         hub.ask_handler(msg)
         hub.bot.reply_to.assert_called_once_with(msg, strings.ask_empty_msg)
-        hub.gemini_chat.ask.assert_not_called()
+        hub.ai_chat.ask.assert_not_called()
 
     def test_markdown_response(self, hub):
-        hub.gemini_chat.ask.return_value = ["**bold** and `code`"]
+        hub.ai_chat.ask.return_value = ["**bold** and `code`"]
         msg = make_message("/ask 질문", user_id=1)
         msg.from_user.language_code = "ko"
         hub.ask_handler(msg)
@@ -243,7 +243,7 @@ class TestAskHandler:
         assert len(entities) > 0
 
     def test_not_allowed(self, hub):
-        hub.gemini_chat.ask.return_value = [strings.ask_not_allowed_msg]
+        hub.ai_chat.ask.return_value = [strings.ask_not_allowed_msg]
         msg = make_message("/ask 질문", user_id=1)
         msg.from_user.language_code = "ko"
         hub.ask_handler(msg)
@@ -251,7 +251,7 @@ class TestAskHandler:
 
     @patch("modules.features_hub.convert", side_effect=Exception("parse error"))
     def test_convert_failure_fallback(self, mock_convert, hub):
-        hub.gemini_chat.ask.return_value = ["plain text response"]
+        hub.ai_chat.ask.return_value = ["plain text response"]
         msg = make_message("/ask 질문", user_id=1)
         msg.from_user.language_code = "ko"
         hub.ask_handler(msg)
@@ -299,5 +299,5 @@ class TestClearChatHandler:
     def test_clear(self, hub):
         msg = make_message("/clear_chat")
         hub.clear_chat_handler(msg)
-        hub.gemini_chat.clear_session.assert_called_once_with(1, 1)
+        hub.ai_chat.clear_session.assert_called_once_with(1, 1)
         hub.bot.reply_to.assert_called_once_with(msg, strings.ask_clear_msg)
