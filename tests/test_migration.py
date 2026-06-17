@@ -20,10 +20,12 @@ class TestMigrateSettings:
             patch("modules.migration.SETTINGS_JSON_PATH", json_path),
             patch("modules.migration.ALLOWLIST_JSON_PATH", str(tmp_path / "nonexistent.json")),
             patch("modules.migration.MIGRATION_MARKER", marker_path),
+            patch("modules.migration.SETTINGS_PATH_MIGRATION_MARKER", str(tmp_path / ".settings_path_migrated")),
         ):
             migrate_json_to_db()
 
-        row = Setting.get_or_none((Setting.module_path == "modules.gemini_chat") & (Setting.key == "model"))
+        # migrate_settings_path()가 modules.gemini_chat → modules.ai.chat으로 이동
+        row = Setting.get_or_none((Setting.module_path == "modules.ai.chat") & (Setting.key == "model"))
         assert row is not None
         assert row.value == "gemini-2.5-pro"
         assert os.path.exists(marker_path)
@@ -34,10 +36,11 @@ class TestMigrateSettings:
             patch("modules.migration.SETTINGS_JSON_PATH", str(tmp_path / "nonexistent.json")),
             patch("modules.migration.ALLOWLIST_JSON_PATH", str(tmp_path / "nonexistent2.json")),
             patch("modules.migration.MIGRATION_MARKER", marker_path),
+            patch("modules.migration.SETTINGS_PATH_MIGRATION_MARKER", str(tmp_path / ".settings_path_migrated")),
         ):
             migrate_json_to_db()
 
-        assert Setting.select().count() == 0
+        assert Setting.get_or_none(Setting.module_path == "modules.gemini_chat") is None
         assert not os.path.exists(marker_path)
 
     def test_corrupted_json(self, tmp_path):
@@ -50,10 +53,11 @@ class TestMigrateSettings:
             patch("modules.migration.SETTINGS_JSON_PATH", json_path),
             patch("modules.migration.ALLOWLIST_JSON_PATH", str(tmp_path / "nonexistent.json")),
             patch("modules.migration.MIGRATION_MARKER", marker_path),
+            patch("modules.migration.SETTINGS_PATH_MIGRATION_MARKER", str(tmp_path / ".settings_path_migrated")),
         ):
             migrate_json_to_db()
 
-        assert Setting.select().count() == 0
+        assert Setting.get_or_none(Setting.module_path == "modules.gemini_chat") is None
 
 
 class TestMigrateAllowlist:
@@ -68,6 +72,7 @@ class TestMigrateAllowlist:
             patch("modules.migration.SETTINGS_JSON_PATH", str(tmp_path / "nonexistent.json")),
             patch("modules.migration.ALLOWLIST_JSON_PATH", json_path),
             patch("modules.migration.MIGRATION_MARKER", marker_path),
+            patch("modules.migration.SETTINGS_PATH_MIGRATION_MARKER", str(tmp_path / ".settings_path_migrated")),
         ):
             migrate_json_to_db()
 
@@ -85,6 +90,7 @@ class TestMigrateAllowlist:
             patch("modules.migration.SETTINGS_JSON_PATH", str(tmp_path / "nonexistent.json")),
             patch("modules.migration.ALLOWLIST_JSON_PATH", json_path),
             patch("modules.migration.MIGRATION_MARKER", marker_path),
+            patch("modules.migration.SETTINGS_PATH_MIGRATION_MARKER", str(tmp_path / ".settings_path_migrated")),
         ):
             migrate_json_to_db()
 
@@ -102,6 +108,7 @@ class TestMigrateAllowlist:
             patch("modules.migration.SETTINGS_JSON_PATH", str(tmp_path / "nonexistent.json")),
             patch("modules.migration.ALLOWLIST_JSON_PATH", json_path),
             patch("modules.migration.MIGRATION_MARKER", marker_path),
+            patch("modules.migration.SETTINGS_PATH_MIGRATION_MARKER", str(tmp_path / ".settings_path_migrated")),
         ):
             migrate_json_to_db()
 
