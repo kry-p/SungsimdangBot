@@ -190,6 +190,20 @@ class TestProviderManagement:
             result = m.switch_provider("gemini")
         assert result is True
 
+    @patch("modules.ai.chat.Settings")
+    @patch("modules.ai.chat.config")
+    def test_switch_provider_preserves_search_enabled(self, mock_config, mock_settings):
+        mock_config.GEMINI_API_KEY = "key"
+        mock_config.OPENAI_API_KEY = ""
+        mock_settings.return_value.get.side_effect = lambda path, key, default: (
+            "True" if key == "search_enabled" else default
+        )
+        m = make_manager()
+        with patch("modules.ai.chat.GeminiProvider") as mock_gemini:
+            m.switch_provider("gemini")
+            _, kwargs = mock_gemini.call_args
+            assert kwargs.get("search_enabled") is True
+
     def test_available_providers(self):
         m = make_manager()
         with patch("modules.ai.chat.config") as mc:

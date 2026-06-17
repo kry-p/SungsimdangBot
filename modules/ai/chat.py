@@ -108,10 +108,9 @@ class AIChatManager:
             return False
         default_model = _PROVIDER_DEFAULT_MODELS.get(name, "")
         with self._lock:
-            self.provider = self._init_provider(name, model=default_model, search_enabled=False)
+            self.provider = self._init_provider(name, model=default_model)
             Settings().set(SETTINGS_MODULE_PATH, "provider", name)
             Settings().set(SETTINGS_MODULE_PATH, "model", default_model)
-            Settings().set(SETTINGS_MODULE_PATH, "search_enabled", "False")
         return True
 
     def _init_provider(self, name: str, model: str | None = None, search_enabled: bool | None = None):
