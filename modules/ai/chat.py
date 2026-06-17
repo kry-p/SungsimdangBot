@@ -4,7 +4,7 @@ import time
 
 from config import config
 from modules import log
-from modules.ai.providers.base import AIClientError
+from modules.ai.providers.base import AIClientError, AIServerError
 from modules.ai.providers.gemini import DEFAULT_MODEL as GEMINI_DEFAULT_MODEL
 from modules.ai.providers.gemini import GeminiProvider
 from modules.ai.providers.openai import DEFAULT_MODEL as OPENAI_DEFAULT_MODEL
@@ -70,7 +70,10 @@ class AIChatManager:
             return [strings.ask_timeout_msg]
         except AIClientError:
             return [strings.ask_client_error_msg]
+        except AIServerError:
+            return [strings.ask_error_msg]
         except Exception:
+            logger.log_error("Unexpected error in ask()")
             return [strings.ask_error_msg]
 
         return self.split_response(result)
