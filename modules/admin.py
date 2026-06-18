@@ -12,6 +12,7 @@ CANCEL_ACTIONS = frozenset(
         "set_model_cancel",
         "set_search_cancel",
         "set_prompt_cancel",
+        "set_provider_cancel",
     }
 )
 
@@ -31,6 +32,9 @@ class AdminManager:
             "set_search_cancel",
             "set_prompt",
             "set_prompt_cancel",
+            "set_provider",
+            "set_provider_cancel",
+            "set_provider_unavailable",
         }
     )
 
@@ -45,18 +49,17 @@ class AdminManager:
     def is_admin(user_id):
         return user_id == config.ADMIN_USER_ID
 
-    def __init__(self, bot, gemini_chat):
+    def __init__(self, bot, ai_chat):
         self.bot = bot
-        self.gemini_chat = gemini_chat
+        self.ai_chat = ai_chat
         self._pending_prompt = None
-
-    # --- Callback dispatch ---
 
     _SETTINGS_HANDLERS = {
         "ask_settings": "_handle_ask_settings_callback",
         "set_model": "_handle_set_model",
         "set_search": "_handle_set_search",
         "set_prompt": "_handle_set_prompt",
+        "set_provider": "_handle_set_provider",
     }
 
     def handle_admin_callback(self, call):
@@ -78,10 +81,18 @@ class AdminManager:
             )
             return
 
+        if action == "set_provider_unavailable":
+            self.bot.edit_message_text(
+                strings.set_provider_unavailable_msg,
+                call.message.chat.id,
+                call.message.message_id,
+            )
+            return
+
         self._handle_pending_action(call, action, int(value))
 
     def _handle_set_model(self, call, value):
-        self.gemini_chat.set_model(value)
+        self.ai_chat.set_model(value)
         self.bot.edit_message_text(
             strings.set_model_done_msg.format(model=value),
             call.message.chat.id,
@@ -90,7 +101,7 @@ class AdminManager:
 
     def _handle_set_search(self, call, value):
         enabled = value == "true"
-        self.gemini_chat.set_search_grounding(enabled)
+        self.ai_chat.set_search(enabled)
         msg = strings.set_search_enabled_msg if enabled else strings.set_search_disabled_msg
         self.bot.edit_message_text(msg, call.message.chat.id, call.message.message_id)
 
@@ -104,8 +115,23 @@ class AdminManager:
                 reply_markup=telebot.types.ForceReply(selective=True),
             )
         elif value == "clear":
-            self.gemini_chat.set_custom_prompt("")
+            self.ai_chat.set_custom_prompt("")
             self.bot.edit_message_text(strings.set_prompt_cleared_msg, call.message.chat.id, call.message.message_id)
+
+    def _handle_set_provider(self, call, value):
+        success = self.ai_chat.switch_provider(value)
+        if success:
+            self.bot.edit_message_text(
+                strings.set_provider_done_msg.format(provider=value),
+                call.message.chat.id,
+                call.message.message_id,
+            )
+        else:
+            self.bot.edit_message_text(
+                strings.set_provider_unavailable_msg,
+                call.message.chat.id,
+                call.message.message_id,
+            )
 
     def _handle_pending_action(self, call, action, msg_id):
         pending = PendingAction.get_or_none(PendingAction.msg_id == msg_id)
@@ -115,14 +141,14 @@ class AdminManager:
         name = pending.name
         pending.delete_instance()
         if action == "allow_confirm":
-            self.gemini_chat.allow_chat(chat_id, name)
+            self.ai_chat.allow_chat(chat_id, name)
             self.bot.edit_message_text(
                 strings.admin_allow_chat_msg.format(name=name or chat_id, chat_id=chat_id),
                 call.message.chat.id,
                 call.message.message_id,
             )
         elif action == "deny_confirm":
-            self.gemini_chat.deny_chat(chat_id)
+            self.ai_chat.deny_chat(chat_id)
             self.bot.edit_message_text(
                 strings.admin_deny_chat_msg.format(name=name or chat_id, chat_id=chat_id),
                 call.message.chat.id,
@@ -134,8 +160,6 @@ class AdminManager:
                 call.message.chat.id,
                 call.message.message_id,
             )
-
-    # --- Allow / Deny chat ---
 
     def allow_chat_handler(self, message):
         if not self.is_admin(message.from_user.id):
@@ -172,10 +196,10 @@ class AdminManager:
             except ValueError:
                 self.bot.reply_to(message, strings.admin_deny_usage_msg)
                 return
-        if not self.gemini_chat.is_chat_allowed(chat_id):
+        if not self.ai_chat.is_chat_allowed(chat_id):
             self.bot.reply_to(message, strings.admin_deny_chat_not_found_msg.format(chat_id=chat_id))
             return
-        name = self.gemini_chat.get_chat_name(chat_id)
+        name = self.ai_chat.get_chat_name(chat_id)
         confirm_text = strings.admin_deny_confirm_msg.format(name=name or chat_id, chat_id=chat_id)
         self._send_pending_confirmation(message, "deny", chat_id, name, confirm_text)
 
@@ -194,8 +218,6 @@ class AdminManager:
             reply_markup=self._build_admin_keyboard(f"{action}_confirm:{msg_id}", f"{action}_cancel:{msg_id}"),
         )
 
-    # --- Ask settings menu ---
-
     def ask_settings_handler(self, message):
         status = self._build_ask_settings_status()
         if not self.is_admin(message.from_user.id):
@@ -203,11 +225,19 @@ class AdminManager:
             return
         keyboard = telebot.types.InlineKeyboardMarkup()
         keyboard.row(
-            telebot.types.InlineKeyboardButton(strings.ask_settings_model_btn, callback_data="ask_settings:model"),
+            telebot.types.InlineKeyboardButton(
+                strings.ask_settings_provider_btn, callback_data="ask_settings:provider"
+            ),
         )
         keyboard.row(
-            telebot.types.InlineKeyboardButton(strings.ask_settings_search_btn, callback_data="ask_settings:search"),
+            telebot.types.InlineKeyboardButton(strings.ask_settings_model_btn, callback_data="ask_settings:model"),
         )
+        if self.ai_chat.supports_search():
+            keyboard.row(
+                telebot.types.InlineKeyboardButton(
+                    strings.ask_settings_search_btn, callback_data="ask_settings:search"
+                ),
+            )
         keyboard.row(
             telebot.types.InlineKeyboardButton(strings.ask_settings_prompt_btn, callback_data="ask_settings:prompt"),
         )
@@ -222,12 +252,13 @@ class AdminManager:
         self.bot.reply_to(message, status, reply_markup=keyboard)
 
     def _build_ask_settings_status(self):
-        model = self.gemini_chat.model
-        search = strings.status_enabled if self.gemini_chat.search_grounding else strings.status_disabled
-        prompt = self.gemini_chat.custom_prompt or strings.status_empty
+        provider = self.ai_chat.provider_name
+        model = self.ai_chat.model
+        search = strings.status_enabled if self.ai_chat.search_enabled else strings.status_disabled
+        prompt = self.ai_chat.custom_prompt or strings.status_empty
         if len(prompt) > 50:
             prompt = prompt[:50] + "..."
-        return strings.ask_settings_msg.format(model=model, search=search, prompt=prompt)
+        return strings.ask_settings_msg.format(provider=provider, model=model, search=search, prompt=prompt)
 
     def _handle_ask_settings_callback(self, call, value):
         handler = {
@@ -235,12 +266,34 @@ class AdminManager:
             "search": self._show_search_toggle,
             "allowlist": self._show_allowlist,
             "prompt": self._show_prompt_settings,
+            "provider": self._show_provider_selection,
         }.get(value)
         if handler:
             handler(call.message.chat.id, call.message.message_id)
 
+    def _show_provider_selection(self, chat_id, msg_id):
+        available = self.ai_chat.available_providers()
+        current = self.ai_chat.provider_name
+        keyboard = telebot.types.InlineKeyboardMarkup()
+        for name in ("gemini", "openai"):
+            label = f"{'✓ ' if name == current else ''}{name.capitalize()}"
+            if name in available:
+                keyboard.row(telebot.types.InlineKeyboardButton(label, callback_data=f"set_provider:{name}"))
+            else:
+                keyboard.row(
+                    telebot.types.InlineKeyboardButton(
+                        f"{name.capitalize()} (API 키 없음)", callback_data="set_provider_unavailable:0"
+                    )
+                )
+        keyboard.row(
+            telebot.types.InlineKeyboardButton(strings.admin_cancel_btn, callback_data="set_provider_cancel:0"),
+        )
+        self.bot.edit_message_text(
+            strings.set_provider_msg.format(provider=current), chat_id, msg_id, reply_markup=keyboard
+        )
+
     def _show_model_selection(self, chat_id, msg_id):
-        models = self.gemini_chat.list_models()
+        models = self.ai_chat.list_models()
         if not models:
             self.bot.edit_message_text(strings.set_model_error_msg, chat_id, msg_id)
             return
@@ -257,11 +310,11 @@ class AdminManager:
             telebot.types.InlineKeyboardButton(strings.admin_cancel_btn, callback_data="set_model_cancel:0"),
         )
         self.bot.edit_message_text(
-            strings.set_model_msg.format(model=self.gemini_chat.model), chat_id, msg_id, reply_markup=keyboard
+            strings.set_model_msg.format(model=self.ai_chat.model), chat_id, msg_id, reply_markup=keyboard
         )
 
     def _show_search_toggle(self, chat_id, msg_id):
-        status = strings.status_enabled if self.gemini_chat.search_grounding else strings.status_disabled
+        status = strings.status_enabled if self.ai_chat.search_enabled else strings.status_disabled
         keyboard = telebot.types.InlineKeyboardMarkup()
         keyboard.row(
             telebot.types.InlineKeyboardButton(strings.admin_enable_btn, callback_data="set_search:true"),
@@ -273,7 +326,7 @@ class AdminManager:
         self.bot.edit_message_text(strings.set_search_msg.format(status=status), chat_id, msg_id, reply_markup=keyboard)
 
     def _show_allowlist(self, chat_id, msg_id):
-        chats = self.gemini_chat.list_allowed_chats()
+        chats = self.ai_chat.list_allowed_chats()
         if not chats:
             self.bot.edit_message_text(strings.admin_list_chats_empty_msg, chat_id, msg_id)
         else:
@@ -281,7 +334,7 @@ class AdminManager:
             self.bot.edit_message_text(strings.admin_list_chats_msg.format(chat_list), chat_id, msg_id)
 
     def _show_prompt_settings(self, chat_id, msg_id):
-        current = self.gemini_chat.custom_prompt or strings.status_empty
+        current = self.ai_chat.custom_prompt or strings.status_empty
         keyboard = telebot.types.InlineKeyboardMarkup()
         keyboard.row(
             telebot.types.InlineKeyboardButton(strings.ask_settings_prompt_edit_btn, callback_data="set_prompt:edit"),
@@ -294,8 +347,6 @@ class AdminManager:
             strings.set_prompt_msg.format(prompt=current), chat_id, msg_id, reply_markup=keyboard
         )
 
-    # --- ForceReply handler ---
-
     def handle_prompt_reply(self, message):
         if not self._pending_prompt:
             return
@@ -307,10 +358,8 @@ class AdminManager:
             return
         self._pending_prompt = None
         new_prompt = message.text.strip()
-        self.gemini_chat.set_custom_prompt(new_prompt)
+        self.ai_chat.set_custom_prompt(new_prompt)
         self.bot.reply_to(message, strings.set_prompt_done_msg)
-
-    # --- Helpers ---
 
     def _cleanup_expired_pending(self):
         now = time.time()

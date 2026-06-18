@@ -208,6 +208,7 @@ data/bot.db
 data/bot.db-wal
 data/bot.db-shm
 data/.migrated
+data/.settings_path_migrated
 
 # macOS
 .DS_Store

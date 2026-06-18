@@ -142,7 +142,7 @@ class WebManager:
             return strings.suon_maintenance_status
         return self.suon_v2
 
-    def rss_handler(self, slug="hn", date=""):
+    def fetch_rss(self, slug="hn", date=""):
         if slug not in strings.bfrss_feed_names:
             return strings.bfrss_unknown_slug_msg, None
         try:
@@ -150,6 +150,7 @@ class WebManager:
             if date:
                 params["date"] = date
             res = requests.get(f"{config.RSSF_URL.rstrip('/')}/feed/{slug}", params=params, timeout=10)
+            res.raise_for_status()
             data = RssfResponse.model_validate_json(res.text)
             feed_name = strings.bfrss_feed_names[slug]
             if data.hour is not None:
@@ -162,7 +163,8 @@ class WebManager:
                     feed_name=feed_name, month=data.date[4:6], day=data.date[6:]
                 )
             text += "\n".join(
-                f'• <a href="{html.escape(e.link, quote=True)}">{html.escape(e.title)}</a>' for e in data.entries
+                strings.bfrss_entry_msg.format(link=html.escape(e.link, quote=True), title=html.escape(e.title))
+                for e in data.entries
             )
             return text, "HTML"
         except Exception as e:

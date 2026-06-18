@@ -7,8 +7,8 @@ from telegramify_markdown import convert, split_entities
 
 from modules import log
 from modules.admin import AdminManager
+from modules.ai.chat import AIChatManager
 from modules.calculator import Calculator
-from modules.gemini_chat import GeminiChat
 from modules.laftel import LaftelService
 from modules.random_based import RandomBasedFeatures
 from modules.utils import strip_html_tags
@@ -34,8 +34,8 @@ class BotFeaturesHub:
         self.random_based_features = RandomBasedFeatures()
         self.web_manager = WebManager()
         self.calculator = Calculator()
-        self.gemini_chat = GeminiChat()
-        self.admin = AdminManager(bot, self.gemini_chat)
+        self.ai_chat = AIChatManager()
+        self.admin = AdminManager(bot, self.ai_chat)
         self.laftel = LaftelService(bot)
 
     # --- Admin delegation ---
@@ -153,7 +153,7 @@ class BotFeaturesHub:
             return
 
         self.bot.send_chat_action(message.chat.id, "typing")
-        result = self.gemini_chat.ask(message.chat.id, message.from_user.id, question, language_code, context, image)
+        result = self.ai_chat.ask(message.chat.id, message.from_user.id, question, language_code, context, image)
         for chunk in result:
             self._reply_markdown(message, chunk)
 
@@ -199,7 +199,7 @@ class BotFeaturesHub:
                 )
         except Exception:
             logger.log_error("Markdown conversion failed, sending as plain text.")
-            for plain_chunk in GeminiChat.split_response(text):
+            for plain_chunk in AIChatManager.split_response(text):
                 self.bot.reply_to(message, plain_chunk)
 
     # RSS JSON request
@@ -235,12 +235,12 @@ class BotFeaturesHub:
         if error == "invalid_date":
             self.bot.reply_to(message, strings.bfrss_invalid_date_msg)
             return
-        text, parse_mode = self.web_manager.rss_handler(slug, date)
+        text, parse_mode = self.web_manager.fetch_rss(slug, date)
         self.bot.reply_to(message, text, parse_mode=parse_mode)
 
     # Clear chat
     def clear_chat_handler(self, message):
-        self.gemini_chat.clear_session(message.chat.id, message.from_user.id)
+        self.ai_chat.clear_session(message.chat.id, message.from_user.id)
         self.bot.reply_to(message, strings.ask_clear_msg)
 
     # Handling ordinary message
