@@ -34,7 +34,7 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 
 # OpenAI API
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
-OPENAI_BASE_URL = os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1")
+OPENAI_BASE_URL = os.getenv("OPENAI_BASE_URL") or "https://api.openai.com/v1"
 
 # AI 공통 (AI_* 우선, 없으면 GEMINI_* fallback)
 AI_SESSION_TIMEOUT = _int_env_with_fallback("AI_SESSION_TIMEOUT", "GEMINI_SESSION_TIMEOUT", 3600)
