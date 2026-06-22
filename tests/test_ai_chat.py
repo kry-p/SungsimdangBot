@@ -204,7 +204,7 @@ class TestProviderManagement:
             _, kwargs = mock_gemini.call_args
             assert kwargs.get("search_enabled") is True
 
-    def test_available_providers(self):
+    def test_available_providers_excludes_openai_when_key_empty(self):
         m = make_manager()
         with patch("modules.ai.chat.config") as mc:
             mc.GEMINI_API_KEY = "g-key"
@@ -212,6 +212,15 @@ class TestProviderManagement:
             providers = m.available_providers()
         assert "gemini" in providers
         assert "openai" not in providers
+
+    def test_available_providers_includes_openai_when_key_set(self):
+        m = make_manager()
+        with patch("modules.ai.chat.config") as mc:
+            mc.GEMINI_API_KEY = ""
+            mc.OPENAI_API_KEY = "sk-key"
+            providers = m.available_providers()
+        assert "openai" in providers
+        assert "gemini" not in providers
 
 
 class TestDelegation:

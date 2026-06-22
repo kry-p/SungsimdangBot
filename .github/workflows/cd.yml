@@ -79,6 +79,8 @@ jobs:
             WEATHER_TOKEN=${{ secrets.WEATHER_TOKEN }}
             SEOUL_HANGANG_WATER_TOKEN=${{ secrets.SEOUL_HANGANG_WATER_TOKEN }}
             GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}
+            OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}
+            OPENAI_BASE_URL=${{ secrets.OPENAI_BASE_URL }}
             ADMIN_USER_ID=${{ secrets.ADMIN_USER_ID }}
             RSSF_TOKEN=${{ secrets.RSSF_TOKEN }}
             RSSF_URL=${{ secrets.RSSF_URL }}
