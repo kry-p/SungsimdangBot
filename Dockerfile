@@ -5,6 +5,10 @@ WORKDIR /app
 ENV PYTHONPATH=/app \
     PIP_UPLOADED_PRIOR_TO=P3D
 
+# 버전 주입 (.dockerignore가 .git을 제외하므로 setuptools-scm에 PRETEND_VERSION 전달)
+ARG VERSION=0.0.0
+ENV SETUPTOOLS_SCM_PRETEND_VERSION=${VERSION}
+
 # 의존성 레이어 (pyproject.toml 변경 시에만 재빌드)
 COPY pyproject.toml .
 RUN mkdir -p config modules resources bin && \
