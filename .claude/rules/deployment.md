@@ -17,7 +17,7 @@
                       ↓
              CD 자동 실행:
                1. Release 태그에서 버전 추출 → VERSION build-arg로 전달
-               2. Docker 빌드 (setuptools-scm이 build-arg 버전 반영, ARM64) → GHCR push
+               2. Docker 빌드 (setuptools-scm이 build-arg 버전 반영, linux/amd64 + linux/arm64) → GHCR push
                3. 배포 서버에 SSH 배포
 ```
 

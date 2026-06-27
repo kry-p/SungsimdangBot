@@ -1,0 +1,4 @@
+interface:
+  display_name: "SungsimdangBot Git"
+  short_description: "Commit, PR, release, and deployment"
+  default_prompt: "Use $sungsimdangbot-git to commit or prepare PR and release work."

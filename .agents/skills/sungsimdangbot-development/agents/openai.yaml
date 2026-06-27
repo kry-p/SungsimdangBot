@@ -1,0 +1,4 @@
+interface:
+  display_name: "SungsimdangBot Development"
+  short_description: "Bot feature and AI provider changes"
+  default_prompt: "Use $sungsimdangbot-development to modify SungsimdangBot code safely."
