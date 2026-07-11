@@ -1,6 +1,6 @@
 from unittest.mock import MagicMock
 
-from bin.handlers import register_handlers
+from bin.handlers import register_commands, register_handlers
 from resources import strings
 from tests.conftest import make_message
 
@@ -42,6 +42,13 @@ def _capture_handlers(hub, logger):
     bot.callback_query_handler = capture_callback_handler
     register_handlers(bot, hub, logger)
     return bot, captured
+
+
+def test_register_commands_includes_spotify():
+    bot = MagicMock()
+    register_commands(bot)
+    commands = bot.set_my_commands.call_args.args[0]
+    assert any(command.command == "spotify" for command in commands)
 
 
 class TestSafeHandlerErrorBoundary:
@@ -166,6 +173,26 @@ class TestHandlerDelegation:
         msg = make_message("/laftel")
         handlers["laftel"](msg)
         hub.laftel.show_portal.assert_called_once_with(msg.chat.id)
+
+    def test_spotify_delegates_to_hub(self):
+        hub = MagicMock()
+        logger = MagicMock()
+        _, handlers = _capture_handlers(hub, logger)
+
+        msg = make_message("/spotify 아이유")
+        handlers["spotify"](msg)
+        hub.spotify_search_handler.assert_called_once_with(msg)
+
+    def test_spotify_callback_delegates_to_hub(self):
+        hub = MagicMock()
+        logger = MagicMock()
+        _, handlers = _capture_handlers(hub, logger)
+
+        query = MagicMock()
+        query.data = "spotify_track:" + "A" * 22
+        handlers["callback"](query)
+
+        hub.handle_spotify_callback.assert_called_once_with(query)
 
 
 class TestCallbackErrorBoundary:

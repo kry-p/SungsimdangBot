@@ -30,6 +30,7 @@ pip install -e ".[dev]"
 - 서울 열린데이터 광장: https://data.seoul.go.kr/dataList/OA-15488/S/1/datasetView.do
 - Google Gemini API
 - OpenAI API
+- Spotify Web API
 - Laftel public API
 
 ## 프로젝트 구조
@@ -53,6 +54,7 @@ modules/
   calculator.py              # 수식 계산기
   database.py                # peewee ORM 모델과 SQLite 초기화
   laftel.py                  # Laftel 편성표, 랭킹, 검색
+  spotify.py                 # Spotify 곡 검색과 상세 카드
   migration.py               # JSON에서 SQLite로 일회성 마이그레이션
   random_based.py            # 선택봇, 동전 던지기, 러시안 룰렛, 마법의 소라고동
   settings.py                # 런타임 설정 싱글톤
@@ -119,6 +121,7 @@ docker compose up -d
 - 내 사용자 ID 확인: `/myid`
 - 봇 상태 확인: `/ping`
 - Laftel 정보: `/laftel`
+- Spotify 노래 검색: `/spotify 곡명 또는 아티스트`
 - 번역 RSS 수신: `/bfrss`
 - 마법의 소라고동: `마법의 소라고둥` 또는 `마법의 소라고동` 키워드 응답
 
@@ -137,6 +140,8 @@ AI 질문 기능은 allowlist에 등록된 채팅에서만 사용할 수 있습�
 | `GEMINI_API_KEY` | | Gemini AI provider 사용 시 필요 |
 | `OPENAI_API_KEY` | | OpenAI AI provider 사용 시 필요 |
 | `OPENAI_BASE_URL` | | OpenAI 호환 endpoint, 기본값 `https://api.openai.com/v1` |
+| `SPOTIFY_CLIENT_ID` | | Spotify Web API Client ID, 노래 검색 기능 |
+| `SPOTIFY_CLIENT_SECRET` | | Spotify Web API Client Secret, 노래 검색 기능 |
 | `AI_SESSION_TIMEOUT` | | AI 세션 만료 시간(초), 기본값 `3600` |
 | `AI_MAX_HISTORY` | | AI provider history 보관 턴 수, 기본값 `20` |
 | `AI_RATE_LIMIT` | | 채팅/사용자별 분당 AI 요청 제한, 기본값 `5` |
@@ -198,6 +203,8 @@ CD는 GitHub Release publish 이벤트에서 실행됩니다.
 | `GEMINI_API_KEY` | Gemini API 키 |
 | `OPENAI_API_KEY` | OpenAI API 키 |
 | `OPENAI_BASE_URL` | OpenAI 호환 endpoint |
+| `SPOTIFY_CLIENT_ID` | Spotify Web API Client ID |
+| `SPOTIFY_CLIENT_SECRET` | Spotify Web API Client Secret |
 | `ADMIN_USER_ID` | 관리자 텔레그램 사용자 ID |
 | `RSSF_TOKEN` | RSS 번역 서버 인증 토큰 |
 | `RSSF_URL` | RSS 번역 서버 URL |

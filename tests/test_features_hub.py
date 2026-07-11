@@ -15,6 +15,7 @@ def hub():
         patch("modules.features_hub.WebManager"),
         patch("modules.features_hub.AIChatManager"),
         patch("modules.features_hub.AdminManager"),
+        patch("modules.features_hub.SpotifyService"),
     ):
         h = BotFeaturesHub(bot)
     return h
@@ -65,6 +66,18 @@ class TestGetTemp:
         hub.web_manager.provide_suon_v2.return_value = "점검중"
         result = hub.get_temp()
         assert result == strings.suon_unavailable_msg
+
+
+class TestSpotifyDelegation:
+    def test_search_handler(self, hub):
+        message = make_message("/spotify 아이유")
+        hub.spotify_search_handler(message)
+        hub.spotify.search_handler.assert_called_once_with(message)
+
+    def test_callback_handler(self, hub):
+        call = MagicMock()
+        hub.handle_spotify_callback(call)
+        hub.spotify.handle_spotify_callback.assert_called_once_with(call)
 
 
 class TestCalculatorHandler:

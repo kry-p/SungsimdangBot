@@ -239,6 +239,28 @@ laftel_search_again_btn = "다시 검색"
 laftel_portal_btn = "포털로"
 laftel_help_msg = "/laftel 명령어로 라프텔 편성표, 랭킹, 검색 기능을 이용할 수 있습니다."
 
+# --- Spotify ---
+
+spotify_help_msg = (
+    "Spotify 노래 검색 도움말\n\n"
+    "명령어 형식\n/spotify [곡명 또는 아티스트]\n\n"
+    "설명\n검색 결과에서 곡을 선택하면 앨범 정보와 Spotify 링크를 보여줍니다."
+)
+spotify_search_header_msg = "Spotify 검색 결과: <b>{keyword}</b>\n\n"
+spotify_search_entry_msg = '{rank}. <a href="{url}">{label}</a>'
+spotify_search_footer_msg = "\n\n콘텐츠 제공: Spotify\n상세 정보를 볼 곡을 선택해 주세요."
+spotify_detail_msg = (
+    "<b>🎵 {name}</b>\n👤 {artists}\n💿 {album}\n📅 {release_date}\n⏱ {duration}\n\n콘텐츠 제공: Spotify"
+)
+spotify_open_btn = "OPEN SPOTIFY"
+spotify_no_result_msg = "Spotify에서 검색 결과를 찾지 못했어요."
+spotify_unavailable_msg = "현재 Spotify 검색 기능을 사용할 수 없어요."
+spotify_error_msg = "Spotify 검색 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요."
+spotify_rate_limit_msg = "Spotify 요청이 너무 많습니다. 잠시 후 다시 시도해 주세요."
+spotify_track_unavailable_msg = "곡 정보를 더 이상 불러올 수 없어요."
+spotify_unknown_artist_msg = "알 수 없는 아티스트"
+spotify_unknown_value_msg = "정보 없음"
+
 # RSS feed translater message
 bfrss_help_msg = (
     "번역된 RSS를 보여줍니다.\n"

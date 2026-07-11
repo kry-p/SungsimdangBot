@@ -11,6 +11,7 @@ from modules.ai.chat import AIChatManager
 from modules.calculator import Calculator
 from modules.laftel import LaftelService
 from modules.random_based import RandomBasedFeatures
+from modules.spotify import SpotifyService
 from modules.utils import strip_html_tags
 from modules.web_based import WebManager
 from resources import strings
@@ -27,6 +28,10 @@ class BotFeaturesHub:
     def is_laftel_callback(data):
         return LaftelService.is_laftel_callback(data)
 
+    @staticmethod
+    def is_spotify_callback(data):
+        return SpotifyService.is_spotify_callback(data)
+
     # init
     def __init__(self, bot):
         self.bot = bot
@@ -37,6 +42,7 @@ class BotFeaturesHub:
         self.ai_chat = AIChatManager()
         self.admin = AdminManager(bot, self.ai_chat)
         self.laftel = LaftelService(bot)
+        self.spotify = SpotifyService(bot)
 
     # --- Admin delegation ---
 
@@ -49,6 +55,9 @@ class BotFeaturesHub:
 
     def handle_laftel_callback(self, call):
         self.laftel.handle_laftel_callback(call)
+
+    def handle_spotify_callback(self, call):
+        self.spotify.handle_spotify_callback(call)
 
     def allow_chat_handler(self, message):
         self.admin.allow_chat_handler(message)
@@ -118,6 +127,9 @@ class BotFeaturesHub:
             self.bot.reply_to(message, text, parse_mode="Markdown")
         except Exception:
             self.bot.reply_to(message, strings.search_error_msg)
+
+    def spotify_search_handler(self, message):
+        self.spotify.search_handler(message)
 
     # Calculator
     def calculator_handler(self, message):

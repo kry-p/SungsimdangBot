@@ -39,6 +39,7 @@ def register_commands(bot):
             telebot.types.BotCommand("myid", "내 사용자 ID 확인"),
             telebot.types.BotCommand("ping", "봇 상태 확인"),
             telebot.types.BotCommand("laftel", "라프텔 애니 정보"),
+            telebot.types.BotCommand("spotify", "Spotify 노래 검색"),
             telebot.types.BotCommand("bfrss", "해외 rss 번역수신"),
         ]
     )
@@ -76,6 +77,9 @@ def register_handlers(bot, hub, logger):
                 return
             if BotFeaturesHub.is_laftel_callback(query.data):
                 hub.handle_laftel_callback(query)
+                return
+            if BotFeaturesHub.is_spotify_callback(query.data):
+                hub.handle_spotify_callback(query)
                 return
             result = QUERY_STRINGS.get(query.data)
             if result is not None:
@@ -166,6 +170,12 @@ def register_handlers(bot, hub, logger):
     @safe_handler
     def handle_laftel(message):
         hub.laftel.show_portal(message.chat.id)
+
+    # Spotify
+    @bot.message_handler(commands=["spotify"])
+    @safe_handler
+    def handle_spotify(message):
+        hub.spotify_search_handler(message)
 
     # Admin commands
     @bot.message_handler(commands=["allow_chat"])
