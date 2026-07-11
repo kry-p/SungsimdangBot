@@ -64,10 +64,10 @@ class SpotifyService:
         try:
             tracks = self.search_tracks(keyword)
         except SpotifyConfigurationError:
-            self.bot.reply_to(message, strings.spotify_unavailable_msg)
+            self.bot.reply_to(message, strings.spotify_unavailable_error_msg)
             return
         except SpotifyRateLimitError:
-            self.bot.reply_to(message, strings.spotify_rate_limit_msg)
+            self.bot.reply_to(message, strings.spotify_rate_limit_error_msg)
             return
         except SpotifyError:
             logger.log_error("Failed to search Spotify tracks.")
@@ -97,18 +97,18 @@ class SpotifyService:
         try:
             track = self.get_track(track_id)
         except SpotifyConfigurationError:
-            self.bot.send_message(call.message.chat.id, strings.spotify_unavailable_msg)
+            self.bot.send_message(call.message.chat.id, strings.spotify_unavailable_error_msg)
             return
         except SpotifyRateLimitError:
-            self.bot.send_message(call.message.chat.id, strings.spotify_rate_limit_msg)
+            self.bot.send_message(call.message.chat.id, strings.spotify_rate_limit_error_msg)
             return
         except SpotifyError:
             logger.log_error("Failed to fetch a Spotify track.")
-            self.bot.send_message(call.message.chat.id, strings.spotify_track_unavailable_msg)
+            self.bot.send_message(call.message.chat.id, strings.spotify_track_unavailable_error_msg)
             return
 
         if not track.external_urls.spotify:
-            self.bot.send_message(call.message.chat.id, strings.spotify_track_unavailable_msg)
+            self.bot.send_message(call.message.chat.id, strings.spotify_track_unavailable_error_msg)
             return
 
         caption = self._build_detail_message(track)

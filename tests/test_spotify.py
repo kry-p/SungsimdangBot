@@ -59,7 +59,7 @@ class TestTokenManagement:
 
         service.search_handler(message)
 
-        service.bot.reply_to.assert_called_once_with(message, strings.spotify_unavailable_msg)
+        service.bot.reply_to.assert_called_once_with(message, strings.spotify_unavailable_error_msg)
 
     @patch("modules.spotify.requests.get")
     @patch("modules.spotify.requests.post")
