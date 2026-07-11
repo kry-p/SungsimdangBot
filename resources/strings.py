@@ -11,6 +11,28 @@ working_msg = "성심당봇이 정상 작동 중입니다."
 # Generic error message
 generic_error_msg = "요청을 처리하는 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요."
 
+# Telegram command descriptions
+bot_command_descriptions = {
+    "help": "도움말",
+    "pick": "랜덤 선택",
+    "coin_toss": "동전뒤집기",
+    "roulette": "러시안 룰렛 장전",
+    "shoot": "러시안 룰렛 격발",
+    "flush_bullet": "러시안 룰렛 초기화",
+    "calc": "계산기",
+    "dday": "D-day 계산",
+    "search": "검색",
+    "namu": "나무위키 검색",
+    "ask": "AI 질문",
+    "clear_chat": "AI 대화 초기화",
+    "ask_settings": "AI 설정 확인",
+    "myid": "내 사용자 ID 확인",
+    "ping": "봇 상태 확인",
+    "laftel": "라프텔 애니 정보",
+    "spotify": "Spotify 노래 검색",
+    "bfrss": "해외 rss 번역수신",
+}
+
 # Guideline message
 start_msg = (
     "성심당봇이에요! 무엇을 도와드릴까요?\n\n"

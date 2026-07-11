@@ -44,11 +44,12 @@ def _capture_handlers(hub, logger):
     return bot, captured
 
 
-def test_register_commands_includes_spotify():
+def test_register_commands_uses_descriptions_from_strings():
     bot = MagicMock()
     register_commands(bot)
     commands = bot.set_my_commands.call_args.args[0]
-    assert any(command.command == "spotify" for command in commands)
+    actual = [(command.command, command.description) for command in commands]
+    assert actual == list(strings.bot_command_descriptions.items())
 
 
 class TestSafeHandlerErrorBoundary:
