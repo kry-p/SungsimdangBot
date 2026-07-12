@@ -19,6 +19,7 @@ SPOTIFY_MARKET = "KR"
 SEARCH_LIMIT = 5
 REQUEST_TIMEOUT = 10
 TOKEN_REFRESH_MARGIN = 60
+DEFAULT_RATE_LIMIT_COOLDOWN = 1
 MAX_BUTTON_TEXT_LENGTH = 60
 CALLBACK_PREFIX = "spotify_track"
 # Telegram callback_data는 최대 64 bytes이고 Spotify ID는 base-62 ASCII이므로 prefix와 구분자 길이를 제외한다.
@@ -46,6 +47,8 @@ class SpotifyService:
         self._access_token = None
         self._token_expires_at = 0.0
         self._token_lock = threading.Lock()
+        self._rate_limit_until = 0.0
+        self._rate_limit_lock = threading.Lock()
 
     # --- Telegram routing ---
 
@@ -154,6 +157,7 @@ class SpotifyService:
         if not self.client_id or not self.client_secret:
             raise SpotifyConfigurationError
 
+        self._raise_if_rate_limited()
         now = time.monotonic()
         if rejected_token is None and self._access_token and now < self._token_expires_at:
             return self._access_token
@@ -166,6 +170,8 @@ class SpotifyService:
             if token_is_valid and (rejected_token is None or token_was_replaced):
                 return self._access_token
 
+            # lock 대기 중 다른 thread가 cooldown을 시작했을 수 있으므로 token 요청 직전에 다시 확인한다.
+            self._raise_if_rate_limited()
             try:
                 response = requests.post(
                     SPOTIFY_AUTH_URL,
@@ -174,6 +180,7 @@ class SpotifyService:
                     timeout=REQUEST_TIMEOUT,
                 )
                 if response.status_code == 429:
+                    self._start_rate_limit_cooldown(response)
                     raise SpotifyRateLimitError
                 response.raise_for_status()
                 parsed = SpotifyTokenResponse.model_validate_json(response.content)
@@ -195,6 +202,8 @@ class SpotifyService:
         for attempt in range(2):
             token = self._ensure_token(rejected_token=rejected_token)
             try:
+                # token 조회 직후 다른 thread가 cooldown을 시작했을 수 있으므로 API 요청 직전에 다시 확인한다.
+                self._raise_if_rate_limited()
                 response = requests.get(
                     SPOTIFY_API_BASE_URL + path,
                     headers={"Authorization": f"Bearer {token}"},
@@ -206,6 +215,7 @@ class SpotifyService:
                     rejected_token = token
                     continue
                 if response.status_code == 429:
+                    self._start_rate_limit_cooldown(response)
                     raise SpotifyRateLimitError
                 response.raise_for_status()
                 return model_cls.model_validate_json(response.content)
@@ -214,6 +224,20 @@ class SpotifyService:
             except (requests.RequestException, ValueError) as exc:
                 raise SpotifyError from exc
         raise SpotifyError
+
+    def _raise_if_rate_limited(self):
+        with self._rate_limit_lock:
+            if time.monotonic() < self._rate_limit_until:
+                raise SpotifyRateLimitError
+
+    def _start_rate_limit_cooldown(self, response):
+        try:
+            retry_after = max(DEFAULT_RATE_LIMIT_COOLDOWN, float(response.headers.get("Retry-After")))
+        except (TypeError, ValueError):
+            retry_after = DEFAULT_RATE_LIMIT_COOLDOWN
+
+        with self._rate_limit_lock:
+            self._rate_limit_until = max(self._rate_limit_until, time.monotonic() + retry_after)
 
     # --- Formatting and keyboards ---
 
@@ -228,6 +252,11 @@ class SpotifyService:
         return ", ".join(names) or strings.spotify_unknown_artist_msg
 
     @staticmethod
+    def _track_name(track):
+        name = track.name or strings.spotify_unknown_value_msg
+        return f"{name} {strings.spotify_explicit_badge}" if track.explicit else name
+
+    @staticmethod
     def _release_year(track):
         return track.album.release_date[:4] or strings.spotify_unknown_value_msg
 
@@ -240,7 +269,7 @@ class SpotifyService:
     def _build_search_message(cls, keyword, tracks):
         entries = []
         for rank, track in enumerate(tracks, 1):
-            label = f"{track.name} — {cls._artist_names(track)} · {cls._release_year(track)}"
+            label = f"{cls._track_name(track)} — {cls._artist_names(track)} · {cls._release_year(track)}"
             entries.append(
                 strings.spotify_search_entry_msg.format(
                     rank=rank,
@@ -255,7 +284,7 @@ class SpotifyService:
     def _build_search_keyboard(cls, tracks):
         keyboard = telebot.types.InlineKeyboardMarkup()
         for rank, track in enumerate(tracks, 1):
-            label = f"{rank}. {track.name} — {cls._artist_names(track)}"
+            label = f"{rank}. {cls._track_name(track)} — {cls._artist_names(track)}"
             if len(label) > MAX_BUTTON_TEXT_LENGTH:
                 label = label[: MAX_BUTTON_TEXT_LENGTH - 1] + "…"
             keyboard.row(telebot.types.InlineKeyboardButton(label, callback_data=f"{CALLBACK_PREFIX}:{track.id}"))
@@ -264,7 +293,7 @@ class SpotifyService:
     @classmethod
     def _build_detail_message(cls, track):
         return strings.spotify_detail_msg.format(
-            name=html.escape(track.name or strings.spotify_unknown_value_msg),
+            name=html.escape(cls._track_name(track)),
             artists=html.escape(cls._artist_names(track)),
             album=html.escape(track.album.name or strings.spotify_unknown_value_msg),
             release_date=html.escape(track.album.release_date or strings.spotify_unknown_value_msg),

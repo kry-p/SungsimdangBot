@@ -275,6 +275,7 @@ spotify_detail_msg = (
     "<b>🎵 {name}</b>\n👤 {artists}\n💿 {album}\n📅 {release_date}\n⏱ {duration}\n\n콘텐츠 제공: Spotify"
 )
 spotify_open_btn = "OPEN SPOTIFY"
+spotify_explicit_badge = "🅴"
 spotify_no_result_msg = "Spotify에서 검색 결과를 찾지 못했어요."
 spotify_unavailable_error_msg = "현재 Spotify 검색 기능을 사용할 수 없어요."
 spotify_error_msg = "Spotify 검색 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요."

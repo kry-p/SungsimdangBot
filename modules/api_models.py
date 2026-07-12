@@ -143,6 +143,7 @@ class SpotifyTrack(BaseModel):
     artists: list[SpotifyArtist] = Field(default_factory=list)
     album: SpotifyAlbum = Field(default_factory=SpotifyAlbum)
     duration_ms: int = 0
+    explicit: bool = False
     external_urls: SpotifyExternalUrls = Field(default_factory=SpotifyExternalUrls)
 
 

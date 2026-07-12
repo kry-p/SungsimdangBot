@@ -14,16 +14,17 @@ from tests.conftest import make_message
 TRACK_ID = "A" * 22
 
 
-def _response(payload, status_code=200):
+def _response(payload, status_code=200, headers=None):
     response = MagicMock()
     response.status_code = status_code
     response.content = json.dumps(payload).encode()
+    response.headers = headers or {}
     if status_code >= 400:
         response.raise_for_status.side_effect = requests.HTTPError(response=response)
     return response
 
 
-def _track(with_image=True):
+def _track(with_image=True, explicit=False):
     images = [SpotifyAlbumImage(url="https://i.scdn.co/image/test", width=300, height=300)] if with_image else []
     return SpotifyTrack(
         id=TRACK_ID,
@@ -31,6 +32,7 @@ def _track(with_image=True):
         artists=[SpotifyArtist(name="아이유")],
         album=SpotifyAlbum(name="REAL & TEST", release_date="2010-12-09", images=images),
         duration_ms=233_000,
+        explicit=explicit,
         external_urls=SpotifyExternalUrls(spotify="https://open.spotify.com/track/test"),
     )
 
@@ -85,24 +87,69 @@ class TestTokenManagement:
         assert [track.id for track in tracks] == [TRACK_ID, TRACK_ID]
         mock_post.assert_called_once()
 
+    @patch("modules.spotify.requests.post")
+    def test_token_lock_rechecks_cooldown_before_request(self, mock_post):
+        service = _service()
+        first_check_completed = threading.Event()
+        original_check = service._raise_if_rate_limited
+        check_count = 0
+
+        def tracked_check():
+            nonlocal check_count
+            original_check()
+            check_count += 1
+            if check_count == 1:
+                first_check_completed.set()
+
+        service._raise_if_rate_limited = tracked_check
+
+        with ThreadPoolExecutor(max_workers=1) as executor:
+            with service._token_lock:
+                future = executor.submit(service._ensure_token)
+                assert first_check_completed.wait(timeout=5)
+                with service._rate_limit_lock:
+                    service._rate_limit_until = float("inf")
+
+            with pytest.raises(SpotifyRateLimitError):
+                future.result(timeout=5)
+
+        mock_post.assert_not_called()
+
 
 class TestSpotifyAPI:
     @patch("modules.spotify.requests.get")
     @patch("modules.spotify.requests.post")
     def test_search_tracks(self, mock_post, mock_get):
         mock_post.return_value = _response({"access_token": "token", "expires_in": 3600})
-        mock_get.return_value = _response({"tracks": {"items": [_track().model_dump()]}})
+        mock_get.return_value = _response({"tracks": {"items": [_track(explicit=True).model_dump()]}})
         service = _service()
 
         tracks = service.search_tracks("아이유 좋은 날")
 
         assert tracks[0].id == TRACK_ID
+        assert tracks[0].explicit is True
         assert mock_get.call_args.kwargs["params"] == {
             "q": "아이유 좋은 날",
             "type": "track",
             "limit": 5,
             "market": "KR",
         }
+
+    @patch("modules.spotify.requests.get")
+    def test_cooldown_started_after_token_lookup_blocks_api_request(self, mock_get):
+        service = _service()
+
+        def start_cooldown(rejected_token=None):
+            with service._rate_limit_lock:
+                service._rate_limit_until = float("inf")
+            return "token"
+
+        service._ensure_token = MagicMock(side_effect=start_cooldown)
+
+        with pytest.raises(SpotifyRateLimitError):
+            service.search_tracks("test")
+
+        mock_get.assert_not_called()
 
     @patch("modules.spotify.requests.get")
     @patch("modules.spotify.requests.post")
@@ -125,13 +172,53 @@ class TestSpotifyAPI:
 
     @patch("modules.spotify.requests.get")
     @patch("modules.spotify.requests.post")
-    def test_rate_limit_raises_specific_error(self, mock_post, mock_get):
+    @patch("modules.spotify.time.monotonic")
+    def test_rate_limit_honors_retry_after_and_resumes(self, mock_monotonic, mock_post, mock_get):
         mock_post.return_value = _response({"access_token": "token", "expires_in": 3600})
-        mock_get.return_value = _response({}, status_code=429)
+        mock_get.side_effect = [
+            _response({}, status_code=429, headers={"Retry-After": "30"}),
+            _response({"tracks": {"items": [_track().model_dump()]}}),
+        ]
+        mock_monotonic.return_value = 100
         service = _service()
 
         with pytest.raises(SpotifyRateLimitError):
             service.search_tracks("test")
+
+        assert service._rate_limit_until == 130
+        mock_monotonic.return_value = 129
+        with pytest.raises(SpotifyRateLimitError):
+            service.search_tracks("test")
+
+        mock_monotonic.return_value = 130
+        tracks = service.search_tracks("test")
+
+        assert tracks[0].id == TRACK_ID
+        assert mock_get.call_count == 2
+
+    @pytest.mark.parametrize("headers", [{}, {"Retry-After": "invalid"}])
+    @patch("modules.spotify.time.monotonic", return_value=100)
+    def test_rate_limit_uses_default_for_missing_or_invalid_header(self, mock_monotonic, headers):
+        service = _service()
+
+        service._start_rate_limit_cooldown(_response({}, status_code=429, headers=headers))
+
+        assert service._rate_limit_until == 101
+        mock_monotonic.assert_called_once()
+
+    @patch("modules.spotify.time.monotonic", return_value=200)
+    @patch("modules.spotify.requests.post")
+    def test_auth_rate_limit_starts_cooldown(self, mock_post, mock_monotonic):
+        mock_post.return_value = _response({}, status_code=429, headers={"Retry-After": "15"})
+        service = _service()
+
+        with pytest.raises(SpotifyRateLimitError):
+            service._ensure_token()
+        with pytest.raises(SpotifyRateLimitError):
+            service._ensure_token()
+
+        assert service._rate_limit_until == 215
+        mock_post.assert_called_once()
 
 
 class TestSearchHandler:
@@ -154,7 +241,7 @@ class TestSearchHandler:
 
     def test_search_result_contains_links_attribution_and_callbacks(self):
         service = _service()
-        service.search_tracks = MagicMock(return_value=[_track()])
+        service.search_tracks = MagicMock(return_value=[_track(explicit=True)])
         message = make_message("/spotify 아이유 <좋은 날>")
 
         service.search_handler(message)
@@ -163,10 +250,12 @@ class TestSearchHandler:
         text = call.args[1]
         assert "아이유 &lt;좋은 날&gt;" in text
         assert "좋은 &lt;날&gt;" in text
+        assert strings.spotify_explicit_badge in text
         assert "https://open.spotify.com/track/test" in text
         assert "콘텐츠 제공: Spotify" in text
         assert call.kwargs["parse_mode"] == "HTML"
         buttons = [button for row in call.kwargs["reply_markup"].keyboard for button in row]
+        assert strings.spotify_explicit_badge in buttons[0].text
         assert buttons[0].callback_data == f"spotify_track:{TRACK_ID}"
 
     def test_invalid_track_id_is_excluded(self):
@@ -219,7 +308,7 @@ class TestSearchHandler:
 class TestTrackCallback:
     def test_detail_sends_original_artwork_and_open_link(self):
         service = _service()
-        service.get_track = MagicMock(return_value=_track())
+        service.get_track = MagicMock(return_value=_track(explicit=True))
         call = MagicMock()
         call.data = f"spotify_track:{TRACK_ID}"
         call.message.chat.id = 123
@@ -229,6 +318,7 @@ class TestTrackCallback:
         sent = service.bot.send_photo.call_args
         assert sent.args[:2] == (123, "https://i.scdn.co/image/test")
         assert "좋은 &lt;날&gt;" in sent.kwargs["caption"]
+        assert strings.spotify_explicit_badge in sent.kwargs["caption"]
         assert "REAL &amp; TEST" in sent.kwargs["caption"]
         button = sent.kwargs["reply_markup"].keyboard[0][0]
         assert button.text == strings.spotify_open_btn
