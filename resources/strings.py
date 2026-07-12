@@ -270,16 +270,14 @@ spotify_help_msg = (
 )
 spotify_search_header_msg = "Spotify 검색 결과: <b>{keyword}</b>\n\n"
 spotify_search_entry_msg = '{rank}. <a href="{url}">{label}</a>'
-spotify_search_footer_msg = "\n\n콘텐츠 제공: Spotify\n상세 정보를 볼 곡을 선택해 주세요."
-spotify_detail_msg = (
-    "<b>🎵 {name}</b>\n👤 {artists}\n💿 {album}\n📅 {release_date}\n⏱ {duration}\n\n콘텐츠 제공: Spotify"
-)
-spotify_open_btn = "OPEN SPOTIFY"
+spotify_search_footer_msg = "\n\n상세 정보를 볼 곡을 선택해 주세요."
+spotify_detail_msg = "<b>🎵 {name}</b>\n👤 {artists}\n💿 {album}\n📅 {release_date}\n⏱ {duration}"
+spotify_open_btn = "Spotify에서 열기"
 spotify_explicit_badge = "🅴"
 spotify_no_result_msg = "Spotify에서 검색 결과를 찾지 못했어요."
 spotify_unavailable_error_msg = "현재 Spotify 검색 기능을 사용할 수 없어요."
 spotify_error_msg = "Spotify 검색 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요."
-spotify_rate_limit_error_msg = "Spotify 요청이 너무 많습니다. 잠시 후 다시 시도해 주세요."
+spotify_rate_limit_error_msg = "Spotify가 잠시 요청을 제한하고 있어요. 잠시 후 다시 시도해 주세요."
 spotify_track_unavailable_error_msg = "곡 정보를 더 이상 불러올 수 없어요."
 spotify_unknown_artist_msg = "알 수 없는 아티스트"
 spotify_unknown_value_msg = "정보 없음"

@@ -239,7 +239,7 @@ class TestSearchHandler:
 
         service.bot.reply_to.assert_called_once_with(message, strings.spotify_no_result_msg)
 
-    def test_search_result_contains_links_attribution_and_callbacks(self):
+    def test_search_result_contains_links_and_callbacks(self):
         service = _service()
         service.search_tracks = MagicMock(return_value=[_track(explicit=True)])
         message = make_message("/spotify 아이유 <좋은 날>")
@@ -252,7 +252,8 @@ class TestSearchHandler:
         assert "좋은 &lt;날&gt;" in text
         assert strings.spotify_explicit_badge in text
         assert "https://open.spotify.com/track/test" in text
-        assert "콘텐츠 제공: Spotify" in text
+        assert "콘텐츠 제공: Spotify" not in text
+        assert "상세 정보를 볼 곡을 선택해 주세요." in text
         assert call.kwargs["parse_mode"] == "HTML"
         buttons = [button for row in call.kwargs["reply_markup"].keyboard for button in row]
         assert strings.spotify_explicit_badge in buttons[0].text
@@ -321,7 +322,7 @@ class TestTrackCallback:
         assert strings.spotify_explicit_badge in sent.kwargs["caption"]
         assert "REAL &amp; TEST" in sent.kwargs["caption"]
         button = sent.kwargs["reply_markup"].keyboard[0][0]
-        assert button.text == strings.spotify_open_btn
+        assert button.text == "Spotify에서 열기"
         assert button.url == "https://open.spotify.com/track/test"
 
     def test_artwork_send_failure_falls_back_to_text(self):
@@ -336,7 +337,7 @@ class TestTrackCallback:
 
         service.bot.send_message.assert_called_once()
         assert service.bot.send_message.call_args.args[0] == 123
-        assert "콘텐츠 제공: Spotify" in service.bot.send_message.call_args.args[1]
+        assert "콘텐츠 제공: Spotify" not in service.bot.send_message.call_args.args[1]
 
     def test_invalid_callback_is_ignored(self):
         service = _service()
