@@ -7,7 +7,7 @@ import pytest
 import requests
 
 from modules.api_models import SpotifyAlbum, SpotifyAlbumImage, SpotifyArtist, SpotifyExternalUrls, SpotifyTrack
-from modules.spotify import SpotifyRateLimitError, SpotifyService
+from modules.spotify import SpotifyConfigurationError, SpotifyError, SpotifyRateLimitError, SpotifyService
 from resources import strings
 from tests.conftest import make_message
 
@@ -115,6 +115,23 @@ class TestTokenManagement:
 
         mock_post.assert_not_called()
 
+    @pytest.mark.parametrize(
+        "payload",
+        [
+            {"access_token": "", "expires_in": 3600},
+            {"access_token": "token", "expires_in": 0},
+        ],
+    )
+    @patch("modules.spotify.requests.post")
+    def test_invalid_token_response_is_rejected(self, mock_post, payload):
+        mock_post.return_value = _response(payload)
+        service = _service()
+
+        with pytest.raises(SpotifyError):
+            service._ensure_token()
+
+        assert service._access_token is None
+
 
 class TestSpotifyAPI:
     @patch("modules.spotify.requests.get")
@@ -134,6 +151,23 @@ class TestSpotifyAPI:
             "limit": 5,
             "market": "KR",
         }
+
+    @patch("modules.spotify.requests.get")
+    def test_get_track_uses_expected_endpoint_and_options(self, mock_get):
+        mock_get.return_value = _response(_track().model_dump())
+        service = _service()
+        service._access_token = "token"
+        service._token_expires_at = float("inf")
+
+        track = service.get_track(TRACK_ID)
+
+        assert track.id == TRACK_ID
+        mock_get.assert_called_once_with(
+            f"https://api.spotify.com/v1/tracks/{TRACK_ID}",
+            headers={"Authorization": "Bearer token"},
+            params={"market": "KR"},
+            timeout=10,
+        )
 
     @patch("modules.spotify.requests.get")
     def test_cooldown_started_after_token_lookup_blocks_api_request(self, mock_get):
@@ -169,6 +203,22 @@ class TestSpotifyAPI:
         assert track.id == TRACK_ID
         assert mock_post.call_count == 2
         assert mock_get.call_args_list[1].kwargs["headers"] == {"Authorization": "Bearer new-token"}
+
+    @patch("modules.spotify.requests.get")
+    @patch("modules.spotify.requests.post")
+    def test_second_401_stops_after_single_refresh(self, mock_post, mock_get):
+        mock_post.side_effect = [
+            _response({"access_token": "old-token", "expires_in": 3600}),
+            _response({"access_token": "new-token", "expires_in": 3600}),
+        ]
+        mock_get.side_effect = [_response({}, status_code=401), _response({}, status_code=401)]
+        service = _service()
+
+        with pytest.raises(SpotifyError):
+            service.get_track(TRACK_ID)
+
+        assert mock_post.call_count == 2
+        assert mock_get.call_count == 2
 
     @patch("modules.spotify.requests.get")
     @patch("modules.spotify.requests.post")
@@ -239,6 +289,15 @@ class TestSearchHandler:
 
         service.bot.reply_to.assert_called_once_with(message, strings.spotify_no_result_msg)
 
+    def test_rate_limit_shows_rate_limit_error(self):
+        service = _service()
+        service.search_tracks = MagicMock(side_effect=SpotifyRateLimitError)
+        message = make_message("/spotify 아이유")
+
+        service.search_handler(message)
+
+        service.bot.reply_to.assert_called_once_with(message, strings.spotify_rate_limit_error_msg)
+
     def test_search_result_contains_links_and_callbacks(self):
         service = _service()
         service.search_tracks = MagicMock(return_value=[_track(explicit=True)])
@@ -269,6 +328,20 @@ class TestSearchHandler:
         service.search_handler(message)
 
         service.bot.reply_to.assert_called_once_with(message, strings.spotify_no_result_msg)
+
+    def test_long_button_label_is_truncated_without_changing_callback(self):
+        service = _service()
+        track = _track()
+        track.name = "아주 긴 곡 제목" * 20
+        service.search_tracks = MagicMock(return_value=[track])
+        message = make_message("/spotify 긴 노래")
+
+        service.search_handler(message)
+
+        button = service.bot.reply_to.call_args.kwargs["reply_markup"].keyboard[0][0]
+        assert len(button.text) == 60
+        assert button.text.endswith("…")
+        assert button.callback_data == f"spotify_track:{TRACK_ID}"
 
     @patch("modules.spotify.requests.post")
     def test_auth_http_error_shows_search_error(self, mock_post):
@@ -338,6 +411,57 @@ class TestTrackCallback:
         service.bot.send_message.assert_called_once()
         assert service.bot.send_message.call_args.args[0] == 123
         assert "콘텐츠 제공: Spotify" not in service.bot.send_message.call_args.args[1]
+
+    def test_track_without_artwork_sends_text_detail(self):
+        service = _service()
+        service.get_track = MagicMock(return_value=_track(with_image=False))
+        call = MagicMock()
+        call.data = f"spotify_track:{TRACK_ID}"
+        call.message.chat.id = 123
+
+        service.handle_spotify_callback(call)
+
+        service.bot.send_photo.assert_not_called()
+        sent = service.bot.send_message.call_args
+        assert sent.args[0] == 123
+        assert "좋은 &lt;날&gt;" in sent.args[1]
+        button = sent.kwargs["reply_markup"].keyboard[0][0]
+        assert button.text == "Spotify에서 열기"
+        assert button.url == "https://open.spotify.com/track/test"
+
+    @pytest.mark.parametrize(
+        ("error", "expected_message"),
+        [
+            (SpotifyConfigurationError(), strings.spotify_unavailable_error_msg),
+            (SpotifyRateLimitError(), strings.spotify_rate_limit_error_msg),
+            (SpotifyError(), strings.spotify_track_unavailable_error_msg),
+        ],
+    )
+    def test_lookup_error_shows_expected_message(self, error, expected_message):
+        service = _service()
+        service.get_track = MagicMock(side_effect=error)
+        call = MagicMock()
+        call.data = f"spotify_track:{TRACK_ID}"
+        call.message.chat.id = 123
+
+        service.handle_spotify_callback(call)
+
+        service.bot.send_message.assert_called_once_with(123, expected_message)
+        service.bot.send_photo.assert_not_called()
+
+    def test_track_without_spotify_url_shows_unavailable_message(self):
+        service = _service()
+        track = _track()
+        track.external_urls.spotify = ""
+        service.get_track = MagicMock(return_value=track)
+        call = MagicMock()
+        call.data = f"spotify_track:{TRACK_ID}"
+        call.message.chat.id = 123
+
+        service.handle_spotify_callback(call)
+
+        service.bot.send_message.assert_called_once_with(123, strings.spotify_track_unavailable_error_msg)
+        service.bot.send_photo.assert_not_called()
 
     def test_invalid_callback_is_ignored(self):
         service = _service()
