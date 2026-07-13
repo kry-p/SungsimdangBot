@@ -96,6 +96,69 @@ class LaftelSearchResponse(BaseModel):
     results: list[LaftelAnime] = Field(default_factory=list)
 
 
+# --- Spotify Web API ---
+
+
+class SpotifyTokenResponse(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    access_token: str = ""
+    token_type: str = "Bearer"
+    expires_in: int = 0
+
+
+class SpotifyExternalUrls(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    spotify: str = ""
+
+
+class SpotifyArtist(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    name: str = ""
+
+
+class SpotifyAlbumImage(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    url: str = ""
+    width: int | None = None
+    height: int | None = None
+
+
+class SpotifyAlbum(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    name: str = ""
+    release_date: str = ""
+    images: list[SpotifyAlbumImage] = Field(default_factory=list)
+
+
+class SpotifyTrack(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    id: str = ""
+    name: str = ""
+    artists: list[SpotifyArtist] = Field(default_factory=list)
+    album: SpotifyAlbum = Field(default_factory=SpotifyAlbum)
+    duration_ms: int = 0
+    explicit: bool = False
+    external_urls: SpotifyExternalUrls = Field(default_factory=SpotifyExternalUrls)
+
+
+class SpotifySearchTracks(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    items: list[SpotifyTrack] = Field(default_factory=list)
+
+
+class SpotifySearchResponse(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    tracks: SpotifySearchTracks = Field(default_factory=SpotifySearchTracks)
+
+
 # --- RSS Feed (FastAPI) ---
 
 

@@ -36,6 +36,10 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 OPENAI_BASE_URL = os.getenv("OPENAI_BASE_URL") or "https://api.openai.com/v1"
 
+# Spotify Web API
+SPOTIFY_CLIENT_ID = os.getenv("SPOTIFY_CLIENT_ID", "")
+SPOTIFY_CLIENT_SECRET = os.getenv("SPOTIFY_CLIENT_SECRET", "")
+
 # AI 공통 (AI_* 우선, 없으면 GEMINI_* fallback)
 AI_SESSION_TIMEOUT = _int_env_with_fallback("AI_SESSION_TIMEOUT", "GEMINI_SESSION_TIMEOUT", 3600)
 AI_MAX_HISTORY = _int_env_with_fallback("AI_MAX_HISTORY", "GEMINI_MAX_HISTORY", 20)

@@ -7,6 +7,11 @@ from modules.api_models import (
     LaftelSearchResponse,
     RssfEntry,
     RssfResponse,
+    SpotifyAlbum,
+    SpotifyAlbumImage,
+    SpotifyArtist,
+    SpotifySearchTracks,
+    SpotifyTrack,
 )
 
 
@@ -17,6 +22,9 @@ from modules.api_models import (
         (LaftelAnime, "genres", "action"),
         (LaftelSearchResponse, "results", LaftelAnime(id=1)),
         (RssfResponse, "entries", RssfEntry(title="x")),
+        (SpotifyAlbum, "images", SpotifyAlbumImage(url="https://example.com")),
+        (SpotifyTrack, "artists", SpotifyArtist(name="artist")),
+        (SpotifySearchTracks, "items", SpotifyTrack(id="x")),
     ],
 )
 def test_list_defaults_are_independent(model_cls, field, item):

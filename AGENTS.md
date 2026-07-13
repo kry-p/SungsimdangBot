@@ -7,7 +7,7 @@
 ## Project Overview
 
 SungsimdangBot은 pyTelegramBotAPI 기반 텔레그램 봇이다. 계산기, 랜덤 선택, 동전 던지기,
-러시안 룰렛, 한강 수온, 위치 기반 날씨/주소, 검색, D-day, Laftel 조회, RSS 번역 수신,
+러시안 룰렛, 한강 수온, 위치 기반 날씨/주소, 검색, D-day, Laftel/Spotify 조회, RSS 번역 수신,
 Gemini/OpenAI 기반 AI 질답을 제공한다.
 
 주요 진입점과 구조:
@@ -23,6 +23,7 @@ Gemini/OpenAI 기반 AI 질답을 제공한다.
 - `modules/settings.py`: 런타임 설정 싱글톤
 - `modules/web_based.py`: Kakao, OpenWeatherMap, 서울 열린데이터, RSS 요청
 - `modules/laftel.py`: Laftel 편성표, 랭킹, 검색
+- `modules/spotify.py`: Spotify 곡 검색, 토큰 캐시, 상세 카드
 - `resources/strings.py`: 사용자 대상 메시지와 inline keyboard
 - `tests/`: pytest 단위/통합 테스트, 임시 SQLite DB fixture
 

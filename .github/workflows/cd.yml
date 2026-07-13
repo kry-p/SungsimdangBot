@@ -82,6 +82,8 @@ jobs:
             GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}
             OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}
             OPENAI_BASE_URL=${{ secrets.OPENAI_BASE_URL }}
+            SPOTIFY_CLIENT_ID=${{ secrets.SPOTIFY_CLIENT_ID }}
+            SPOTIFY_CLIENT_SECRET=${{ secrets.SPOTIFY_CLIENT_SECRET }}
             ADMIN_USER_ID=${{ secrets.ADMIN_USER_ID }}
             RSSF_TOKEN=${{ secrets.RSSF_TOKEN }}
             RSSF_URL=${{ secrets.RSSF_URL }}
