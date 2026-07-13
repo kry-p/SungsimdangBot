@@ -26,3 +26,4 @@ docker rm -f sungsimdangbot
 - 기존 컨테이너가 있으면 `docker rm -f sungsimdangbot`으로 정리 후 실행
 - `.env` 파일이 프로젝트 루트에 있어야 함
 - `data/` 디렉토리는 SQLite DB 영속화를 위해 볼륨 마운트
+- 로컬 빌드는 버전이 기본값 `0.0.0`으로 설정된다. 특정 버전이 필요하면 `--build-arg VERSION=X.Y.Z`를 지정 (버전은 정상적으로는 릴리즈 태그에서 주입됨)

@@ -1,0 +1,4 @@
+interface:
+  display_name: "SungsimdangBot Checks"
+  short_description: "Lint, test, run, Docker, and PR checks"
+  default_prompt: "Use $sungsimdangbot-checks to run the right SungsimdangBot verification."
