@@ -1,9 +1,47 @@
 import math
 import re
 
+SYNTAX_ERROR = "syntax error"
+DIVISION_BY_ZERO_ERROR = "division by zero error"
+CALC_LIMIT_ERROR = "calculation limit error"
+
+
+class CalculatorError(Exception):
+    error_code = None
+
+
+class CalculatorSyntaxError(CalculatorError):
+    error_code = SYNTAX_ERROR
+
+
+class CalculatorDivisionByZeroError(CalculatorError):
+    error_code = DIVISION_BY_ZERO_ERROR
+
+
+class CalculationLimitError(CalculatorError):
+    error_code = CALC_LIMIT_ERROR
+
 
 class Calculator:
-    def __init__(self):
+    SYNTAX_ERROR = SYNTAX_ERROR
+    DIVISION_BY_ZERO_ERROR = DIVISION_BY_ZERO_ERROR
+    CALC_LIMIT_ERROR = CALC_LIMIT_ERROR
+    MAX_EXPRESSION_LENGTH = 2000
+    MAX_NUMBER_DIGITS = 1000
+    MAX_RESULT_DIGITS = 1000
+    MAX_TOKENS = 200
+
+    def __init__(
+        self,
+        max_expression_length=MAX_EXPRESSION_LENGTH,
+        max_number_digits=MAX_NUMBER_DIGITS,
+        max_result_digits=MAX_RESULT_DIGITS,
+        max_tokens=MAX_TOKENS,
+    ):
+        self.max_expression_length = max_expression_length
+        self.max_number_digits = max_number_digits
+        self.max_result_digits = max_result_digits
+        self.max_tokens = max_tokens
         self.library = {
             "operator": ["+", "-", "*", "/", "^", "(", ")"],
             "constant": ["pi", "e"],
@@ -25,9 +63,9 @@ class Calculator:
     # 계산 작업
     def operation(self, expression):
         try:
-            check = self.wrong_syntax_checker(expression)
-            if check == "syntax error":
-                return "syntax error"
+            if len(expression) > self.max_expression_length:
+                raise CalculationLimitError
+            self._validate_known_syntax(expression)
             tokens = self.tokenize(expression)
             postfix = self.infix_to_postfix(tokens)
 
@@ -37,13 +75,19 @@ class Calculator:
                 return result
             else:
                 return round(result, 4)
-        except (TypeError, UnboundLocalError, IndexError, SyntaxError, ValueError, OverflowError):
-            return "syntax error"
-        except ZeroDivisionError:
-            return "division by zero error"
+        except CalculatorError as error:
+            return error.error_code
+        except (TypeError, UnboundLocalError, IndexError, ValueError, OverflowError):
+            return self.SYNTAX_ERROR
 
     # 정해진 연산자나 함수 이외의 텍스트가 있는지 체크
     def wrong_syntax_checker(self, expression):
+        try:
+            self._validate_known_syntax(expression)
+        except CalculatorSyntaxError:
+            return self.SYNTAX_ERROR
+
+    def _validate_known_syntax(self, expression):
         for i in sorted(self.library["function"], key=len, reverse=True):
             expression = re.sub(i, "", expression)
 
@@ -54,7 +98,7 @@ class Calculator:
         expression = re.sub(rule, "", expression)
 
         if expression != "":
-            return "syntax error"
+            raise CalculatorSyntaxError
 
     # 후위 연산 우선순위
     def priority(self, operator):
@@ -75,7 +119,7 @@ class Calculator:
     def tokenize(self, notation):
         text = notation.replace(" ", "")
         if not text:
-            raise SyntaxError
+            raise CalculatorSyntaxError
 
         # 정규식으로 토큰 추출 (함수명은 길이 역순으로 매칭)
         func_pattern = "|".join(sorted(self.library["function"], key=len, reverse=True))
@@ -84,7 +128,12 @@ class Calculator:
         tokens = re.findall(pattern, text)
 
         if "".join(tokens) != text:
-            raise SyntaxError
+            raise CalculatorSyntaxError
+        if len(tokens) > self.max_tokens:
+            raise CalculationLimitError
+        for tok in tokens:
+            if re.fullmatch(r"\d+\.?\d*", tok) and self._numeric_token_digits(tok) > self.max_number_digits:
+                raise CalculationLimitError
 
         # 값 토큰: 숫자, 상수, 닫는 괄호
         def is_value(tok):
@@ -111,6 +160,8 @@ class Calculator:
                 result.extend(["-1", "*"])
             else:
                 result.append(tok)
+        if len(result) > self.max_tokens:
+            raise CalculationLimitError
 
         # 괄호 균형 검증
         depth = 0
@@ -120,11 +171,16 @@ class Calculator:
             elif tok == ")":
                 depth -= 1
             if depth < 0:
-                raise SyntaxError
+                raise CalculatorSyntaxError
         if depth != 0:
-            raise SyntaxError
+            raise CalculatorSyntaxError
 
         return list(map(self.string_to_number, result))
+
+    @staticmethod
+    def _numeric_token_digits(token):
+        digits = token.replace(".", "").lstrip("0")
+        return max(len(digits), 1)
 
     # String 형태의 숫자를 정수와 실수로 변환
     @staticmethod
@@ -192,7 +248,7 @@ class Calculator:
 
         for i in postfix_notation:
             if isinstance(i, (int, float)) or i in self.library["constant"]:
-                stack.append(i)
+                stack.append(self._validate_number(i))
 
             # 스택에서 차례로 pop 한 뒤 연산
             # 0이면 error 를 반환하고 종료
@@ -210,14 +266,61 @@ class Calculator:
                     elif i == "*":
                         temp = num2 * num1
                     elif i == "/":
+                        if num1 == 0:
+                            raise CalculatorDivisionByZeroError
                         temp = num2 / num1
                     elif i == "^":
+                        self._validate_power_operands(num2, num1)
                         temp = pow(num2, num1)
                 # 함수
                 elif i in self.library["function"]:
                     num = stack.pop()
-                    temp = self.function[i](num)
+                    try:
+                        temp = self.function[i](num)
+                    except (ValueError, OverflowError) as exc:
+                        raise CalculatorSyntaxError from exc
 
-                stack.append(temp)
+                stack.append(self._validate_number(temp))
 
         return stack[-1]
+
+    def _validate_number(self, value):
+        if isinstance(value, int):
+            if self._int_digit_count(value) > self.max_result_digits:
+                raise CalculationLimitError
+            return value
+        if isinstance(value, float):
+            if not math.isfinite(value):
+                raise CalculationLimitError
+            if self._float_digit_count(value) > self.max_result_digits:
+                raise CalculationLimitError
+            return value
+        raise CalculatorSyntaxError
+
+    @staticmethod
+    def _int_digit_count(value):
+        return len(str(abs(value)))
+
+    @staticmethod
+    def _float_digit_count(value):
+        if value == 0:
+            return 1
+        return max(int(math.floor(math.log10(abs(value)))) + 1, 1)
+
+    def _validate_power_operands(self, base, exponent):
+        if base < 0 and not self._is_integer_value(exponent):
+            raise CalculatorSyntaxError
+        if base == 0 and exponent < 0:
+            raise CalculatorDivisionByZeroError
+        if base == 0 or abs(base) == 1 or exponent == 0:
+            return
+
+        log10_base = math.log10(abs(base))
+        if log10_base > 0 and exponent >= self.max_result_digits / log10_base:
+            raise CalculationLimitError
+        if log10_base < 0 and exponent <= self.max_result_digits / log10_base:
+            raise CalculationLimitError
+
+    @staticmethod
+    def _is_integer_value(value):
+        return isinstance(value, int) or (isinstance(value, float) and value.is_integer())

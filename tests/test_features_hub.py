@@ -96,6 +96,11 @@ class TestCalculatorHandler:
         hub.calculator_handler(msg)
         hub.bot.reply_to.assert_called_once_with(msg, strings.calc_division_by_zero_error_msg)
 
+    def test_calculation_limit_error(self, hub):
+        msg = make_message("/calc 9^9^9^9^9")
+        hub.calculator_handler(msg)
+        hub.bot.reply_to.assert_called_once_with(msg, strings.calc_limit_error_msg)
+
     def test_no_expression(self, hub):
         msg = make_message("/calc")
         hub.calculator_handler(msg)
