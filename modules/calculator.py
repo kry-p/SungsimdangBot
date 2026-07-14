@@ -1,13 +1,31 @@
 import math
 import re
 
+SYNTAX_ERROR = "syntax error"
+DIVISION_BY_ZERO_ERROR = "division by zero error"
+CALC_LIMIT_ERROR = "calculation limit error"
 
-class CalculationLimitError(Exception):
-    pass
+
+class CalculatorError(Exception):
+    error_code = None
+
+
+class CalculatorSyntaxError(CalculatorError):
+    error_code = SYNTAX_ERROR
+
+
+class CalculatorDivisionByZeroError(CalculatorError):
+    error_code = DIVISION_BY_ZERO_ERROR
+
+
+class CalculationLimitError(CalculatorError):
+    error_code = CALC_LIMIT_ERROR
 
 
 class Calculator:
-    CALC_LIMIT_ERROR = "calculation limit error"
+    SYNTAX_ERROR = SYNTAX_ERROR
+    DIVISION_BY_ZERO_ERROR = DIVISION_BY_ZERO_ERROR
+    CALC_LIMIT_ERROR = CALC_LIMIT_ERROR
     MAX_EXPRESSION_LENGTH = 2000
     MAX_NUMBER_DIGITS = 1000
     MAX_RESULT_DIGITS = 1000
@@ -47,9 +65,7 @@ class Calculator:
         try:
             if len(expression) > self.max_expression_length:
                 raise CalculationLimitError
-            check = self.wrong_syntax_checker(expression)
-            if check == "syntax error":
-                return "syntax error"
+            self._validate_known_syntax(expression)
             tokens = self.tokenize(expression)
             postfix = self.infix_to_postfix(tokens)
 
@@ -59,15 +75,19 @@ class Calculator:
                 return result
             else:
                 return round(result, 4)
-        except CalculationLimitError:
-            return self.CALC_LIMIT_ERROR
-        except (TypeError, UnboundLocalError, IndexError, SyntaxError, ValueError, OverflowError):
-            return "syntax error"
-        except ZeroDivisionError:
-            return "division by zero error"
+        except CalculatorError as error:
+            return error.error_code
+        except (TypeError, UnboundLocalError, IndexError, ValueError, OverflowError):
+            return self.SYNTAX_ERROR
 
     # 정해진 연산자나 함수 이외의 텍스트가 있는지 체크
     def wrong_syntax_checker(self, expression):
+        try:
+            self._validate_known_syntax(expression)
+        except CalculatorSyntaxError:
+            return self.SYNTAX_ERROR
+
+    def _validate_known_syntax(self, expression):
         for i in sorted(self.library["function"], key=len, reverse=True):
             expression = re.sub(i, "", expression)
 
@@ -78,7 +98,7 @@ class Calculator:
         expression = re.sub(rule, "", expression)
 
         if expression != "":
-            return "syntax error"
+            raise CalculatorSyntaxError
 
     # 후위 연산 우선순위
     def priority(self, operator):
@@ -99,7 +119,7 @@ class Calculator:
     def tokenize(self, notation):
         text = notation.replace(" ", "")
         if not text:
-            raise SyntaxError
+            raise CalculatorSyntaxError
 
         # 정규식으로 토큰 추출 (함수명은 길이 역순으로 매칭)
         func_pattern = "|".join(sorted(self.library["function"], key=len, reverse=True))
@@ -108,7 +128,7 @@ class Calculator:
         tokens = re.findall(pattern, text)
 
         if "".join(tokens) != text:
-            raise SyntaxError
+            raise CalculatorSyntaxError
         if len(tokens) > self.max_tokens:
             raise CalculationLimitError
         for tok in tokens:
@@ -151,9 +171,9 @@ class Calculator:
             elif tok == ")":
                 depth -= 1
             if depth < 0:
-                raise SyntaxError
+                raise CalculatorSyntaxError
         if depth != 0:
-            raise SyntaxError
+            raise CalculatorSyntaxError
 
         return list(map(self.string_to_number, result))
 
@@ -246,6 +266,8 @@ class Calculator:
                     elif i == "*":
                         temp = num2 * num1
                     elif i == "/":
+                        if num1 == 0:
+                            raise CalculatorDivisionByZeroError
                         temp = num2 / num1
                     elif i == "^":
                         self._validate_power_operands(num2, num1)
@@ -253,7 +275,10 @@ class Calculator:
                 # 함수
                 elif i in self.library["function"]:
                     num = stack.pop()
-                    temp = self.function[i](num)
+                    try:
+                        temp = self.function[i](num)
+                    except (ValueError, OverflowError) as exc:
+                        raise CalculatorSyntaxError from exc
 
                 stack.append(self._validate_number(temp))
 
@@ -270,7 +295,7 @@ class Calculator:
             if self._float_digit_count(value) > self.max_result_digits:
                 raise CalculationLimitError
             return value
-        raise ValueError
+        raise CalculatorSyntaxError
 
     @staticmethod
     def _int_digit_count(value):
@@ -284,7 +309,9 @@ class Calculator:
 
     def _validate_power_operands(self, base, exponent):
         if base < 0 and not self._is_integer_value(exponent):
-            raise ValueError
+            raise CalculatorSyntaxError
+        if base == 0 and exponent < 0:
+            raise CalculatorDivisionByZeroError
         if base == 0 or abs(base) == 1 or exponent == 0:
             return
 

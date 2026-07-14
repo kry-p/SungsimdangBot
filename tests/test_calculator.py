@@ -80,58 +80,61 @@ class TestConstants:
 
 class TestErrors:
     def test_division_by_zero(self, calc):
-        assert calc.operation(" 1 / 0") == "division by zero error"
+        assert calc.operation(" 1 / 0") == Calculator.DIVISION_BY_ZERO_ERROR
 
     def test_division_by_zero_expression(self, calc):
-        assert calc.operation(" 1 / (2 - 2)") == "division by zero error"
+        assert calc.operation(" 1 / (2 - 2)") == Calculator.DIVISION_BY_ZERO_ERROR
+
+    def test_zero_to_negative_power(self, calc):
+        assert calc.operation(" 0 ^ -1") == Calculator.DIVISION_BY_ZERO_ERROR
 
     def test_syntax_error_letters(self, calc):
-        assert calc.operation(" abc") == "syntax error"
+        assert calc.operation(" abc") == Calculator.SYNTAX_ERROR
 
     def test_empty_expression(self, calc):
-        assert calc.operation("") == "syntax error"
+        assert calc.operation("") == Calculator.SYNTAX_ERROR
 
     def test_unbalanced_open_paren(self, calc):
-        assert calc.operation(" (2 + 3") == "syntax error"
+        assert calc.operation(" (2 + 3") == Calculator.SYNTAX_ERROR
 
     def test_unbalanced_close_paren(self, calc):
-        assert calc.operation(" 2 + 3)") == "syntax error"
+        assert calc.operation(" 2 + 3)") == Calculator.SYNTAX_ERROR
 
     def test_trailing_operator(self, calc):
-        assert calc.operation(" 2 +") == "syntax error"
+        assert calc.operation(" 2 +") == Calculator.SYNTAX_ERROR
 
     def test_double_operator(self, calc):
-        assert calc.operation(" 2 ++ 3") == "syntax error"
+        assert calc.operation(" 2 ++ 3") == Calculator.SYNTAX_ERROR
 
     def test_sqrt_negative(self, calc):
-        assert calc.operation(" sqrt(-1)") == "syntax error"
+        assert calc.operation(" sqrt(-1)") == Calculator.SYNTAX_ERROR
 
     def test_ln_zero(self, calc):
-        assert calc.operation(" ln(0)") == "syntax error"
+        assert calc.operation(" ln(0)") == Calculator.SYNTAX_ERROR
 
     def test_ln_negative(self, calc):
-        assert calc.operation(" ln(-1)") == "syntax error"
+        assert calc.operation(" ln(-1)") == Calculator.SYNTAX_ERROR
 
     def test_log_negative(self, calc):
-        assert calc.operation(" log(-1)") == "syntax error"
+        assert calc.operation(" log(-1)") == Calculator.SYNTAX_ERROR
 
     def test_asin_out_of_domain(self, calc):
-        assert calc.operation(" asin(2)") == "syntax error"
+        assert calc.operation(" asin(2)") == Calculator.SYNTAX_ERROR
 
     def test_acos_out_of_domain(self, calc):
-        assert calc.operation(" acos(2)") == "syntax error"
+        assert calc.operation(" acos(2)") == Calculator.SYNTAX_ERROR
 
     def test_exp_overflow(self, calc):
-        assert calc.operation(" exp(1000)") == "syntax error"
+        assert calc.operation(" exp(1000)") == Calculator.SYNTAX_ERROR
 
     def test_leading_operator(self, calc):
-        assert calc.operation(" * 2") == "syntax error"
+        assert calc.operation(" * 2") == Calculator.SYNTAX_ERROR
 
     def test_empty_parentheses(self, calc):
-        assert calc.operation(" ()") == "syntax error"
+        assert calc.operation(" ()") == Calculator.SYNTAX_ERROR
 
     def test_leading_dot_decimal(self, calc):
-        assert calc.operation(" .5 + 1") == "syntax error"
+        assert calc.operation(" .5 + 1") == Calculator.SYNTAX_ERROR
 
 
 class TestCalculationLimits:
@@ -219,10 +222,10 @@ class TestWrongSyntaxChecker:
         assert calc.wrong_syntax_checker("sqrt(4)") is None
 
     def test_invalid_characters(self, calc):
-        assert calc.wrong_syntax_checker("2 + abc") == "syntax error"
+        assert calc.wrong_syntax_checker("2 + abc") == Calculator.SYNTAX_ERROR
 
     def test_invalid_single_letter(self, calc):
-        assert calc.wrong_syntax_checker("x") == "syntax error"
+        assert calc.wrong_syntax_checker("x") == Calculator.SYNTAX_ERROR
 
     def test_asin_not_confused_with_sin(self, calc):
         assert calc.wrong_syntax_checker("asin(0.5)") is None
@@ -284,7 +287,7 @@ class TestOperationEdgeCases:
         assert calc.operation(" 999999 * 999999") == 999998000001
 
     def test_only_whitespace(self, calc):
-        assert calc.operation("   ") == "syntax error"
+        assert calc.operation("   ") == Calculator.SYNTAX_ERROR
 
     def test_complex_expression(self, calc):
         assert calc.operation(" 2 + 3 * 4 - 6 / 2") == 11.0
