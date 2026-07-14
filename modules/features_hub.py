@@ -145,6 +145,8 @@ class BotFeaturesHub:
                 self.bot.reply_to(message, strings.calc_syntax_error_msg)
             elif result == "division by zero error":
                 self.bot.reply_to(message, strings.calc_division_by_zero_error_msg)
+            elif result == Calculator.CALC_LIMIT_ERROR:
+                self.bot.reply_to(message, strings.calc_limit_error_msg)
             else:
                 self.bot.reply_to(message, result)
 

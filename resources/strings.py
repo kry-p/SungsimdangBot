@@ -133,6 +133,7 @@ calc_syntax_error_msg = (
     "상수의 상수배인 경우 곱셈 기호(*)가 있는지 확인해 주세요."
 )
 calc_division_by_zero_error_msg = "0으로 나눌 수 없습니다."
+calc_limit_error_msg = "계산식 또는 결과가 너무 큽니다. 더 작은 숫자로 다시 시도해 주세요."
 
 # geolocation error message
 geolocation_error_msg = "위치 정보를 가져오는 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요."

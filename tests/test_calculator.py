@@ -134,6 +134,60 @@ class TestErrors:
         assert calc.operation(" .5 + 1") == "syntax error"
 
 
+class TestCalculationLimits:
+    def test_power_tower_limit(self, calc):
+        assert calc.operation(" 9 ^ 9 ^ 9 ^ 9 ^ 9") == Calculator.CALC_LIMIT_ERROR
+
+    def test_power_tower_limit_without_spaces(self, calc):
+        assert calc.operation("9^9^9^9^9") == Calculator.CALC_LIMIT_ERROR
+
+    def test_minimal_dangerous_power_tower_limit(self, calc):
+        assert calc.operation("9^9^9") == Calculator.CALC_LIMIT_ERROR
+
+    def test_power_result_limit(self, calc):
+        assert calc.operation(" 10 ^ 1000") == Calculator.CALC_LIMIT_ERROR
+
+    def test_power_result_limit_allows_boundary(self, calc):
+        result = calc.operation(" 10 ^ 999")
+        assert isinstance(result, int)
+        assert len(str(result)) == calc.max_result_digits
+
+    def test_parenthesized_power_within_limit(self, calc):
+        assert calc.operation(" (9 ^ 9) ^ 9") == pow(pow(9, 9), 9)
+
+    def test_intermediate_result_limit(self):
+        calc = Calculator(max_result_digits=3)
+        assert calc.operation(" 99 * 99") == Calculator.CALC_LIMIT_ERROR
+
+    def test_intermediate_result_limit_allows_boundary(self):
+        calc = Calculator(max_result_digits=4)
+        assert calc.operation(" 99 * 99") == 9801
+
+    def test_number_token_digit_limit(self):
+        calc = Calculator(max_number_digits=3)
+        assert calc.operation(" 1000 + 1") == Calculator.CALC_LIMIT_ERROR
+
+    def test_number_token_digit_limit_allows_boundary(self):
+        number = "1" + "0" * 999
+        assert Calculator().operation(f" {number}") == int(number)
+
+    def test_expression_length_limit(self):
+        calc = Calculator(max_expression_length=5)
+        assert calc.operation(" 1 + 2 + 3") == Calculator.CALC_LIMIT_ERROR
+
+    def test_expression_length_limit_allows_boundary(self):
+        calc = Calculator(max_expression_length=5)
+        assert calc.operation("1 + 2") == 3
+
+    def test_transformed_token_limit(self):
+        calc = Calculator(max_tokens=1)
+        assert calc.operation("-1") == Calculator.CALC_LIMIT_ERROR
+
+    def test_transformed_token_limit_allows_boundary(self):
+        calc = Calculator(max_tokens=3)
+        assert calc.operation("-1") == -1
+
+
 class TestStringToNumber:
     def test_integer(self, calc):
         assert calc.string_to_number("42") == 42
