@@ -97,10 +97,14 @@ docker rm -f sungsimdangbot
 ```
 
 `docker-compose.yml`은 GHCR production 이미지를 pull하는 배포용 설정입니다.
+CD가 생성한 `.deploy.env`에 배포할 image digest가 있어야 합니다.
 
 ```bash
-docker compose up -d
+docker compose --env-file .deploy.env up -d
 ```
+
+운영 서버에서는 `pull`, `up`, `ps`, `logs`, `restart`, `down`을 포함한 모든 `docker compose` 명령에
+`--env-file .deploy.env`를 사용합니다.
 
 ## 기능 목록
 
@@ -179,12 +183,14 @@ CI는 GitHub Actions에서 `master`, `development`, 모든 PR에 대해 실행�
 
 CD는 GitHub Release publish 이벤트에서 실행됩니다.
 
-1. Release tag `vX.Y.Z`에서 버전을 추출합니다.
-2. Docker image를 linux/amd64, linux/arm64로 빌드해 GHCR에 push합니다.
-3. Tailscale VPN으로 배포 서버에 접근합니다.
-4. SSH로 `.env`와 compose 상태를 갱신한 뒤 컨테이너를 재시작합니다.
+1. Release tag `vX.Y.Z`의 commit이 `master` 이력에 포함되는지 확인하고 버전을 추출합니다.
+2. Docker image를 linux/amd64, linux/arm64로 빌드해 GHCR에 push하고 image digest를 확정합니다.
+3. `production` GitHub Environment 승인을 거친 뒤 Tailscale VPN으로 배포 서버에 접근합니다.
+4. SSH로 애플리케이션 `.env`와 digest가 담긴 `.deploy.env`를 갱신합니다.
+5. `docker compose --env-file .deploy.env`로 빌드된 동일 digest의 컨테이너를 배포합니다.
 
 버전은 git tag가 단일 진실 공급원입니다. `pyproject.toml`은 `dynamic = ["version"]`와 `setuptools-scm`을 사용합니다.
+GitHub Actions는 full commit SHA로 고정하며 Dependabot이 `development` 대상 업데이트를 생성합니다.
 
 ## 필요한 GitHub Secrets
 
@@ -208,6 +214,10 @@ CD는 GitHub Release publish 이벤트에서 실행됩니다.
 | `ADMIN_USER_ID` | 관리자 텔레그램 사용자 ID |
 | `RSSF_TOKEN` | RSS 번역 서버 인증 토큰 |
 | `RSSF_URL` | RSS 번역 서버 URL |
+
+배포 job은 `production` GitHub Environment를 사용합니다. 저장소 설정에서 required reviewer를 지정하고,
+Selected branches and tags의 tag 규칙에 `v*.*.*`를 허용합니다. release tag commit의 `master` 포함 여부는 workflow가
+별도로 검증합니다. 운영 배포 secret은 가능한 이 Environment에 저장합니다.
 
 ## 기여자
 

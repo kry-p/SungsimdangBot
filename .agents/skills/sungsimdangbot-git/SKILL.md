@@ -137,15 +137,19 @@ Versioning:
 
 CD behavior:
 
+- Verify that the release tag commit belongs to `master`.
 - Extract release version from the release tag.
 - Pass it as Docker build arg `VERSION`.
 - Build linux/amd64 and linux/arm64 images and push to GHCR.
+- Pass the pushed multi-platform image digest to the deploy job.
+- Gate deployment with the protected `production` GitHub Environment.
 - Connect to the deployment server through Tailscale and SSH.
-- Update `.env`, pull the image, and run `docker compose up -d`.
+- Update the application `.env` and the digest-pinned `.deploy.env`.
+- Pull and start the exact image digest with `docker compose --env-file .deploy.env`.
 
 CI/CD triggers:
 
 - Pull request created or updated: CI runs.
 - Push to `development`: CI runs.
 - Push to `master`: CI runs.
-- GitHub Release created: CD runs.
+- GitHub Release published: CD runs.

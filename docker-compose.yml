@@ -1,6 +1,6 @@
 services:
   bot:
-    image: ghcr.io/kry-p/sungsimdangbot:latest
+    image: "${BOT_IMAGE:?BOT_IMAGE must be set via .deploy.env}"
     container_name: sungsimdangbot
     restart: unless-stopped
     env_file:
