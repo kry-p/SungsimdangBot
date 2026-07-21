@@ -146,10 +146,11 @@ class WebManager:
         if slug not in strings.bfrss_feed_names:
             return strings.bfrss_unknown_slug_msg, None
         try:
-            params = {"token": config.RSSF_TOKEN}
+            headers = {"Authorization": f"Bearer {config.RSSF_TOKEN}"}
+            params = {}
             if date:
                 params["date"] = date
-            res = requests.get(f"{config.RSSF_URL.rstrip('/')}/feed/{slug}", params=params, timeout=10)
+            res = requests.get(f"{config.RSSF_URL.rstrip('/')}/feed/{slug}", headers=headers, params=params, timeout=10)
             res.raise_for_status()
             data = RssfResponse.model_validate_json(res.text)
             feed_name = strings.bfrss_feed_names[slug]

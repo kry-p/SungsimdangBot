@@ -179,10 +179,12 @@ docker rm -f sungsimdangbot
 
 - CI는 GitHub Actions에서 `master`, `development`, 모든 PR에 대해 실행된다.
 - CI matrix는 Python 3.10과 3.14를 사용하며 `ruff check`, `ruff format --check`, pytest coverage를 실행한다.
+- Workflow의 Action 참조는 full commit SHA로 고정하고 Dependabot으로 갱신한다.
 - CD는 GitHub Release publish 이벤트에서 실행된다.
-- release tag `vX.Y.Z`에서 version을 추출해 Docker build arg `VERSION`으로 전달한다.
+- release tag `vX.Y.Z`의 commit이 `master` 이력에 포함되는지 확인하고 version을 Docker build arg `VERSION`으로 전달한다.
 - Docker 이미지는 `python:3.14-slim` 기반이며 linux/amd64, linux/arm64로 GHCR에 push된다.
-- 배포 job은 Tailscale과 SSH로 서버에 접속해 `.env`를 갱신하고 `docker compose pull && docker compose up -d`를 실행한다.
+- 배포 job은 `production` Environment 보호를 거쳐 Tailscale과 SSH로 서버에 접속한다.
+- 빌드가 출력한 image digest를 `.deploy.env`에 저장하고 동일 digest로 `docker compose pull`과 `up -d`를 실행한다.
 - 버전은 git tag가 단일 진실 공급원이다. `pyproject.toml`은 `dynamic = ["version"]`와 `setuptools-scm`을 사용한다.
 
 ## Agent Workflow
