@@ -301,7 +301,8 @@ class TestRssHandler:
             assert "&amp;chars" in text
             mock_get.assert_called_once_with(
                 "http://test-server/feed/hn",
-                params={"token": "test_token"},
+                headers={"Authorization": "Bearer test_token"},
+                params={},
                 timeout=10,
             )
 
@@ -320,7 +321,8 @@ class TestRssHandler:
             assert "LOBSTERS" in text
             mock_get.assert_called_once_with(
                 "http://test-server/feed/lob",
-                params={"token": "test_token"},
+                headers={"Authorization": "Bearer test_token"},
+                params={},
                 timeout=10,
             )
 
@@ -337,7 +339,8 @@ class TestRssHandler:
             wm.fetch_rss(slug="lob", date="20260507")
             mock_get.assert_called_once_with(
                 "http://test-server/feed/lob",
-                params={"token": "test_token", "date": "20260507"},
+                headers={"Authorization": "Bearer test_token"},
+                params={"date": "20260507"},
                 timeout=10,
             )
 
