@@ -5,6 +5,7 @@ from modules.commute import (
     delete_schedules,
     find_active_schedule,
     find_next_schedule,
+    format_minutes,
     get_schedules,
     minutes_until_end,
     minutes_until_start,
@@ -279,3 +280,21 @@ class TestMinutesUntilStart:
         )
 
         assert result == 3660
+
+
+class TestFormatMinutes:
+    def test_minutes_only(self):
+        assert format_minutes(30) == "30분"
+
+    def test_hours_only(self):
+        assert format_minutes(120) == "2시간"
+
+    def test_hours_and_minutes(self):
+        assert format_minutes(150) == "2시간 30분"
+
+    def test_zero_minutes(self):
+        assert format_minutes(0) == "0분"
+
+    def test_rejects_negative_minutes(self):
+        with pytest.raises(ValueError):
+            format_minutes(-1)

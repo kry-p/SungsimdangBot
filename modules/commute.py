@@ -88,6 +88,21 @@ def minutes_until_start(current_weekday, current_minute, target_weekday, start_m
     return minutes
 
 
+def format_minutes(minutes):
+    if minutes < 0:
+        raise ValueError("minutes must not be negative")
+
+    hours, remaining_minutes = divmod(minutes, 60)
+
+    if hours and remaining_minutes:
+        return f"{hours}시간 {remaining_minutes}분"
+
+    if hours:
+        return f"{hours}시간"
+
+    return f"{remaining_minutes}분"
+
+
 def get_schedules(user_id):
     query = CommuteSchedule.select().where(CommuteSchedule.user_id == user_id).order_by(CommuteSchedule.weekday)
 
