@@ -122,6 +122,16 @@ class TestOrdinaryMessage:
         all_sentences = [s for group in strings.magic_conch_sentence for s in group]
         assert hub.bot.reply_to.call_args[0][1] in all_sentences
 
+    def test_commute_start_keyword(self, hub):
+        msg = make_message("출근하기 싫다")
+        hub.ordinary_message(msg)
+        hub.bot.reply_to.assert_called_once_with(msg, strings.commute_start_detected_msg)
+
+    def test_commute_end_keyword(self, hub):
+        msg = make_message("퇴근하고 싶다")
+        hub.ordinary_message(msg)
+        hub.bot.reply_to.assert_called_once_with(msg, strings.commute_end_detected_msg)
+
     def test_normal_message_no_action(self, hub):
         msg = make_message("안녕하세요")
         hub.ordinary_message(msg)

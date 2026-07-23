@@ -93,6 +93,15 @@ coin_toss_prefix_msg = "동전뒤집기 결과 : "
 # keyword triggers
 temp_keywords = ("수온", "자살")
 magic_conch_keywords = ("마법의 소라고둥", "마법의 소라고동")
+commute_start_keywords = ("출근",)
+commute_end_keywords = ("퇴근",)
+
+# commute messages
+commute_start_detected_msg = "출근 키워드를 감지했습니다."
+commute_end_detected_msg = "퇴근 키워드를 감지했습니다."
+commute_until_start_msg = "다음 출근까지 {remaining} 남았습니다."
+commute_until_end_msg = "퇴근까지 {remaining} 남았습니다."
+commute_schedule_missing_msg = "등록된 출퇴근 일정이 없습니다."
 
 # suon (river temperature) message
 suon_maintenance_status = "점검중"

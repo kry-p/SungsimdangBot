@@ -264,3 +264,9 @@ class BotFeaturesHub:
 
         if any(kw in message.text for kw in strings.magic_conch_keywords):
             self.bot.reply_to(message, self.random_based_features.magic_conch())
+
+        if any(kw in message.text for kw in strings.commute_start_keywords):
+            self.bot.reply_to(message, strings.commute_start_detected_msg)
+
+        if any(kw in message.text for kw in strings.commute_end_keywords):
+            self.bot.reply_to(message, strings.commute_end_detected_msg)
