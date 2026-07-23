@@ -2,7 +2,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from modules.database import AllowedChat, PendingAction, RouletteGame, Setting, db
+from modules.database import AllowedChat, CommuteSchedule, PendingAction, RouletteGame, Setting, db
 from modules.settings import Settings
 
 
@@ -17,7 +17,7 @@ def make_message(text, chat_id=1, user_id=1):
     return msg
 
 
-MODELS = [Setting, AllowedChat, PendingAction, RouletteGame]
+MODELS = [Setting, AllowedChat, PendingAction, RouletteGame, CommuteSchedule]
 
 
 @pytest.fixture(autouse=True)

@@ -1,7 +1,7 @@
 import pytest
 from peewee import IntegrityError
 
-from modules.database import AllowedChat, PendingAction, RouletteGame, Setting
+from modules.database import AllowedChat, CommuteSchedule, PendingAction, RouletteGame, Setting
 
 
 class TestSettingModel:
@@ -79,3 +79,34 @@ class TestRouletteGameModel:
         RouletteGame.create(chat_id=1, bullets="[true]")
         RouletteGame.delete().where(RouletteGame.chat_id == 1).execute()
         assert RouletteGame.select().count() == 0
+
+
+class TestCommuteScheduleModel:
+    def test_create_and_retrieve(self):
+        CommuteSchedule.create(
+            user_id=123,
+            weekday=0,
+            start_minute=540,
+            end_minute=1080,
+        )
+
+        row = CommuteSchedule.get((CommuteSchedule.user_id == 123) & (CommuteSchedule.weekday == 0))
+
+        assert row.start_minute == 540
+        assert row.end_minute == 1080
+
+    def test_unique_user_and_weekday(self):
+        CommuteSchedule.create(
+            user_id=123,
+            weekday=0,
+            start_minute=540,
+            end_minute=1080,
+        )
+
+        with pytest.raises(IntegrityError):
+            CommuteSchedule.create(
+                user_id=123,
+                weekday=0,
+                start_minute=600,
+                end_minute=1140,
+            )

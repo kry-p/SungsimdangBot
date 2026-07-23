@@ -11,7 +11,7 @@ def init_db():
     os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
     db.init(DB_PATH, pragmas={"journal_mode": "wal", "foreign_keys": 1})
     db.connect(reuse_if_open=True)
-    db.create_tables([Setting, AllowedChat, PendingAction, RouletteGame])
+    db.create_tables([Setting, AllowedChat, PendingAction, RouletteGame, CommuteSchedule])
 
 
 class BaseModel(Model):
@@ -54,3 +54,14 @@ class RouletteGame(BaseModel):
 
     class Meta:
         table_name = "roulette_games"
+
+
+class CommuteSchedule(BaseModel):
+    user_id = IntegerField()
+    weekday = IntegerField()
+    start_minute = IntegerField()
+    end_minute = IntegerField()
+
+    class Meta:
+        table_name = "commute_schedules"
+        indexes = ((("user_id", "weekday"), True),)
