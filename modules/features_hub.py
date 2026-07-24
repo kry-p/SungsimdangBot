@@ -10,14 +10,12 @@ from modules.admin import AdminManager
 from modules.ai.chat import AIChatManager
 from modules.calculator import Calculator
 from modules.commute import (
-    delete_all_schedules,
-    delete_schedules,
     find_active_schedule,
     find_next_schedule,
     format_minutes,
     get_schedules,
-    save_schedule,
 )
+from modules.commute_manager import CommuteManager
 from modules.laftel import LaftelService
 from modules.random_based import RandomBasedFeatures
 from modules.spotify import SpotifyService
@@ -41,6 +39,10 @@ class BotFeaturesHub:
     def is_spotify_callback(data):
         return SpotifyService.is_spotify_callback(data)
 
+    @staticmethod
+    def is_commute_callback(data):
+        return CommuteManager.is_commute_callback(data)
+
     # init
     def __init__(self, bot):
         self.bot = bot
@@ -52,6 +54,7 @@ class BotFeaturesHub:
         self.admin = AdminManager(bot, self.ai_chat)
         self.laftel = LaftelService(bot)
         self.spotify = SpotifyService(bot)
+        self.commute = CommuteManager(bot)
 
     # --- Admin delegation ---
 
@@ -68,6 +71,9 @@ class BotFeaturesHub:
     def handle_spotify_callback(self, call):
         self.spotify.handle_spotify_callback(call)
 
+    def handle_commute_callback(self, call):
+        self.commute.handle_commute_callback(call)
+
     def allow_chat_handler(self, message):
         self.admin.allow_chat_handler(message)
 
@@ -79,6 +85,12 @@ class BotFeaturesHub:
 
     def handle_prompt_reply(self, message):
         self.admin.handle_prompt_reply(message)
+
+    def commute_menu_handler(self, message):
+        self.commute.show_menu(message)
+
+    def handle_commute_reply(self, message):
+        self.commute.handle_input_reply(message)
 
     # --- Features ---
 
@@ -260,73 +272,6 @@ class BotFeaturesHub:
             return
         text, parse_mode = self.web_manager.fetch_rss(slug, date)
         self.bot.reply_to(message, text, parse_mode=parse_mode)
-
-    def commute_set_handler(self, message):
-        parts = (message.text or "").split()
-
-        if len(parts) != 4:
-            self.bot.reply_to(message, strings.commute_set_usage_msg)
-            return
-
-        _command, weekday_text, start_time, end_time = parts
-
-        try:
-            count = save_schedule(
-                message.from_user.id,
-                weekday_text,
-                start_time,
-                end_time,
-            )
-        except ValueError:
-            self.bot.reply_to(message, strings.commute_set_usage_msg)
-            return
-
-        self.bot.reply_to(
-            message,
-            strings.commute_set_success_msg.format(count=count),
-        )
-
-    def commute_delete_handler(self, message):
-        parts = (message.text or "").split()
-
-        if len(parts) != 2:
-            self.bot.reply_to(message, strings.commute_delete_usage_msg)
-            return
-
-        _command, weekday_text = parts
-
-        try:
-            count = delete_schedules(
-                message.from_user.id,
-                weekday_text,
-            )
-        except ValueError:
-            self.bot.reply_to(message, strings.commute_delete_usage_msg)
-            return
-
-        if count == 0:
-            self.bot.reply_to(message, strings.commute_delete_missing_msg)
-            return
-
-        self.bot.reply_to(
-            message,
-            strings.commute_delete_success_msg.format(count=count),
-        )
-
-    def commute_clear_handler(self, message):
-        parts = (message.text or "").split()
-
-        if len(parts) != 1:
-            self.bot.reply_to(message, strings.commute_clear_usage_msg)
-            return
-
-        count = delete_all_schedules(message.from_user.id)
-
-        if count == 0:
-            self.bot.reply_to(message, strings.commute_delete_missing_msg)
-            return
-
-        self.bot.reply_to(message, strings.commute_clear_success_msg)
 
     @staticmethod
     def get_current_commute_time():

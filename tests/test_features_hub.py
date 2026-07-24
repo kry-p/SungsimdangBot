@@ -3,7 +3,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from modules.commute import get_schedules, save_schedule
+from modules.commute import save_schedule
 from modules.features_hub import BotFeaturesHub
 from resources import strings
 from tests.conftest import make_message
@@ -108,95 +108,30 @@ class TestCalculatorHandler:
         hub.bot.reply_to.assert_not_called()
 
 
-class TestCommuteSetHandler:
-    def test_saves_schedule_and_replies_success(self, hub):
-        msg = make_message("/commute_set 월화 09:00 18:00", user_id=123)
+class TestCommuteMenuHandler:
+    def test_delegates_to_commute_manager(self, hub):
+        hub.commute.show_menu = MagicMock()
+        msg = make_message("/commute")
 
-        hub.commute_set_handler(msg)
+        hub.commute_menu_handler(msg)
 
-        schedules = get_schedules(123)
-        assert [schedule.weekday for schedule in schedules] == [0, 1]
-        hub.bot.reply_to.assert_called_once_with(
-            msg,
-            strings.commute_set_success_msg.format(count=2),
-        )
+        hub.commute.show_menu.assert_called_once_with(msg)
 
-    def test_replies_usage_when_arguments_are_missing(self, hub):
-        msg = make_message("/commute_set 월 09:00", user_id=123)
+    def test_callback_delegates_to_commute_manager(self, hub):
+        hub.commute.handle_commute_callback = MagicMock()
+        call = MagicMock()
 
-        hub.commute_set_handler(msg)
+        hub.handle_commute_callback(call)
 
-        assert get_schedules(123) == []
-        hub.bot.reply_to.assert_called_once_with(msg, strings.commute_set_usage_msg)
+        hub.commute.handle_commute_callback.assert_called_once_with(call)
 
-    def test_replies_usage_when_schedule_is_invalid(self, hub):
-        msg = make_message("/commute_set 월엄 09:00 18:00", user_id=123)
+    def test_reply_delegates_to_commute_manager(self, hub):
+        hub.commute.handle_input_reply = MagicMock()
+        msg = make_message("월화 09:00 18:00")
 
-        hub.commute_set_handler(msg)
+        hub.handle_commute_reply(msg)
 
-        assert get_schedules(123) == []
-        hub.bot.reply_to.assert_called_once_with(msg, strings.commute_set_usage_msg)
-
-
-class TestCommuteDeleteHandler:
-    def test_deletes_selected_weekdays_and_replies_success(self, hub):
-        save_schedule(123, "월화", "09:00", "18:00")
-        msg = make_message("/commute_delete 월", user_id=123)
-
-        hub.commute_delete_handler(msg)
-
-        assert [schedule.weekday for schedule in get_schedules(123)] == [1]
-        hub.bot.reply_to.assert_called_once_with(
-            msg,
-            strings.commute_delete_success_msg.format(count=1),
-        )
-
-    def test_replies_missing_when_schedule_does_not_exist(self, hub):
-        msg = make_message("/commute_delete 월", user_id=123)
-
-        hub.commute_delete_handler(msg)
-
-        assert get_schedules(123) == []
-        hub.bot.reply_to.assert_called_once_with(msg, strings.commute_delete_missing_msg)
-
-    def test_replies_usage_when_delete_arguments_are_invalid(self, hub):
-        save_schedule(123, "월", "09:00", "18:00")
-        msg = make_message("/commute_delete 월 화", user_id=123)
-
-        hub.commute_delete_handler(msg)
-
-        assert [schedule.weekday for schedule in get_schedules(123)] == [0]
-        hub.bot.reply_to.assert_called_once_with(msg, strings.commute_delete_usage_msg)
-
-
-class TestCommuteClearHandler:
-    def test_clears_user_schedules_and_replies_success(self, hub):
-        save_schedule(123, "월화", "09:00", "18:00")
-        save_schedule(456, "금", "10:00", "19:00")
-        msg = make_message("/commute_clear", user_id=123)
-
-        hub.commute_clear_handler(msg)
-
-        assert get_schedules(123) == []
-        assert len(get_schedules(456)) == 1
-        hub.bot.reply_to.assert_called_once_with(msg, strings.commute_clear_success_msg)
-
-    def test_replies_missing_when_no_schedule_exists(self, hub):
-        msg = make_message("/commute_clear", user_id=123)
-
-        hub.commute_clear_handler(msg)
-
-        assert get_schedules(123) == []
-        hub.bot.reply_to.assert_called_once_with(msg, strings.commute_delete_missing_msg)
-
-    def test_replies_usage_when_clear_has_arguments(self, hub):
-        save_schedule(123, "월", "09:00", "18:00")
-        msg = make_message("/commute_clear 월", user_id=123)
-
-        hub.commute_clear_handler(msg)
-
-        assert [schedule.weekday for schedule in get_schedules(123)] == [0]
-        hub.bot.reply_to.assert_called_once_with(msg, strings.commute_clear_usage_msg)
+        hub.commute.handle_input_reply.assert_called_once_with(msg)
 
 
 class TestOrdinaryMessage:

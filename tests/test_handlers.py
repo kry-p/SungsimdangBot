@@ -91,35 +91,15 @@ class TestSafeHandlerErrorBoundary:
 
 
 class TestHandlerDelegation:
-    def test_commute_set_delegates_to_hub(self):
+    def test_commute_delegates_to_hub(self):
         hub = MagicMock()
         logger = MagicMock()
         _, handlers = _capture_handlers(hub, logger)
 
-        msg = make_message("/commute_set 월화 09:00 18:00")
-        handlers["commute_set"](msg)
+        msg = make_message("/commute")
+        handlers["commute"](msg)
 
-        hub.commute_set_handler.assert_called_once_with(msg)
-
-    def test_commute_delete_delegates_to_hub(self):
-        hub = MagicMock()
-        logger = MagicMock()
-        _, handlers = _capture_handlers(hub, logger)
-
-        msg = make_message("/commute_delete 월")
-        handlers["commute_delete"](msg)
-
-        hub.commute_delete_handler.assert_called_once_with(msg)
-
-    def test_commute_clear_delegates_to_hub(self):
-        hub = MagicMock()
-        logger = MagicMock()
-        _, handlers = _capture_handlers(hub, logger)
-
-        msg = make_message("/commute_clear")
-        handlers["commute_clear"](msg)
-
-        hub.commute_clear_handler.assert_called_once_with(msg)
+        hub.commute_menu_handler.assert_called_once_with(msg)
 
     def test_search_delegates_to_hub(self):
         hub = MagicMock()
@@ -224,6 +204,29 @@ class TestHandlerDelegation:
         handlers["callback"](query)
 
         hub.handle_spotify_callback.assert_called_once_with(query)
+
+    def test_commute_callback_delegates_to_hub(self):
+        hub = MagicMock()
+        logger = MagicMock()
+        _, handlers = _capture_handlers(hub, logger)
+
+        query = MagicMock()
+        query.data = "commute:set"
+        handlers["callback"](query)
+
+        hub.handle_commute_callback.assert_called_once_with(query)
+
+    def test_commute_reply_delegates_to_hub(self):
+        hub = MagicMock()
+        logger = MagicMock()
+        _, handlers = _capture_handlers(hub, logger)
+
+        msg = make_message("월화 09:00 18:00")
+        msg.reply_to_message = MagicMock()
+        msg.reply_to_message.text = strings.commute_set_input_msg
+        handlers["prompt_reply"](msg)
+
+        hub.handle_commute_reply.assert_called_once_with(msg)
 
 
 class TestCallbackErrorBoundary:

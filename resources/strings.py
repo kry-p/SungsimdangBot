@@ -31,9 +31,7 @@ bot_command_descriptions = {
     "laftel": "라프텔 애니 정보",
     "spotify": "Spotify 노래 검색",
     "bfrss": "해외 rss 번역수신",
-    "commute_set": "출퇴근 일정 등록",
-    "commute_delete": "출퇴근 일정 일부 삭제",
-    "commute_clear": "출퇴근 일정 전체 삭제",
+    "commute": "출퇴근 일정 관리",
 }
 
 # Guideline message
@@ -100,12 +98,23 @@ commute_start_keywords = ("출근",)
 commute_end_keywords = ("퇴근",)
 
 # commute messages
+commute_menu_msg = "출퇴근 일정 관리\n\n{schedule}"
+commute_schedule_empty_msg = "등록된 일정이 없습니다."
+commute_schedule_item_msg = "{weekday} {start_time}~{end_time}"
+commute_set_btn = "일정 등록"
+commute_delete_btn = "일부 삭제"
+commute_clear_btn = "전체 삭제"
+commute_confirm_btn = "삭제"
+commute_cancel_btn = "취소"
+commute_set_input_msg = "등록할 요일과 출퇴근 시간을 입력해 주세요.\n예: 월화수목금 09:00 18:00"
+commute_delete_input_msg = "삭제할 요일을 입력해 주세요.\n예: 월화"
+commute_clear_confirm_msg = "등록된 출퇴근 일정을 모두 삭제할까요?"
+commute_clear_cancelled_msg = "출퇴근 일정 전체 삭제를 취소했습니다."
+commute_input_expired_msg = "입력 시간이 만료되었습니다. /commute에서 다시 시도해 주세요."
+
 commute_set_success_msg = "{count}개 요일의 출퇴근 일정을 등록했습니다."
-commute_set_usage_msg = "명령어 형식을 확인해 주세요.\n예) /commute_set 월화수목금 09:00 18:00"
 commute_delete_success_msg = "{count}개 요일의 출퇴근 일정을 삭제했습니다."
-commute_delete_usage_msg = "삭제할 요일을 입력해 주세요.\n예) /commute_delete 월화"
 commute_clear_success_msg = "등록된 출퇴근 일정을 모두 삭제했습니다."
-commute_clear_usage_msg = "명령어 형식을 확인해 주세요.\n예) /commute_clear"
 commute_delete_missing_msg = "삭제할 출퇴근 일정이 없습니다."
 commute_not_working_msg = "현재 근무 시간이 아닙니다."
 
