@@ -91,6 +91,36 @@ class TestSafeHandlerErrorBoundary:
 
 
 class TestHandlerDelegation:
+    def test_commute_set_delegates_to_hub(self):
+        hub = MagicMock()
+        logger = MagicMock()
+        _, handlers = _capture_handlers(hub, logger)
+
+        msg = make_message("/commute_set 월화 09:00 18:00")
+        handlers["commute_set"](msg)
+
+        hub.commute_set_handler.assert_called_once_with(msg)
+
+    def test_commute_delete_delegates_to_hub(self):
+        hub = MagicMock()
+        logger = MagicMock()
+        _, handlers = _capture_handlers(hub, logger)
+
+        msg = make_message("/commute_delete 월")
+        handlers["commute_delete"](msg)
+
+        hub.commute_delete_handler.assert_called_once_with(msg)
+
+    def test_commute_clear_delegates_to_hub(self):
+        hub = MagicMock()
+        logger = MagicMock()
+        _, handlers = _capture_handlers(hub, logger)
+
+        msg = make_message("/commute_clear")
+        handlers["commute_clear"](msg)
+
+        hub.commute_clear_handler.assert_called_once_with(msg)
+
     def test_search_delegates_to_hub(self):
         hub = MagicMock()
         logger = MagicMock()

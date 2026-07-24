@@ -135,6 +135,7 @@ def find_next_schedule(user_id, current_weekday, current_minute):
 
 def find_active_schedule(user_id, current_weekday, current_minute):
     schedules = get_schedules(user_id)
+    # 자정 이후에도 전날 시작한 야간 근무를 찾기 위해 전날 요일을 계산한다.
     previous_weekday = (current_weekday - 1) % 7
 
     for schedule in schedules:

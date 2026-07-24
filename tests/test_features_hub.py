@@ -3,6 +3,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from modules.commute import get_schedules, save_schedule
 from modules.features_hub import BotFeaturesHub
 from resources import strings
 from tests.conftest import make_message
@@ -107,6 +108,97 @@ class TestCalculatorHandler:
         hub.bot.reply_to.assert_not_called()
 
 
+class TestCommuteSetHandler:
+    def test_saves_schedule_and_replies_success(self, hub):
+        msg = make_message("/commute_set 월화 09:00 18:00", user_id=123)
+
+        hub.commute_set_handler(msg)
+
+        schedules = get_schedules(123)
+        assert [schedule.weekday for schedule in schedules] == [0, 1]
+        hub.bot.reply_to.assert_called_once_with(
+            msg,
+            strings.commute_set_success_msg.format(count=2),
+        )
+
+    def test_replies_usage_when_arguments_are_missing(self, hub):
+        msg = make_message("/commute_set 월 09:00", user_id=123)
+
+        hub.commute_set_handler(msg)
+
+        assert get_schedules(123) == []
+        hub.bot.reply_to.assert_called_once_with(msg, strings.commute_set_usage_msg)
+
+    def test_replies_usage_when_schedule_is_invalid(self, hub):
+        msg = make_message("/commute_set 월엄 09:00 18:00", user_id=123)
+
+        hub.commute_set_handler(msg)
+
+        assert get_schedules(123) == []
+        hub.bot.reply_to.assert_called_once_with(msg, strings.commute_set_usage_msg)
+
+
+class TestCommuteDeleteHandler:
+    def test_deletes_selected_weekdays_and_replies_success(self, hub):
+        save_schedule(123, "월화", "09:00", "18:00")
+        msg = make_message("/commute_delete 월", user_id=123)
+
+        hub.commute_delete_handler(msg)
+
+        assert [schedule.weekday for schedule in get_schedules(123)] == [1]
+        hub.bot.reply_to.assert_called_once_with(
+            msg,
+            strings.commute_delete_success_msg.format(count=1),
+        )
+
+    def test_replies_missing_when_schedule_does_not_exist(self, hub):
+        msg = make_message("/commute_delete 월", user_id=123)
+
+        hub.commute_delete_handler(msg)
+
+        assert get_schedules(123) == []
+        hub.bot.reply_to.assert_called_once_with(msg, strings.commute_delete_missing_msg)
+
+    def test_replies_usage_when_delete_arguments_are_invalid(self, hub):
+        save_schedule(123, "월", "09:00", "18:00")
+        msg = make_message("/commute_delete 월 화", user_id=123)
+
+        hub.commute_delete_handler(msg)
+
+        assert [schedule.weekday for schedule in get_schedules(123)] == [0]
+        hub.bot.reply_to.assert_called_once_with(msg, strings.commute_delete_usage_msg)
+
+
+class TestCommuteClearHandler:
+    def test_clears_user_schedules_and_replies_success(self, hub):
+        save_schedule(123, "월화", "09:00", "18:00")
+        save_schedule(456, "금", "10:00", "19:00")
+        msg = make_message("/commute_clear", user_id=123)
+
+        hub.commute_clear_handler(msg)
+
+        assert get_schedules(123) == []
+        assert len(get_schedules(456)) == 1
+        hub.bot.reply_to.assert_called_once_with(msg, strings.commute_clear_success_msg)
+
+    def test_replies_missing_when_no_schedule_exists(self, hub):
+        msg = make_message("/commute_clear", user_id=123)
+
+        hub.commute_clear_handler(msg)
+
+        assert get_schedules(123) == []
+        hub.bot.reply_to.assert_called_once_with(msg, strings.commute_delete_missing_msg)
+
+    def test_replies_usage_when_clear_has_arguments(self, hub):
+        save_schedule(123, "월", "09:00", "18:00")
+        msg = make_message("/commute_clear 월", user_id=123)
+
+        hub.commute_clear_handler(msg)
+
+        assert [schedule.weekday for schedule in get_schedules(123)] == [0]
+        hub.bot.reply_to.assert_called_once_with(msg, strings.commute_clear_usage_msg)
+
+
 class TestOrdinaryMessage:
     def test_suon_keyword_triggers_temp(self, hub):
         hub.web_manager.provide_suon_v2.return_value = "20.0"
@@ -123,14 +215,52 @@ class TestOrdinaryMessage:
         assert hub.bot.reply_to.call_args[0][1] in all_sentences
 
     def test_commute_start_keyword(self, hub):
-        msg = make_message("출근하기 싫다")
+        save_schedule(123, "월", "09:00", "18:00")
+        hub.get_current_commute_time = MagicMock(return_value=(0, 8 * 60))
+        msg = make_message("출근", user_id=123)
+
         hub.ordinary_message(msg)
-        hub.bot.reply_to.assert_called_once_with(msg, strings.commute_start_detected_msg)
+
+        hub.bot.reply_to.assert_called_once_with(
+            msg,
+            strings.commute_until_start_msg.format(remaining="1시간"),
+        )
+
+    def test_commute_start_keyword_without_schedule(self, hub):
+        hub.get_current_commute_time = MagicMock(return_value=(0, 8 * 60))
+        msg = make_message("출근")
+
+        hub.ordinary_message(msg)
+
+        hub.bot.reply_to.assert_called_once_with(msg, strings.commute_schedule_missing_msg)
 
     def test_commute_end_keyword(self, hub):
-        msg = make_message("퇴근하고 싶다")
+        save_schedule(123, "월", "09:00", "18:00")
+        hub.get_current_commute_time = MagicMock(return_value=(0, 12 * 60))
+        msg = make_message("퇴근", user_id=123)
+
         hub.ordinary_message(msg)
-        hub.bot.reply_to.assert_called_once_with(msg, strings.commute_end_detected_msg)
+
+        hub.bot.reply_to.assert_called_once_with(
+            msg,
+            strings.commute_until_end_msg.format(remaining="6시간"),
+        )
+
+    def test_commute_end_keyword_outside_working_hours(self, hub):
+        save_schedule(123, "월", "09:00", "18:00")
+        hub.get_current_commute_time = MagicMock(return_value=(0, 20 * 60))
+        msg = make_message("퇴근", user_id=123)
+
+        hub.ordinary_message(msg)
+
+        hub.bot.reply_to.assert_called_once_with(msg, strings.commute_not_working_msg)
+
+    def test_commute_end_keyword_without_schedule(self, hub):
+        msg = make_message("퇴근")
+
+        hub.ordinary_message(msg)
+
+        hub.bot.reply_to.assert_called_once_with(msg, strings.commute_schedule_missing_msg)
 
     def test_normal_message_no_action(self, hub):
         msg = make_message("안녕하세요")

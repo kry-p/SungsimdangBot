@@ -9,6 +9,15 @@ from modules import log
 from modules.admin import AdminManager
 from modules.ai.chat import AIChatManager
 from modules.calculator import Calculator
+from modules.commute import (
+    delete_all_schedules,
+    delete_schedules,
+    find_active_schedule,
+    find_next_schedule,
+    format_minutes,
+    get_schedules,
+    save_schedule,
+)
 from modules.laftel import LaftelService
 from modules.random_based import RandomBasedFeatures
 from modules.spotify import SpotifyService
@@ -252,6 +261,121 @@ class BotFeaturesHub:
         text, parse_mode = self.web_manager.fetch_rss(slug, date)
         self.bot.reply_to(message, text, parse_mode=parse_mode)
 
+    def commute_set_handler(self, message):
+        parts = (message.text or "").split()
+
+        if len(parts) != 4:
+            self.bot.reply_to(message, strings.commute_set_usage_msg)
+            return
+
+        _command, weekday_text, start_time, end_time = parts
+
+        try:
+            count = save_schedule(
+                message.from_user.id,
+                weekday_text,
+                start_time,
+                end_time,
+            )
+        except ValueError:
+            self.bot.reply_to(message, strings.commute_set_usage_msg)
+            return
+
+        self.bot.reply_to(
+            message,
+            strings.commute_set_success_msg.format(count=count),
+        )
+
+    def commute_delete_handler(self, message):
+        parts = (message.text or "").split()
+
+        if len(parts) != 2:
+            self.bot.reply_to(message, strings.commute_delete_usage_msg)
+            return
+
+        _command, weekday_text = parts
+
+        try:
+            count = delete_schedules(
+                message.from_user.id,
+                weekday_text,
+            )
+        except ValueError:
+            self.bot.reply_to(message, strings.commute_delete_usage_msg)
+            return
+
+        if count == 0:
+            self.bot.reply_to(message, strings.commute_delete_missing_msg)
+            return
+
+        self.bot.reply_to(
+            message,
+            strings.commute_delete_success_msg.format(count=count),
+        )
+
+    def commute_clear_handler(self, message):
+        parts = (message.text or "").split()
+
+        if len(parts) != 1:
+            self.bot.reply_to(message, strings.commute_clear_usage_msg)
+            return
+
+        count = delete_all_schedules(message.from_user.id)
+
+        if count == 0:
+            self.bot.reply_to(message, strings.commute_delete_missing_msg)
+            return
+
+        self.bot.reply_to(message, strings.commute_clear_success_msg)
+
+    @staticmethod
+    def get_current_commute_time():
+        now = datetime.datetime.now()
+
+        return now.weekday(), now.hour * 60 + now.minute
+
+    def commute_start_keyword_handler(self, message):
+        current_weekday, current_minute = self.get_current_commute_time()
+        _schedule, remaining = find_next_schedule(
+            message.from_user.id,
+            current_weekday,
+            current_minute,
+        )
+
+        if remaining is None:
+            self.bot.reply_to(message, strings.commute_schedule_missing_msg)
+            return
+
+        self.bot.reply_to(
+            message,
+            strings.commute_until_start_msg.format(
+                remaining=format_minutes(remaining),
+            ),
+        )
+
+    def commute_end_keyword_handler(self, message):
+        if not get_schedules(message.from_user.id):
+            self.bot.reply_to(message, strings.commute_schedule_missing_msg)
+            return
+
+        current_weekday, current_minute = self.get_current_commute_time()
+        _schedule, remaining = find_active_schedule(
+            message.from_user.id,
+            current_weekday,
+            current_minute,
+        )
+
+        if remaining is None:
+            self.bot.reply_to(message, strings.commute_not_working_msg)
+            return
+
+        self.bot.reply_to(
+            message,
+            strings.commute_until_end_msg.format(
+                remaining=format_minutes(remaining),
+            ),
+        )
+
     # Clear chat
     def clear_chat_handler(self, message):
         self.ai_chat.clear_session(message.chat.id, message.from_user.id)
@@ -266,7 +390,7 @@ class BotFeaturesHub:
             self.bot.reply_to(message, self.random_based_features.magic_conch())
 
         if any(kw in message.text for kw in strings.commute_start_keywords):
-            self.bot.reply_to(message, strings.commute_start_detected_msg)
+            self.commute_start_keyword_handler(message)
 
         if any(kw in message.text for kw in strings.commute_end_keywords):
-            self.bot.reply_to(message, strings.commute_end_detected_msg)
+            self.commute_end_keyword_handler(message)

@@ -31,6 +31,9 @@ bot_command_descriptions = {
     "laftel": "라프텔 애니 정보",
     "spotify": "Spotify 노래 검색",
     "bfrss": "해외 rss 번역수신",
+    "commute_set": "출퇴근 일정 등록",
+    "commute_delete": "출퇴근 일정 일부 삭제",
+    "commute_clear": "출퇴근 일정 전체 삭제",
 }
 
 # Guideline message
@@ -97,11 +100,18 @@ commute_start_keywords = ("출근",)
 commute_end_keywords = ("퇴근",)
 
 # commute messages
-commute_start_detected_msg = "출근 키워드를 감지했습니다."
-commute_end_detected_msg = "퇴근 키워드를 감지했습니다."
+commute_set_success_msg = "{count}개 요일의 출퇴근 일정을 등록했습니다."
+commute_set_usage_msg = "명령어 형식을 확인해 주세요.\n예) /commute_set 월화수목금 09:00 18:00"
+commute_delete_success_msg = "{count}개 요일의 출퇴근 일정을 삭제했습니다."
+commute_delete_usage_msg = "삭제할 요일을 입력해 주세요.\n예) /commute_delete 월화"
+commute_clear_success_msg = "등록된 출퇴근 일정을 모두 삭제했습니다."
+commute_clear_usage_msg = "명령어 형식을 확인해 주세요.\n예) /commute_clear"
+commute_delete_missing_msg = "삭제할 출퇴근 일정이 없습니다."
+commute_not_working_msg = "현재 근무 시간이 아닙니다."
+
 commute_until_start_msg = "다음 출근까지 {remaining} 남았습니다."
 commute_until_end_msg = "퇴근까지 {remaining} 남았습니다."
-commute_schedule_missing_msg = "등록된 출퇴근 일정이 없습니다."
+commute_schedule_missing_msg = "등록된 출퇴근 일정이 없습니다. 쉬었음 청년!"
 
 # suon (river temperature) message
 suon_maintenance_status = "점검중"

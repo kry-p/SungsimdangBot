@@ -161,6 +161,22 @@ def register_handlers(bot, hub, logger):
     def handle_spotify(message):
         hub.spotify_search_handler(message)
 
+    # Commute
+    @bot.message_handler(commands=["commute_set"])
+    @safe_handler
+    def handle_commute_set(message):
+        hub.commute_set_handler(message)
+
+    @bot.message_handler(commands=["commute_delete"])
+    @safe_handler
+    def handle_commute_delete(message):
+        hub.commute_delete_handler(message)
+
+    @bot.message_handler(commands=["commute_clear"])
+    @safe_handler
+    def handle_commute_clear(message):
+        hub.commute_clear_handler(message)
+
     # Admin commands
     @bot.message_handler(commands=["allow_chat"])
     @safe_handler
