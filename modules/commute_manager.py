@@ -27,6 +27,12 @@ class CommuteManager:
                 self._request_input(call, value)
             elif value == "clear":
                 self._show_clear_confirmation(call)
+            elif value == "cancel":
+                self.bot.edit_message_text(
+                    strings.commute_menu_cancelled_msg,
+                    call.message.chat.id,
+                    call.message.message_id,
+                )
             return
 
         if action == "commute_clear":
@@ -212,6 +218,10 @@ class CommuteManager:
             telebot.types.InlineKeyboardButton(
                 strings.commute_clear_btn,
                 callback_data="commute:clear",
+            ),
+            telebot.types.InlineKeyboardButton(
+                strings.commute_close_btn,
+                callback_data="commute:cancel",
             ),
         )
 

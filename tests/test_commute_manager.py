@@ -28,6 +28,7 @@ class TestCommuteMenu:
             "commute:set",
             "commute:delete",
             "commute:clear",
+            "commute:cancel",
         ]
 
     def test_shows_user_schedules_in_readable_format(self):
@@ -158,6 +159,19 @@ class TestCommuteCallbacks:
         assert manager._build_schedule_text(123) == "월 09:00~18:00"
         bot.edit_message_text.assert_called_once_with(
             strings.commute_clear_cancelled_msg,
+            call.message.chat.id,
+            call.message.message_id,
+        )
+
+    def test_close_button_closes_menu(self):
+        bot = MagicMock()
+        manager = CommuteManager(bot)
+        call = self.make_callback("commute:cancel")
+
+        manager.handle_commute_callback(call)
+
+        bot.edit_message_text.assert_called_once_with(
+            strings.commute_menu_cancelled_msg,
             call.message.chat.id,
             call.message.message_id,
         )
