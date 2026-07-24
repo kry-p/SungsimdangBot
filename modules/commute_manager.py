@@ -5,7 +5,6 @@ import telebot
 from modules.commute import delete_all_schedules, delete_schedules, get_schedules, save_schedule
 from resources import strings
 
-WEEKDAY_NAMES = ("월", "화", "수", "목", "금", "토", "일")
 CALLBACK_PREFIXES = frozenset({"commute", "commute_clear"})
 INPUT_TIMEOUT = 300
 
@@ -188,7 +187,7 @@ class CommuteManager:
 
         return "\n".join(
             strings.commute_schedule_item_msg.format(
-                weekday=WEEKDAY_NAMES[schedule.weekday],
+                weekday=strings.commute_weekday_names[schedule.weekday],
                 start_time=CommuteManager._format_time(schedule.start_minute),
                 end_time=CommuteManager._format_time(schedule.end_minute),
             )

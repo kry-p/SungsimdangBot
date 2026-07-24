@@ -39,7 +39,7 @@ class TestParseWeekdays:
 
     def test_invalid_weekday(self):
         with pytest.raises(ValueError):
-            parse_weekdays("월휴")
+            parse_weekdays("월엄")
 
 
 class TestSaveSchedule:

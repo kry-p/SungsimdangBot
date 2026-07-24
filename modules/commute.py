@@ -1,14 +1,7 @@
 from modules.database import CommuteSchedule
+from resources import strings
 
-WEEKDAY_MAP = {
-    "월": 0,
-    "화": 1,
-    "수": 2,
-    "목": 3,
-    "금": 4,
-    "토": 5,
-    "일": 6,
-}
+WEEKDAY_MAP = {name: index for index, name in enumerate(strings.commute_weekday_names)}
 
 
 def parse_time(value):
@@ -95,12 +88,15 @@ def format_minutes(minutes):
     hours, remaining_minutes = divmod(minutes, 60)
 
     if hours and remaining_minutes:
-        return f"{hours}시간 {remaining_minutes}분"
+        return strings.commute_duration_hours_minutes.format(
+            hours=hours,
+            minutes=remaining_minutes,
+        )
 
     if hours:
-        return f"{hours}시간"
+        return strings.commute_duration_hours.format(hours=hours)
 
-    return f"{remaining_minutes}분"
+    return strings.commute_duration_minutes.format(minutes=remaining_minutes)
 
 
 def get_schedules(user_id):

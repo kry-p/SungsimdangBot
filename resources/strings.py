@@ -98,6 +98,7 @@ commute_start_keywords = ("출근",)
 commute_end_keywords = ("퇴근",)
 
 # commute messages
+commute_weekday_names = ("월", "화", "수", "목", "금", "토", "일")
 commute_menu_msg = "출퇴근 일정 관리\n\n{schedule}"
 commute_schedule_empty_msg = "등록된 일정이 없습니다."
 commute_schedule_item_msg = "{weekday} {start_time}~{end_time}"
@@ -120,6 +121,9 @@ commute_clear_success_msg = "등록된 출퇴근 일정을 모두 삭제했습�
 commute_delete_missing_msg = "삭제할 출퇴근 일정이 없습니다."
 commute_not_working_msg = "현재 근무 시간이 아닙니다."
 
+commute_duration_hours_minutes = "{hours}시간 {minutes}분"
+commute_duration_hours = "{hours}시간"
+commute_duration_minutes = "{minutes}분"
 commute_until_start_msg = "다음 출근까지 {remaining} 남았습니다."
 commute_until_end_msg = "퇴근까지 {remaining} 남았습니다."
 commute_schedule_missing_msg = "등록된 출퇴근 일정이 없습니다. 쉬었음 청년!"

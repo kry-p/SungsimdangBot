@@ -52,6 +52,8 @@ modules/
       openai.py              # OpenAI provider
   api_models.py              # 외부 API pydantic 응답 모델
   calculator.py              # 수식 계산기
+  commute.py                 # 출퇴근 일정 저장과 남은 시간 계산
+  commute_manager.py         # 출퇴근 일정 관리 UI와 callback 처리
   database.py                # peewee ORM 모델과 SQLite 초기화
   laftel.py                  # Laftel 편성표, 랭킹, 검색
   spotify.py                 # Spotify 곡 검색과 상세 카드
