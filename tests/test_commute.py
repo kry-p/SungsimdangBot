@@ -9,7 +9,7 @@ from modules.commute import (
     get_schedules,
     minutes_until_end,
     minutes_until_start,
-    parse_time,
+    parse_time_to_minutes,
     parse_weekdays,
     save_schedule,
 )
@@ -18,16 +18,16 @@ from modules.database import CommuteSchedule
 
 class TestParseTime:
     def test_valid_time(self):
-        assert parse_time("09:00") == 540
-        assert parse_time("18:30") == 1110
+        assert parse_time_to_minutes("09:00") == 540
+        assert parse_time_to_minutes("18:30") == 1110
 
     def test_invalid_hour(self):
         with pytest.raises(ValueError):
-            parse_time("24:00")
+            parse_time_to_minutes("24:00")
 
     def test_invalid_minute(self):
         with pytest.raises(ValueError):
-            parse_time("09:60")
+            parse_time_to_minutes("09:60")
 
 
 class TestParseWeekdays:
@@ -50,10 +50,10 @@ class TestSaveSchedule:
         tuesday = CommuteSchedule.get((CommuteSchedule.user_id == 123) & (CommuteSchedule.weekday == 1))
 
         assert saved_count == 2
-        assert monday.start_minute == 540
-        assert monday.end_minute == 1080
-        assert tuesday.start_minute == 540
-        assert tuesday.end_minute == 1080
+        assert monday.start_time_minutes == 540
+        assert monday.end_time_minutes == 1080
+        assert tuesday.start_time_minutes == 540
+        assert tuesday.end_time_minutes == 1080
 
     def test_replace_existing_schedule(self):
         save_schedule(123, "월", "09:00", "18:00")
@@ -61,8 +61,8 @@ class TestSaveSchedule:
 
         schedule = CommuteSchedule.get((CommuteSchedule.user_id == 123) & (CommuteSchedule.weekday == 0))
 
-        assert schedule.start_minute == 600
-        assert schedule.end_minute == 1140
+        assert schedule.start_time_minutes == 600
+        assert schedule.end_time_minutes == 1140
         assert CommuteSchedule.select().count() == 1
 
     def test_reject_same_start_and_end_time(self):
@@ -140,121 +140,121 @@ class TestFindNextSchedule:
         save_schedule(123, "월", "09:00", "18:00")
         save_schedule(123, "수", "08:00", "17:00")
 
-        schedule, remaining = find_next_schedule(
+        schedule, remaining_minutes = find_next_schedule(
             user_id=123,
             current_weekday=4,
-            current_minute=20 * 60,
+            current_time_minutes=20 * 60,
         )
 
         assert schedule.weekday == 0
-        assert schedule.start_minute == 540
-        assert remaining == 3660
+        assert schedule.start_time_minutes == 540
+        assert remaining_minutes == 3660
 
 
 class TestFindActiveSchedule:
     def test_finds_active_day_shift(self):
         save_schedule(123, "수", "09:00", "18:00")
 
-        schedule, remaining = find_active_schedule(
+        schedule, remaining_minutes = find_active_schedule(
             user_id=123,
             current_weekday=2,
-            current_minute=15 * 60,
+            current_time_minutes=15 * 60,
         )
 
         assert schedule.weekday == 2
-        assert remaining == 180
+        assert remaining_minutes == 180
 
     def test_returns_none_outside_day_shift(self):
         save_schedule(123, "수", "09:00", "18:00")
 
-        schedule, remaining = find_active_schedule(
+        schedule, remaining_minutes = find_active_schedule(
             user_id=123,
             current_weekday=2,
-            current_minute=20 * 60,
+            current_time_minutes=20 * 60,
         )
 
         assert schedule is None
-        assert remaining is None
+        assert remaining_minutes is None
 
     def test_finds_night_shift_before_midnight(self):
         save_schedule(123, "월", "22:00", "06:00")
 
-        schedule, remaining = find_active_schedule(
+        schedule, remaining_minutes = find_active_schedule(
             user_id=123,
             current_weekday=0,
-            current_minute=23 * 60,
+            current_time_minutes=23 * 60,
         )
 
         assert schedule.weekday == 0
-        assert remaining == 420
+        assert remaining_minutes == 420
 
     def test_finds_previous_day_night_shift_after_midnight(self):
         save_schedule(123, "월", "22:00", "06:00")
 
-        schedule, remaining = find_active_schedule(
+        schedule, remaining_minutes = find_active_schedule(
             user_id=123,
             current_weekday=1,
-            current_minute=2 * 60,
+            current_time_minutes=2 * 60,
         )
 
         assert schedule.weekday == 0
-        assert remaining == 240
+        assert remaining_minutes == 240
 
     def test_does_not_start_todays_night_shift_early(self):
         save_schedule(123, "화", "22:00", "06:00")
 
-        schedule, remaining = find_active_schedule(
+        schedule, remaining_minutes = find_active_schedule(
             user_id=123,
             current_weekday=1,
-            current_minute=2 * 60,
+            current_time_minutes=2 * 60,
         )
 
         assert schedule is None
-        assert remaining is None
+        assert remaining_minutes is None
 
 
 class TestMinutesUntilEnd:
     def test_day_shift(self):
         result = minutes_until_end(
-            current_minute=15 * 60,
-            start_minute=9 * 60,
-            end_minute=18 * 60,
+            current_time_minutes=15 * 60,
+            start_time_minutes=9 * 60,
+            end_time_minutes=18 * 60,
         )
 
         assert result == 180
 
     def test_outside_day_shift(self):
         result = minutes_until_end(
-            current_minute=20 * 60,
-            start_minute=9 * 60,
-            end_minute=18 * 60,
+            current_time_minutes=20 * 60,
+            start_time_minutes=9 * 60,
+            end_time_minutes=18 * 60,
         )
 
         assert result is None
 
     def test_night_shift_before_midnight(self):
         result = minutes_until_end(
-            current_minute=23 * 60,
-            start_minute=22 * 60,
-            end_minute=6 * 60,
+            current_time_minutes=23 * 60,
+            start_time_minutes=22 * 60,
+            end_time_minutes=6 * 60,
         )
 
         assert result == 420
 
     def test_night_shift_after_midnight(self):
         result = minutes_until_end(
-            current_minute=2 * 60,
-            start_minute=22 * 60,
-            end_minute=6 * 60,
+            current_time_minutes=2 * 60,
+            start_time_minutes=22 * 60,
+            end_time_minutes=6 * 60,
         )
 
         assert result == 240
 
     def test_outside_night_shift(self):
         result = minutes_until_end(
-            current_minute=12 * 60,
-            start_minute=22 * 60,
-            end_minute=6 * 60,
+            current_time_minutes=12 * 60,
+            start_time_minutes=22 * 60,
+            end_time_minutes=6 * 60,
         )
 
         assert result is None
@@ -264,9 +264,9 @@ class TestMinutesUntilStart:
     def test_same_day(self):
         result = minutes_until_start(
             current_weekday=0,
-            current_minute=8 * 60,
+            current_time_minutes=8 * 60,
             target_weekday=0,
-            start_minute=9 * 60,
+            start_time_minutes=9 * 60,
         )
 
         assert result == 60
@@ -274,9 +274,9 @@ class TestMinutesUntilStart:
     def test_across_weekend(self):
         result = minutes_until_start(
             current_weekday=4,
-            current_minute=20 * 60,
+            current_time_minutes=20 * 60,
             target_weekday=0,
-            start_minute=9 * 60,
+            start_time_minutes=9 * 60,
         )
 
         assert result == 3660

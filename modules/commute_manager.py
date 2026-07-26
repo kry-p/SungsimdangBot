@@ -2,11 +2,11 @@ import time
 
 import telebot
 
-from modules.commute import delete_all_schedules, delete_schedules, get_schedules, save_schedule
+from modules.commute import MINUTES_PER_HOUR, delete_all_schedules, delete_schedules, get_schedules, save_schedule
 from resources import strings
 
 CALLBACK_PREFIXES = frozenset({"commute", "commute_clear"})
-INPUT_TIMEOUT = 300
+INPUT_TIMEOUT_SECONDS = 300
 
 
 class CommuteManager:
@@ -69,7 +69,7 @@ class CommuteManager:
 
         del self._pending_inputs[reply_to.message_id]
 
-        if time.time() - created_at > INPUT_TIMEOUT:
+        if time.time() - created_at > INPUT_TIMEOUT_SECONDS:
             self.bot.reply_to(message, strings.commute_input_expired_msg)
             return
 
@@ -104,13 +104,13 @@ class CommuteManager:
             self.bot.reply_to(message, strings.commute_set_input_msg)
             return
 
-        weekday_text, start_time, end_time = parts
+        weekday_text, start_time_text, end_time_text = parts
         try:
             count = save_schedule(
                 message.from_user.id,
                 weekday_text,
-                start_time,
-                end_time,
+                start_time_text,
+                end_time_text,
             )
         except ValueError:
             self.bot.reply_to(message, strings.commute_set_input_msg)
@@ -175,7 +175,7 @@ class CommuteManager:
         self._pending_inputs = {
             message_id: pending
             for message_id, pending in self._pending_inputs.items()
-            if now - pending[3] <= INPUT_TIMEOUT
+            if now - pending[3] <= INPUT_TIMEOUT_SECONDS
         }
 
     @staticmethod
@@ -188,15 +188,15 @@ class CommuteManager:
         return "\n".join(
             strings.commute_schedule_item_msg.format(
                 weekday=strings.commute_weekday_names[schedule.weekday],
-                start_time=CommuteManager._format_time(schedule.start_minute),
-                end_time=CommuteManager._format_time(schedule.end_minute),
+                start_time=CommuteManager._format_time_from_minutes(schedule.start_time_minutes),
+                end_time=CommuteManager._format_time_from_minutes(schedule.end_time_minutes),
             )
             for schedule in schedules
         )
 
     @staticmethod
-    def _format_time(total_minutes):
-        hour, minute = divmod(total_minutes, 60)
+    def _format_time_from_minutes(total_minutes):
+        hour, minute = divmod(total_minutes, MINUTES_PER_HOUR)
 
         return f"{hour:02d}:{minute:02d}"
 

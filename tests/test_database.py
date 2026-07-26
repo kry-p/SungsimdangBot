@@ -86,27 +86,27 @@ class TestCommuteScheduleModel:
         CommuteSchedule.create(
             user_id=123,
             weekday=0,
-            start_minute=540,
-            end_minute=1080,
+            start_time_minutes=540,
+            end_time_minutes=1080,
         )
 
         row = CommuteSchedule.get((CommuteSchedule.user_id == 123) & (CommuteSchedule.weekday == 0))
 
-        assert row.start_minute == 540
-        assert row.end_minute == 1080
+        assert row.start_time_minutes == 540
+        assert row.end_time_minutes == 1080
 
     def test_unique_user_and_weekday(self):
         CommuteSchedule.create(
             user_id=123,
             weekday=0,
-            start_minute=540,
-            end_minute=1080,
+            start_time_minutes=540,
+            end_time_minutes=1080,
         )
 
         with pytest.raises(IntegrityError):
             CommuteSchedule.create(
                 user_id=123,
                 weekday=0,
-                start_minute=600,
-                end_minute=1140,
+                start_time_minutes=600,
+                end_time_minutes=1140,
             )

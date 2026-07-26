@@ -59,8 +59,8 @@ class RouletteGame(BaseModel):
 class CommuteSchedule(BaseModel):
     user_id = IntegerField()
     weekday = IntegerField()
-    start_minute = IntegerField()
-    end_minute = IntegerField()
+    start_time_minutes = IntegerField()
+    end_time_minutes = IntegerField()
 
     class Meta:
         table_name = "commute_schedules"

@@ -1,21 +1,27 @@
 from modules.database import CommuteSchedule
 from resources import strings
 
+MINUTES_PER_HOUR = 60
+HOURS_PER_DAY = 24
+DAYS_PER_WEEK = 7
+MINUTES_PER_DAY = HOURS_PER_DAY * MINUTES_PER_HOUR
+MINUTES_PER_WEEK = DAYS_PER_WEEK * MINUTES_PER_DAY
+
 WEEKDAY_MAP = {name: index for index, name in enumerate(strings.commute_weekday_names)}
 
 
-def parse_time(value):
-    hour_text, minute_text = value.split(":")
+def parse_time_to_minutes(time_text):
+    hour_text, minute_text = time_text.split(":")
     hour = int(hour_text)
     minute = int(minute_text)
 
-    if not 0 <= hour <= 23:
+    if not 0 <= hour < HOURS_PER_DAY:
         raise ValueError("hour must be between 0 and 23")
 
-    if not 0 <= minute <= 59:
+    if not 0 <= minute < MINUTES_PER_HOUR:
         raise ValueError("minute must be between 0 and 59")
 
-    return hour * 60 + minute
+    return hour * MINUTES_PER_HOUR + minute
 
 
 def parse_weekdays(value):
@@ -31,52 +37,52 @@ def parse_weekdays(value):
             weekdays.append(weekday)
 
     if not weekdays:
-        raise ValueError("weekday must not be empty")
+        raise ValueError("weekday cannot be empty")
 
     return weekdays
 
 
-def save_schedule(user_id, weekday_text, start_time, end_time):
+def save_schedule(user_id, weekday_text, start_time_text, end_time_text):
     weekdays = parse_weekdays(weekday_text)
-    start_minute = parse_time(start_time)
-    end_minute = parse_time(end_time)
+    start_time_minutes = parse_time_to_minutes(start_time_text)
+    end_time_minutes = parse_time_to_minutes(end_time_text)
 
-    if start_minute == end_minute:
+    if start_time_minutes == end_time_minutes:
         raise ValueError("start and end time must be different")
 
     for weekday in weekdays:
         CommuteSchedule.replace(
             user_id=user_id,
             weekday=weekday,
-            start_minute=start_minute,
-            end_minute=end_minute,
+            start_time_minutes=start_time_minutes,
+            end_time_minutes=end_time_minutes,
         ).execute()
 
     return len(weekdays)
 
 
-def minutes_until_end(current_minute, start_minute, end_minute):
-    if start_minute < end_minute:
-        if start_minute <= current_minute < end_minute:
-            return end_minute - current_minute
+def minutes_until_end(current_time_minutes, start_time_minutes, end_time_minutes):
+    if start_time_minutes < end_time_minutes:
+        if start_time_minutes <= current_time_minutes < end_time_minutes:
+            return end_time_minutes - current_time_minutes
 
         return None
 
-    if current_minute >= start_minute:
-        return 24 * 60 - current_minute + end_minute
+    if current_time_minutes >= start_time_minutes:
+        return MINUTES_PER_DAY - current_time_minutes + end_time_minutes
 
-    if current_minute < end_minute:
-        return end_minute - current_minute
+    if current_time_minutes < end_time_minutes:
+        return end_time_minutes - current_time_minutes
 
     return None
 
 
-def minutes_until_start(current_weekday, current_minute, target_weekday, start_minute):
-    days_until = (target_weekday - current_weekday) % 7
-    minutes = days_until * 24 * 60 + start_minute - current_minute
+def minutes_until_start(current_weekday, current_time_minutes, target_weekday, start_time_minutes):
+    days_until = (target_weekday - current_weekday) % DAYS_PER_WEEK
+    minutes = days_until * MINUTES_PER_DAY + start_time_minutes - current_time_minutes
 
     if minutes <= 0:
-        minutes += 7 * 24 * 60
+        minutes += MINUTES_PER_WEEK
 
     return minutes
 
@@ -85,7 +91,7 @@ def format_minutes(minutes):
     if minutes < 0:
         raise ValueError("minutes must not be negative")
 
-    hours, remaining_minutes = divmod(minutes, 60)
+    hours, remaining_minutes = divmod(minutes, MINUTES_PER_HOUR)
 
     if hours and remaining_minutes:
         return strings.commute_duration_hours_minutes.format(
@@ -105,7 +111,7 @@ def get_schedules(user_id):
     return list(query)
 
 
-def find_next_schedule(user_id, current_weekday, current_minute):
+def find_next_schedule(user_id, current_weekday, current_time_minutes):
     schedules = get_schedules(user_id)
 
     if not schedules:
@@ -115,52 +121,53 @@ def find_next_schedule(user_id, current_weekday, current_minute):
     shortest_minutes = None
 
     for schedule in schedules:
-        remaining = minutes_until_start(
+        remaining_minutes = minutes_until_start(
             current_weekday,
-            current_minute,
+            current_time_minutes,
             schedule.weekday,
-            schedule.start_minute,
+            schedule.start_time_minutes,
         )
 
-        if shortest_minutes is None or remaining < shortest_minutes:
+        if shortest_minutes is None or remaining_minutes < shortest_minutes:
             next_schedule = schedule
-            shortest_minutes = remaining
+            shortest_minutes = remaining_minutes
 
     return next_schedule, shortest_minutes
 
 
-def find_active_schedule(user_id, current_weekday, current_minute):
+def find_active_schedule(user_id, current_weekday, current_time_minutes):
     schedules = get_schedules(user_id)
     # 자정 이후에도 전날 시작한 야간 근무를 찾기 위해 전날 요일을 계산한다.
-    previous_weekday = (current_weekday - 1) % 7
+    previous_weekday = (current_weekday - 1) % DAYS_PER_WEEK
 
     for schedule in schedules:
+        starts_today = schedule.weekday == current_weekday
+        started_previous_day = schedule.weekday == previous_weekday
+        is_day_shift = schedule.start_time_minutes < schedule.end_time_minutes
+        is_overnight_shift = schedule.start_time_minutes > schedule.end_time_minutes
+
         is_today_day_shift = (
-            schedule.weekday == current_weekday
-            and schedule.start_minute < schedule.end_minute
-            and schedule.start_minute <= current_minute < schedule.end_minute
+            starts_today
+            and is_day_shift
+            and schedule.start_time_minutes <= current_time_minutes < schedule.end_time_minutes
         )
 
         is_today_night_shift = (
-            schedule.weekday == current_weekday
-            and schedule.start_minute > schedule.end_minute
-            and current_minute >= schedule.start_minute
+            starts_today and is_overnight_shift and current_time_minutes >= schedule.start_time_minutes
         )
 
         is_previous_night_shift = (
-            schedule.weekday == previous_weekday
-            and schedule.start_minute > schedule.end_minute
-            and current_minute < schedule.end_minute
+            started_previous_day and is_overnight_shift and current_time_minutes < schedule.end_time_minutes
         )
 
         if is_today_day_shift or is_today_night_shift or is_previous_night_shift:
-            remaining = minutes_until_end(
-                current_minute,
-                schedule.start_minute,
-                schedule.end_minute,
+            remaining_minutes = minutes_until_end(
+                current_time_minutes,
+                schedule.start_time_minutes,
+                schedule.end_time_minutes,
             )
 
-            return schedule, remaining
+            return schedule, remaining_minutes
 
     return None, None
 
