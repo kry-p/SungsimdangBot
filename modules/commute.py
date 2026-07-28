@@ -1,4 +1,4 @@
-from modules.database import CommuteSchedule
+from modules.database import CommuteSchedule, db
 from resources import strings
 
 MINUTES_PER_HOUR = 60
@@ -50,13 +50,14 @@ def save_schedule(user_id, weekday_text, start_time_text, end_time_text):
     if start_time_minutes == end_time_minutes:
         raise ValueError("start and end time must be different")
 
-    for weekday in weekdays:
-        CommuteSchedule.replace(
-            user_id=user_id,
-            weekday=weekday,
-            start_time_minutes=start_time_minutes,
-            end_time_minutes=end_time_minutes,
-        ).execute()
+    with db.atomic():
+        for weekday in weekdays:
+            CommuteSchedule.replace(
+                user_id=user_id,
+                weekday=weekday,
+                start_time_minutes=start_time_minutes,
+                end_time_minutes=end_time_minutes,
+            ).execute()
 
     return len(weekdays)
 
