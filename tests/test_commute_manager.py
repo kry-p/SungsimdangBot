@@ -190,3 +190,63 @@ class TestCommuteCallbacks:
 
         assert manager._build_schedule_text(456) == strings.commute_schedule_empty_msg
         assert 99 in manager._pending_inputs
+
+
+class TestCommuteKeywords:
+    def test_start_keyword(self):
+        save_schedule(123, "월", "09:00", "18:00")
+        bot = MagicMock()
+        manager = CommuteManager(bot)
+        manager.get_current_commute_time = MagicMock(return_value=(0, 8 * 60))
+        message = make_message("출근", user_id=123)
+
+        manager.handle_start_keyword(message)
+
+        bot.reply_to.assert_called_once_with(
+            message,
+            strings.commute_until_start_msg.format(remaining="1시간"),
+        )
+
+    def test_start_keyword_without_schedule(self):
+        bot = MagicMock()
+        manager = CommuteManager(bot)
+        manager.get_current_commute_time = MagicMock(return_value=(0, 8 * 60))
+        message = make_message("출근")
+
+        manager.handle_start_keyword(message)
+
+        bot.reply_to.assert_called_once_with(message, strings.commute_schedule_missing_msg)
+
+    def test_end_keyword(self):
+        save_schedule(123, "월", "09:00", "18:00")
+        bot = MagicMock()
+        manager = CommuteManager(bot)
+        manager.get_current_commute_time = MagicMock(return_value=(0, 12 * 60))
+        message = make_message("퇴근", user_id=123)
+
+        manager.handle_end_keyword(message)
+
+        bot.reply_to.assert_called_once_with(
+            message,
+            strings.commute_until_end_msg.format(remaining="6시간"),
+        )
+
+    def test_end_keyword_outside_working_hours(self):
+        save_schedule(123, "월", "09:00", "18:00")
+        bot = MagicMock()
+        manager = CommuteManager(bot)
+        manager.get_current_commute_time = MagicMock(return_value=(0, 20 * 60))
+        message = make_message("퇴근", user_id=123)
+
+        manager.handle_end_keyword(message)
+
+        bot.reply_to.assert_called_once_with(message, strings.commute_not_working_msg)
+
+    def test_end_keyword_without_schedule(self):
+        bot = MagicMock()
+        manager = CommuteManager(bot)
+        message = make_message("퇴근")
+
+        manager.handle_end_keyword(message)
+
+        bot.reply_to.assert_called_once_with(message, strings.commute_schedule_missing_msg)

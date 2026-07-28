@@ -3,7 +3,6 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from modules.commute import save_schedule
 from modules.features_hub import BotFeaturesHub
 from resources import strings
 from tests.conftest import make_message
@@ -150,52 +149,20 @@ class TestOrdinaryMessage:
         assert hub.bot.reply_to.call_args[0][1] in all_sentences
 
     def test_commute_start_keyword(self, hub):
-        save_schedule(123, "월", "09:00", "18:00")
-        hub.get_current_commute_time = MagicMock(return_value=(0, 8 * 60))
-        msg = make_message("출근", user_id=123)
-
-        hub.ordinary_message(msg)
-
-        hub.bot.reply_to.assert_called_once_with(
-            msg,
-            strings.commute_until_start_msg.format(remaining="1시간"),
-        )
-
-    def test_commute_start_keyword_without_schedule(self, hub):
-        hub.get_current_commute_time = MagicMock(return_value=(0, 8 * 60))
+        hub.commute.handle_start_keyword = MagicMock()
         msg = make_message("출근")
 
         hub.ordinary_message(msg)
 
-        hub.bot.reply_to.assert_called_once_with(msg, strings.commute_schedule_missing_msg)
+        hub.commute.handle_start_keyword.assert_called_once_with(msg)
 
     def test_commute_end_keyword(self, hub):
-        save_schedule(123, "월", "09:00", "18:00")
-        hub.get_current_commute_time = MagicMock(return_value=(0, 12 * 60))
-        msg = make_message("퇴근", user_id=123)
-
-        hub.ordinary_message(msg)
-
-        hub.bot.reply_to.assert_called_once_with(
-            msg,
-            strings.commute_until_end_msg.format(remaining="6시간"),
-        )
-
-    def test_commute_end_keyword_outside_working_hours(self, hub):
-        save_schedule(123, "월", "09:00", "18:00")
-        hub.get_current_commute_time = MagicMock(return_value=(0, 20 * 60))
-        msg = make_message("퇴근", user_id=123)
-
-        hub.ordinary_message(msg)
-
-        hub.bot.reply_to.assert_called_once_with(msg, strings.commute_not_working_msg)
-
-    def test_commute_end_keyword_without_schedule(self, hub):
+        hub.commute.handle_end_keyword = MagicMock()
         msg = make_message("퇴근")
 
         hub.ordinary_message(msg)
 
-        hub.bot.reply_to.assert_called_once_with(msg, strings.commute_schedule_missing_msg)
+        hub.commute.handle_end_keyword.assert_called_once_with(msg)
 
     def test_normal_message_no_action(self, hub):
         msg = make_message("안녕하세요")

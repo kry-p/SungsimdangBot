@@ -9,13 +9,6 @@ from modules import log
 from modules.admin import AdminManager
 from modules.ai.chat import AIChatManager
 from modules.calculator import Calculator
-from modules.commute import (
-    MINUTES_PER_HOUR,
-    find_active_schedule,
-    find_next_schedule,
-    format_minutes,
-    get_schedules,
-)
 from modules.commute_manager import CommuteManager
 from modules.laftel import LaftelService
 from modules.random_based import RandomBasedFeatures
@@ -274,53 +267,11 @@ class BotFeaturesHub:
         text, parse_mode = self.web_manager.fetch_rss(slug, date)
         self.bot.reply_to(message, text, parse_mode=parse_mode)
 
-    @staticmethod
-    def get_current_commute_time():
-        now = datetime.datetime.now()
-
-        return now.weekday(), now.hour * MINUTES_PER_HOUR + now.minute
-
     def commute_start_keyword_handler(self, message):
-        current_weekday, current_time_minutes = self.get_current_commute_time()
-        _schedule, remaining_minutes = find_next_schedule(
-            message.from_user.id,
-            current_weekday,
-            current_time_minutes,
-        )
-
-        if remaining_minutes is None:
-            self.bot.reply_to(message, strings.commute_schedule_missing_msg)
-            return
-
-        self.bot.reply_to(
-            message,
-            strings.commute_until_start_msg.format(
-                remaining=format_minutes(remaining_minutes),
-            ),
-        )
+        self.commute.handle_start_keyword(message)
 
     def commute_end_keyword_handler(self, message):
-        if not get_schedules(message.from_user.id):
-            self.bot.reply_to(message, strings.commute_schedule_missing_msg)
-            return
-
-        current_weekday, current_time_minutes = self.get_current_commute_time()
-        _schedule, remaining_minutes = find_active_schedule(
-            message.from_user.id,
-            current_weekday,
-            current_time_minutes,
-        )
-
-        if remaining_minutes is None:
-            self.bot.reply_to(message, strings.commute_not_working_msg)
-            return
-
-        self.bot.reply_to(
-            message,
-            strings.commute_until_end_msg.format(
-                remaining=format_minutes(remaining_minutes),
-            ),
-        )
+        self.commute.handle_end_keyword(message)
 
     # Clear chat
     def clear_chat_handler(self, message):

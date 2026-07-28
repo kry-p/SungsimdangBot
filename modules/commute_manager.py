@@ -1,8 +1,18 @@
+import datetime
 import time
 
 import telebot
 
-from modules.commute import MINUTES_PER_HOUR, delete_all_schedules, delete_schedules, get_schedules, save_schedule
+from modules.commute import (
+    MINUTES_PER_HOUR,
+    delete_all_schedules,
+    delete_schedules,
+    find_active_schedule,
+    find_next_schedule,
+    format_minutes,
+    get_schedules,
+    save_schedule,
+)
 from resources import strings
 
 CALLBACK_PREFIXES = frozenset({"commute", "commute_clear"})
@@ -52,6 +62,54 @@ class CommuteManager:
             message,
             menu_text,
             reply_markup=self._build_menu_keyboard(),
+        )
+
+    @staticmethod
+    def get_current_commute_time():
+        now = datetime.datetime.now()
+
+        return now.weekday(), now.hour * MINUTES_PER_HOUR + now.minute
+
+    def handle_start_keyword(self, message):
+        current_weekday, current_time_minutes = self.get_current_commute_time()
+        _schedule, remaining_minutes = find_next_schedule(
+            message.from_user.id,
+            current_weekday,
+            current_time_minutes,
+        )
+
+        if remaining_minutes is None:
+            self.bot.reply_to(message, strings.commute_schedule_missing_msg)
+            return
+
+        self.bot.reply_to(
+            message,
+            strings.commute_until_start_msg.format(
+                remaining=format_minutes(remaining_minutes),
+            ),
+        )
+
+    def handle_end_keyword(self, message):
+        if not get_schedules(message.from_user.id):
+            self.bot.reply_to(message, strings.commute_schedule_missing_msg)
+            return
+
+        current_weekday, current_time_minutes = self.get_current_commute_time()
+        _schedule, remaining_minutes = find_active_schedule(
+            message.from_user.id,
+            current_weekday,
+            current_time_minutes,
+        )
+
+        if remaining_minutes is None:
+            self.bot.reply_to(message, strings.commute_not_working_msg)
+            return
+
+        self.bot.reply_to(
+            message,
+            strings.commute_until_end_msg.format(
+                remaining=format_minutes(remaining_minutes),
+            ),
         )
 
     def handle_input_reply(self, message):
