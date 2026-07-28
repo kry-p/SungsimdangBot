@@ -7,6 +7,15 @@ DAYS_PER_WEEK = 7
 MINUTES_PER_DAY = HOURS_PER_DAY * MINUTES_PER_HOUR
 MINUTES_PER_WEEK = DAYS_PER_WEEK * MINUTES_PER_DAY
 
+VALIDATION_ERROR_MESSAGES = {
+    "hour_out_of_range": "hour must be between 0 and 23",
+    "minute_out_of_range": "minute must be between 0 and 59",
+    "invalid_weekday": "invalid weekday",
+    "empty_weekday": "weekday cannot be empty",
+    "same_start_and_end": "start and end time must be different",
+    "negative_minutes": "minutes must not be negative",
+}
+
 WEEKDAY_MAP = {name: index for index, name in enumerate(strings.commute_weekday_names)}
 
 
@@ -16,10 +25,10 @@ def parse_time_to_minutes(time_text):
     minute = int(minute_text)
 
     if not 0 <= hour < HOURS_PER_DAY:
-        raise ValueError("hour must be between 0 and 23")
+        raise ValueError(VALIDATION_ERROR_MESSAGES["hour_out_of_range"])
 
     if not 0 <= minute < MINUTES_PER_HOUR:
-        raise ValueError("minute must be between 0 and 59")
+        raise ValueError(VALIDATION_ERROR_MESSAGES["minute_out_of_range"])
 
     return hour * MINUTES_PER_HOUR + minute
 
@@ -29,7 +38,7 @@ def parse_weekdays(value):
 
     for weekday_text in value:
         if weekday_text not in WEEKDAY_MAP:
-            raise ValueError("invalid weekday")
+            raise ValueError(VALIDATION_ERROR_MESSAGES["invalid_weekday"])
 
         weekday = WEEKDAY_MAP[weekday_text]
 
@@ -37,7 +46,7 @@ def parse_weekdays(value):
             weekdays.append(weekday)
 
     if not weekdays:
-        raise ValueError("weekday cannot be empty")
+        raise ValueError(VALIDATION_ERROR_MESSAGES["empty_weekday"])
 
     return weekdays
 
@@ -48,7 +57,7 @@ def save_schedule(user_id, weekday_text, start_time_text, end_time_text):
     end_time_minutes = parse_time_to_minutes(end_time_text)
 
     if start_time_minutes == end_time_minutes:
-        raise ValueError("start and end time must be different")
+        raise ValueError(VALIDATION_ERROR_MESSAGES["same_start_and_end"])
 
     with db.atomic():
         for weekday in weekdays:
@@ -90,7 +99,7 @@ def minutes_until_start(current_weekday, current_time_minutes, target_weekday, s
 
 def format_minutes(minutes):
     if minutes < 0:
-        raise ValueError("minutes must not be negative")
+        raise ValueError(VALIDATION_ERROR_MESSAGES["negative_minutes"])
 
     hours, remaining_minutes = divmod(minutes, MINUTES_PER_HOUR)
 
