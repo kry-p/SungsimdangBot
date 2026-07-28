@@ -1,5 +1,7 @@
 from unittest.mock import MagicMock
 
+import pytest
+
 from modules.commute import save_schedule
 from modules.commute_manager import CommuteManager
 from resources import strings
@@ -117,6 +119,38 @@ class TestCommuteCallbacks:
             reply,
             strings.commute_delete_success_msg.format(count=1),
         )
+
+    @pytest.mark.parametrize(
+        "text",
+        (
+            "월 09:00",
+            "월 잘못된시간 18:00",
+        ),
+    )
+    def test_invalid_set_reply_shows_set_error(self, text):
+        bot = MagicMock()
+        manager = CommuteManager(bot)
+        message = make_message(text, user_id=123)
+
+        manager._save_schedule_from_reply(message)
+
+        bot.reply_to.assert_called_once_with(message, strings.commute_set_error_msg)
+
+    @pytest.mark.parametrize(
+        "text",
+        (
+            "월 화",
+            "잘못된요일",
+        ),
+    )
+    def test_invalid_delete_reply_shows_delete_error(self, text):
+        bot = MagicMock()
+        manager = CommuteManager(bot)
+        message = make_message(text, user_id=123)
+
+        manager._delete_schedules_from_reply(message)
+
+        bot.reply_to.assert_called_once_with(message, strings.commute_delete_error_msg)
 
     def test_clear_button_asks_for_confirmation_and_clears_schedule(self):
         save_schedule(123, "월화", "09:00", "18:00")

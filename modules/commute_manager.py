@@ -159,7 +159,7 @@ class CommuteManager:
     def _save_schedule_from_reply(self, message):
         parts = (message.text or "").split()
         if len(parts) != 3:
-            self.bot.reply_to(message, strings.commute_set_input_msg)
+            self.bot.reply_to(message, strings.commute_set_error_msg)
             return
 
         weekday_text, start_time_text, end_time_text = parts
@@ -171,7 +171,7 @@ class CommuteManager:
                 end_time_text,
             )
         except ValueError:
-            self.bot.reply_to(message, strings.commute_set_input_msg)
+            self.bot.reply_to(message, strings.commute_set_error_msg)
             return
 
         self.bot.reply_to(
@@ -182,13 +182,13 @@ class CommuteManager:
     def _delete_schedules_from_reply(self, message):
         parts = (message.text or "").split()
         if len(parts) != 1:
-            self.bot.reply_to(message, strings.commute_delete_input_msg)
+            self.bot.reply_to(message, strings.commute_delete_error_msg)
             return
 
         try:
             count = delete_schedules(message.from_user.id, parts[0])
         except ValueError:
-            self.bot.reply_to(message, strings.commute_delete_input_msg)
+            self.bot.reply_to(message, strings.commute_delete_error_msg)
             return
 
         if count == 0:
