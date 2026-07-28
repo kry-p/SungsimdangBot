@@ -119,16 +119,17 @@ class CommuteManager:
         if not reply_to:
             return
 
+        pending_key = (message.chat.id, reply_to.message_id)
         with self._pending_inputs_lock:
-            pending = self._pending_inputs.get(reply_to.message_id)
+            pending = self._pending_inputs.get(pending_key)
             if pending is None:
                 return
 
-            user_id, chat_id, action, created_at = pending
-            if message.from_user.id != user_id or message.chat.id != chat_id:
+            user_id, action, created_at = pending
+            if message.from_user.id != user_id:
                 return
 
-            del self._pending_inputs[reply_to.message_id]
+            del self._pending_inputs[pending_key]
 
         if time.time() - created_at > INPUT_TIMEOUT_SECONDS:
             self.bot.reply_to(message, strings.commute_input_expired_msg)
@@ -152,10 +153,10 @@ class CommuteManager:
             prompt,
             reply_markup=telebot.types.ForceReply(selective=True),
         )
+        pending_key = (call.message.chat.id, sent.message_id)
         with self._pending_inputs_lock:
-            self._pending_inputs[sent.message_id] = (
+            self._pending_inputs[pending_key] = (
                 call.from_user.id,
-                call.message.chat.id,
                 action,
                 time.time(),
             )
@@ -236,9 +237,9 @@ class CommuteManager:
         now = time.time()
         with self._pending_inputs_lock:
             self._pending_inputs = {
-                message_id: pending
-                for message_id, pending in self._pending_inputs.items()
-                if now - pending[3] <= INPUT_TIMEOUT_SECONDS
+                pending_key: pending
+                for pending_key, pending in self._pending_inputs.items()
+                if now - pending[2] <= INPUT_TIMEOUT_SECONDS
             }
 
     @staticmethod

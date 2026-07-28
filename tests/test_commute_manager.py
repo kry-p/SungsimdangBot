@@ -225,13 +225,13 @@ class TestCommuteCallbacks:
         manager.handle_input_reply(other_user_reply)
 
         assert manager._build_schedule_text(456) == strings.commute_schedule_empty_msg
-        assert 99 in manager._pending_inputs
+        assert (1, 99) in manager._pending_inputs
 
     def test_pending_input_is_consumed_once_by_concurrent_replies(self):
         bot = MagicMock()
         manager = CommuteManager(bot)
         manager._save_schedule_from_reply = MagicMock()
-        manager._pending_inputs[99] = (123, 1, "set", time.time())
+        manager._pending_inputs[(1, 99)] = (123, "set", time.time())
 
         replies = [
             make_message("월 09:00 18:00", user_id=123),
@@ -246,7 +246,32 @@ class TestCommuteCallbacks:
             list(executor.map(manager.handle_input_reply, replies))
 
         manager._save_schedule_from_reply.assert_called_once()
-        assert 99 not in manager._pending_inputs
+        assert (1, 99) not in manager._pending_inputs
+
+    def test_same_message_id_is_handled_separately_per_chat(self):
+        bot = MagicMock()
+        prompt_message = MagicMock()
+        prompt_message.message_id = 99
+        bot.send_message.return_value = prompt_message
+        manager = CommuteManager(bot)
+
+        manager.handle_commute_callback(self.make_callback("commute:set", user_id=123, chat_id=1))
+        manager.handle_commute_callback(self.make_callback("commute:set", user_id=456, chat_id=2))
+
+        assert (1, 99) in manager._pending_inputs
+        assert (2, 99) in manager._pending_inputs
+
+        first_reply = make_message("월 09:00 18:00", user_id=123, chat_id=1)
+        first_reply.reply_to_message = prompt_message
+        second_reply = make_message("화 10:00 19:00", user_id=456, chat_id=2)
+        second_reply.reply_to_message = prompt_message
+
+        manager.handle_input_reply(first_reply)
+        manager.handle_input_reply(second_reply)
+
+        assert manager._build_schedule_text(123) == "월 09:00~18:00"
+        assert manager._build_schedule_text(456) == "화 10:00~19:00"
+        assert manager._pending_inputs == {}
 
 
 class TestCommuteKeywords:
