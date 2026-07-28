@@ -119,6 +119,8 @@ docker compose --env-file .deploy.env up -d
 - 현재 위치 정보: 텔레그램 위치 메시지에 주소, 좌표, 날씨 응답
 - D-day: `/dday YYYY M D`
 - 계산기: `/calc sin ( pi / 2 )`
+- 출퇴근 상태 확인: `출근`·`퇴근` 키워드로 현재 근무 상태 또는 다음 출근·퇴근까지 남은 시간 확인
+- 출퇴근 일정 관리: `/commute`로 요일별 출퇴근 일정 등록·조회·삭제
 - 검색: `/search`
 - 나무위키 검색: `/namu`
 - AI 질문: `/ask`, 이미지 caption 또는 사진 reply 지원
