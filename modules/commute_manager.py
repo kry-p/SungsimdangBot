@@ -74,6 +74,16 @@ class CommuteManager:
 
     def handle_start_keyword(self, message):
         current_weekday, current_time_minutes = self.get_current_commute_time()
+        _schedule, remaining_minutes = find_active_schedule(
+            message.from_user.id,
+            current_weekday,
+            current_time_minutes,
+        )
+
+        if remaining_minutes is not None:
+            self.bot.reply_to(message, strings.commute_working_msg)
+            return
+
         _schedule, remaining_minutes = find_next_schedule(
             message.from_user.id,
             current_weekday,

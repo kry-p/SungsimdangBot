@@ -121,6 +121,7 @@ commute_set_success_msg = "{count}개 요일의 출퇴근 일정을 등록했습
 commute_delete_success_msg = "{count}개 요일의 출퇴근 일정을 삭제했습니다."
 commute_clear_success_msg = "등록된 출퇴근 일정을 모두 삭제했습니다."
 commute_delete_missing_msg = "삭제할 출퇴근 일정이 없습니다."
+commute_working_msg = "현재 근무 중입니다."
 commute_not_working_msg = "현재 근무 시간이 아닙니다."
 
 commute_duration_hours_minutes = "{hours}시간 {minutes}분"
