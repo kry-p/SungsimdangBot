@@ -1,4 +1,5 @@
 import datetime
+import threading
 import time
 
 import telebot
@@ -23,6 +24,7 @@ class CommuteManager:
     def __init__(self, bot):
         self.bot = bot
         self._pending_inputs = {}
+        self._pending_inputs_lock = threading.Lock()
 
     @staticmethod
     def is_commute_callback(data):
@@ -117,15 +119,16 @@ class CommuteManager:
         if not reply_to:
             return
 
-        pending = self._pending_inputs.get(reply_to.message_id)
-        if pending is None:
-            return
+        with self._pending_inputs_lock:
+            pending = self._pending_inputs.get(reply_to.message_id)
+            if pending is None:
+                return
 
-        user_id, chat_id, action, created_at = pending
-        if message.from_user.id != user_id or message.chat.id != chat_id:
-            return
+            user_id, chat_id, action, created_at = pending
+            if message.from_user.id != user_id or message.chat.id != chat_id:
+                return
 
-        del self._pending_inputs[reply_to.message_id]
+            del self._pending_inputs[reply_to.message_id]
 
         if time.time() - created_at > INPUT_TIMEOUT_SECONDS:
             self.bot.reply_to(message, strings.commute_input_expired_msg)
@@ -149,12 +152,13 @@ class CommuteManager:
             prompt,
             reply_markup=telebot.types.ForceReply(selective=True),
         )
-        self._pending_inputs[sent.message_id] = (
-            call.from_user.id,
-            call.message.chat.id,
-            action,
-            time.time(),
-        )
+        with self._pending_inputs_lock:
+            self._pending_inputs[sent.message_id] = (
+                call.from_user.id,
+                call.message.chat.id,
+                action,
+                time.time(),
+            )
 
     def _save_schedule_from_reply(self, message):
         parts = (message.text or "").split()
@@ -230,11 +234,12 @@ class CommuteManager:
 
     def _cleanup_expired_inputs(self):
         now = time.time()
-        self._pending_inputs = {
-            message_id: pending
-            for message_id, pending in self._pending_inputs.items()
-            if now - pending[3] <= INPUT_TIMEOUT_SECONDS
-        }
+        with self._pending_inputs_lock:
+            self._pending_inputs = {
+                message_id: pending
+                for message_id, pending in self._pending_inputs.items()
+                if now - pending[3] <= INPUT_TIMEOUT_SECONDS
+            }
 
     @staticmethod
     def _build_schedule_text(user_id):

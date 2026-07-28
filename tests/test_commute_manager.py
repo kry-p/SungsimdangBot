@@ -1,3 +1,5 @@
+import time
+from concurrent.futures import ThreadPoolExecutor
 from unittest.mock import MagicMock
 
 import pytest
@@ -224,6 +226,27 @@ class TestCommuteCallbacks:
 
         assert manager._build_schedule_text(456) == strings.commute_schedule_empty_msg
         assert 99 in manager._pending_inputs
+
+    def test_pending_input_is_consumed_once_by_concurrent_replies(self):
+        bot = MagicMock()
+        manager = CommuteManager(bot)
+        manager._save_schedule_from_reply = MagicMock()
+        manager._pending_inputs[99] = (123, 1, "set", time.time())
+
+        replies = [
+            make_message("월 09:00 18:00", user_id=123),
+            make_message("월 09:00 18:00", user_id=123),
+        ]
+        prompt_message = MagicMock()
+        prompt_message.message_id = 99
+        for reply in replies:
+            reply.reply_to_message = prompt_message
+
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            list(executor.map(manager.handle_input_reply, replies))
+
+        manager._save_schedule_from_reply.assert_called_once()
+        assert 99 not in manager._pending_inputs
 
 
 class TestCommuteKeywords:
