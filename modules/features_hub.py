@@ -9,6 +9,7 @@ from modules import log
 from modules.admin import AdminManager
 from modules.ai.chat import AIChatManager
 from modules.calculator import Calculator
+from modules.commute_manager import CommuteManager
 from modules.laftel import LaftelService
 from modules.random_based import RandomBasedFeatures
 from modules.spotify import SpotifyService
@@ -32,6 +33,10 @@ class BotFeaturesHub:
     def is_spotify_callback(data):
         return SpotifyService.is_spotify_callback(data)
 
+    @staticmethod
+    def is_commute_callback(data):
+        return CommuteManager.is_commute_callback(data)
+
     # init
     def __init__(self, bot):
         self.bot = bot
@@ -43,6 +48,7 @@ class BotFeaturesHub:
         self.admin = AdminManager(bot, self.ai_chat)
         self.laftel = LaftelService(bot)
         self.spotify = SpotifyService(bot)
+        self.commute = CommuteManager(bot)
 
     # --- Admin delegation ---
 
@@ -59,6 +65,9 @@ class BotFeaturesHub:
     def handle_spotify_callback(self, call):
         self.spotify.handle_spotify_callback(call)
 
+    def handle_commute_callback(self, call):
+        self.commute.handle_commute_callback(call)
+
     def allow_chat_handler(self, message):
         self.admin.allow_chat_handler(message)
 
@@ -70,6 +79,12 @@ class BotFeaturesHub:
 
     def handle_prompt_reply(self, message):
         self.admin.handle_prompt_reply(message)
+
+    def commute_menu_handler(self, message):
+        self.commute.show_menu(message)
+
+    def handle_commute_reply(self, message):
+        self.commute.handle_input_reply(message)
 
     # --- Features ---
 
@@ -252,6 +267,12 @@ class BotFeaturesHub:
         text, parse_mode = self.web_manager.fetch_rss(slug, date)
         self.bot.reply_to(message, text, parse_mode=parse_mode)
 
+    def commute_start_keyword_handler(self, message):
+        self.commute.handle_start_keyword(message)
+
+    def commute_end_keyword_handler(self, message):
+        self.commute.handle_end_keyword(message)
+
     # Clear chat
     def clear_chat_handler(self, message):
         self.ai_chat.clear_session(message.chat.id, message.from_user.id)
@@ -264,3 +285,9 @@ class BotFeaturesHub:
 
         if any(kw in message.text for kw in strings.magic_conch_keywords):
             self.bot.reply_to(message, self.random_based_features.magic_conch())
+
+        if any(kw in message.text for kw in strings.commute_start_keywords):
+            self.commute_start_keyword_handler(message)
+
+        if any(kw in message.text for kw in strings.commute_end_keywords):
+            self.commute_end_keyword_handler(message)
