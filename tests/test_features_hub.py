@@ -107,6 +107,32 @@ class TestCalculatorHandler:
         hub.bot.reply_to.assert_not_called()
 
 
+class TestCommuteMenuHandler:
+    def test_delegates_to_commute_manager(self, hub):
+        hub.commute.show_menu = MagicMock()
+        msg = make_message("/commute")
+
+        hub.commute_menu_handler(msg)
+
+        hub.commute.show_menu.assert_called_once_with(msg)
+
+    def test_callback_delegates_to_commute_manager(self, hub):
+        hub.commute.handle_commute_callback = MagicMock()
+        call = MagicMock()
+
+        hub.handle_commute_callback(call)
+
+        hub.commute.handle_commute_callback.assert_called_once_with(call)
+
+    def test_reply_delegates_to_commute_manager(self, hub):
+        hub.commute.handle_input_reply = MagicMock()
+        msg = make_message("월화 09:00 18:00")
+
+        hub.handle_commute_reply(msg)
+
+        hub.commute.handle_input_reply.assert_called_once_with(msg)
+
+
 class TestOrdinaryMessage:
     def test_suon_keyword_triggers_temp(self, hub):
         hub.web_manager.provide_suon_v2.return_value = "20.0"
@@ -121,6 +147,22 @@ class TestOrdinaryMessage:
         hub.bot.reply_to.assert_called_once()
         all_sentences = [s for group in strings.magic_conch_sentence for s in group]
         assert hub.bot.reply_to.call_args[0][1] in all_sentences
+
+    def test_commute_start_keyword(self, hub):
+        hub.commute.handle_start_keyword = MagicMock()
+        msg = make_message("출근")
+
+        hub.ordinary_message(msg)
+
+        hub.commute.handle_start_keyword.assert_called_once_with(msg)
+
+    def test_commute_end_keyword(self, hub):
+        hub.commute.handle_end_keyword = MagicMock()
+        msg = make_message("퇴근")
+
+        hub.ordinary_message(msg)
+
+        hub.commute.handle_end_keyword.assert_called_once_with(msg)
 
     def test_normal_message_no_action(self, hub):
         msg = make_message("안녕하세요")
