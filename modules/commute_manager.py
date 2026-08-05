@@ -31,13 +31,24 @@ class CommuteManager:
         return bool(data and ":" in data and data.split(":", 1)[0] in CALLBACK_PREFIXES)
 
     def handle_commute_callback(self, call):
-        action, value = call.data.split(":", 1)
+        parts = call.data.split(":")
+        if len(parts) != 3:
+            return
+
+        action, value, owner_id_text = parts
+        try:
+            owner_id = int(owner_id_text)
+        except ValueError:
+            return
+
+        if call.from_user.id != owner_id:
+            return
 
         if action == "commute":
             if value in {"set", "delete"}:
                 self._request_input(call, value)
             elif value == "clear":
-                self._show_clear_confirmation(call)
+                self._show_clear_confirmation(call, owner_id)
             elif value == "cancel":
                 self.bot.edit_message_text(
                     strings.commute_menu_cancelled_msg,
@@ -63,7 +74,7 @@ class CommuteManager:
         self.bot.reply_to(
             message,
             menu_text,
-            reply_markup=self._build_menu_keyboard(),
+            reply_markup=self._build_menu_keyboard(message.from_user.id),
         )
 
     @staticmethod
@@ -153,6 +164,8 @@ class CommuteManager:
     def _request_input(self, call, action):
         self._cleanup_expired_inputs()
         prompt = strings.commute_set_input_msg if action == "set" else strings.commute_delete_input_msg
+        original_message = getattr(call.message, "reply_to_message", None)
+        original_message_id = getattr(original_message, "message_id", None)
         self.bot.edit_message_reply_markup(
             call.message.chat.id,
             call.message.message_id,
@@ -161,7 +174,10 @@ class CommuteManager:
         sent = self.bot.send_message(
             call.message.chat.id,
             prompt,
-            reply_markup=telebot.types.ForceReply(selective=True),
+            reply_to_message_id=original_message_id,
+            reply_markup=telebot.types.ForceReply(
+                selective=original_message_id is not None,
+            ),
         )
         pending_key = (call.message.chat.id, sent.message_id)
         with self._pending_inputs_lock:
@@ -215,16 +231,16 @@ class CommuteManager:
             strings.commute_delete_success_msg.format(count=count),
         )
 
-    def _show_clear_confirmation(self, call):
+    def _show_clear_confirmation(self, call, owner_id):
         keyboard = telebot.types.InlineKeyboardMarkup()
         keyboard.row(
             telebot.types.InlineKeyboardButton(
                 strings.commute_confirm_btn,
-                callback_data="commute_clear:confirm",
+                callback_data=f"commute_clear:confirm:{owner_id}",
             ),
             telebot.types.InlineKeyboardButton(
                 strings.commute_cancel_btn,
-                callback_data="commute_clear:cancel",
+                callback_data=f"commute_clear:cancel:{owner_id}",
             ),
         )
         self.bot.edit_message_text(
@@ -275,26 +291,26 @@ class CommuteManager:
         return f"{hour:02d}:{minute:02d}"
 
     @staticmethod
-    def _build_menu_keyboard():
+    def _build_menu_keyboard(owner_id):
         keyboard = telebot.types.InlineKeyboardMarkup()
         keyboard.row(
             telebot.types.InlineKeyboardButton(
                 strings.commute_set_btn,
-                callback_data="commute:set",
+                callback_data=f"commute:set:{owner_id}",
             ),
             telebot.types.InlineKeyboardButton(
                 strings.commute_delete_btn,
-                callback_data="commute:delete",
+                callback_data=f"commute:delete:{owner_id}",
             ),
         )
         keyboard.row(
             telebot.types.InlineKeyboardButton(
                 strings.commute_clear_btn,
-                callback_data="commute:clear",
+                callback_data=f"commute:clear:{owner_id}",
             ),
             telebot.types.InlineKeyboardButton(
                 strings.commute_close_btn,
-                callback_data="commute:cancel",
+                callback_data=f"commute:cancel:{owner_id}",
             ),
         )
 
