@@ -286,8 +286,9 @@ class BotFeaturesHub:
         if any(kw in message.text for kw in strings.magic_conch_keywords):
             self.bot.reply_to(message, self.random_based_features.magic_conch())
 
-        if any(kw in message.text for kw in strings.commute_start_keywords):
+        has_commute_time_keyword = any(kw in message.text for kw in strings.commute_time_keywords)
+        if has_commute_time_keyword and any(kw in message.text for kw in strings.commute_start_keywords):
             self.commute_start_keyword_handler(message)
 
-        if any(kw in message.text for kw in strings.commute_end_keywords):
+        if has_commute_time_keyword and any(kw in message.text for kw in strings.commute_end_keywords):
             self.commute_end_keyword_handler(message)
