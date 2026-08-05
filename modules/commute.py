@@ -6,6 +6,7 @@ HOURS_PER_DAY = 24
 DAYS_PER_WEEK = 7
 MINUTES_PER_DAY = HOURS_PER_DAY * MINUTES_PER_HOUR
 MINUTES_PER_WEEK = DAYS_PER_WEEK * MINUTES_PER_DAY
+END_OF_DAY_TIME = "24:00"
 
 VALIDATION_ERROR_MESSAGES = {
     "hour_out_of_range": "hour must be between 0 and 23",
@@ -33,6 +34,13 @@ def parse_time_to_minutes(time_text):
     return hour * MINUTES_PER_HOUR + minute
 
 
+def parse_end_time_to_minutes(time_text):
+    if time_text == END_OF_DAY_TIME:
+        return MINUTES_PER_DAY
+
+    return parse_time_to_minutes(time_text)
+
+
 def parse_weekdays(value):
     weekdays = []
 
@@ -54,7 +62,7 @@ def parse_weekdays(value):
 def save_schedule(user_id, weekday_text, start_time_text, end_time_text):
     weekdays = parse_weekdays(weekday_text)
     start_time_minutes = parse_time_to_minutes(start_time_text)
-    end_time_minutes = parse_time_to_minutes(end_time_text)
+    end_time_minutes = parse_end_time_to_minutes(end_time_text)
 
     if start_time_minutes == end_time_minutes:
         raise ValueError(VALIDATION_ERROR_MESSAGES["same_start_and_end"])
