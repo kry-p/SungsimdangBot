@@ -1,9 +1,11 @@
 import time
 from concurrent.futures import ThreadPoolExecutor
-from unittest.mock import MagicMock
+from datetime import datetime
+from unittest.mock import MagicMock, patch
 
 import pytest
 
+from config import config
 from modules.commute import save_schedule
 from modules.commute_manager import CommuteManager
 from resources import strings
@@ -319,6 +321,16 @@ class TestCommuteCallbacks:
 
 
 class TestCommuteKeywords:
+    @patch("modules.commute_manager.datetime.datetime")
+    def test_current_time_uses_configured_timezone(self, datetime_mock):
+        datetime_mock.now.return_value = datetime(2026, 8, 5, 16, 31)
+
+        weekday, minutes = CommuteManager.get_current_commute_time()
+
+        datetime_mock.now.assert_called_once_with(config.TIMEZONE)
+        assert weekday == 2
+        assert minutes == 16 * 60 + 31
+
     def test_start_keyword(self):
         save_schedule(123, "월", "09:00", "18:00")
         bot = MagicMock()

@@ -155,10 +155,13 @@ AI 질문 기능은 allowlist에 등록된 채팅에서만 사용할 수 있습�
 | `AI_RATE_LIMIT` | | 채팅/사용자별 분당 AI 요청 제한, 기본값 `5` |
 | `AI_API_TIMEOUT` | | AI API 요청 timeout(초), 기본값 `60` |
 | `ADMIN_USER_ID` | | 관리자 텔레그램 사용자 ID |
+| `TIMEZONE` | | 출퇴근 계산 시간대, 기본값 `Asia/Seoul` |
 | `RSSF_TOKEN` | | RSS 번역 서버 인증 토큰 |
 | `RSSF_URL` | | RSS 번역 서버 URL |
 
 `AI_*` 값이 없으면 이전 Gemini 전용 이름인 `GEMINI_SESSION_TIMEOUT`, `GEMINI_MAX_HISTORY`, `GEMINI_RATE_LIMIT`, `GEMINI_API_TIMEOUT`도 fallback으로 읽습니다.
+
+`TIMEZONE`이 없거나 빈 값이면 `Asia/Seoul`을 사용합니다. 값을 지정할 때는 `UTC`, `America/New_York` 같은 IANA 시간대 이름을 사용해야 하며, 잘못된 값을 설정하면 봇이 시작되지 않습니다.
 
 ## 개발 명령어
 

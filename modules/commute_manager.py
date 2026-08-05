@@ -4,6 +4,7 @@ import time
 
 import telebot
 
+from config import config
 from modules.commute import (
     MINUTES_PER_HOUR,
     delete_all_schedules,
@@ -79,7 +80,7 @@ class CommuteManager:
 
     @staticmethod
     def get_current_commute_time():
-        now = datetime.datetime.now()
+        now = datetime.datetime.now(config.TIMEZONE)
 
         return now.weekday(), now.hour * MINUTES_PER_HOUR + now.minute
 
