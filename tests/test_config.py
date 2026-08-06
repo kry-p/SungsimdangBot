@@ -1,6 +1,8 @@
 import importlib
 from unittest.mock import patch
 
+import pytest
+
 from config.config import _int_env
 
 
@@ -47,3 +49,31 @@ class TestOpenAIBaseURL:
         with patch.dict("os.environ", {}, clear=True):
             c = self._reload()
             assert c.OPENAI_BASE_URL == "https://api.openai.com/v1"
+
+
+class TestTimezone:
+    def _reload(self):
+        import config.config as c
+
+        importlib.reload(c)
+        return c
+
+    def test_missing_timezone_uses_seoul(self):
+        with patch.dict("os.environ", {}, clear=True):
+            c = self._reload()
+            assert c.TIMEZONE.key == "Asia/Seoul"
+
+    def test_empty_timezone_uses_seoul(self):
+        with patch.dict("os.environ", {"TIMEZONE": ""}):
+            c = self._reload()
+            assert c.TIMEZONE.key == "Asia/Seoul"
+
+    def test_custom_timezone(self):
+        with patch.dict("os.environ", {"TIMEZONE": "UTC"}):
+            c = self._reload()
+            assert c.TIMEZONE.key == "UTC"
+
+    def test_invalid_timezone(self):
+        with patch.dict("os.environ", {"TIMEZONE": "Invalid/Timezone"}):
+            with pytest.raises(RuntimeError, match="Invalid TIMEZONE: Invalid/Timezone"):
+                self._reload()

@@ -1,4 +1,5 @@
 import os
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from dotenv import load_dotenv
 
@@ -16,6 +17,14 @@ def _int_env_with_fallback(primary: str, fallback_key: str, default: int) -> int
     if v is not None:
         return int(v)
     return _int_env(fallback_key, default)
+
+
+def _timezone_env(key, default):
+    value = os.getenv(key) or default
+    try:
+        return ZoneInfo(value)
+    except ZoneInfoNotFoundError as exc:
+        raise RuntimeError(f"Invalid {key}: {value}") from exc
 
 
 # Telegram bot token 텔레그램 봇 토큰
@@ -47,6 +56,10 @@ AI_RATE_LIMIT = _int_env_with_fallback("AI_RATE_LIMIT", "GEMINI_RATE_LIMIT", 5)
 AI_API_TIMEOUT = _int_env_with_fallback("AI_API_TIMEOUT", "GEMINI_API_TIMEOUT", 60)
 
 ADMIN_USER_ID = _int_env("ADMIN_USER_ID", 0)
+
+# Bot timezone
+TIMEZONE = _timezone_env("TIMEZONE", "Asia/Seoul")
+
 
 # RSS feed translator API
 RSSF_TOKEN = os.getenv("RSSF_TOKEN", "")

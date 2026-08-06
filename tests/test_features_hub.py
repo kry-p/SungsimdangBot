@@ -148,21 +148,33 @@ class TestOrdinaryMessage:
         all_sentences = [s for group in strings.magic_conch_sentence for s in group]
         assert hub.bot.reply_to.call_args[0][1] in all_sentences
 
-    def test_commute_start_keyword(self, hub):
+    @pytest.mark.parametrize("text", ["출근 시간", "출근시간 알려줘", "오늘 출근 시간이 몇 시야?"])
+    def test_commute_start_keyword(self, hub, text):
         hub.commute.handle_start_keyword = MagicMock()
-        msg = make_message("출근")
+        msg = make_message(text)
 
         hub.ordinary_message(msg)
 
         hub.commute.handle_start_keyword.assert_called_once_with(msg)
 
-    def test_commute_end_keyword(self, hub):
+    @pytest.mark.parametrize("text", ["퇴근 시간", "퇴근시간 알려줘", "퇴근 시간 얼마나 남았어?"])
+    def test_commute_end_keyword(self, hub, text):
         hub.commute.handle_end_keyword = MagicMock()
-        msg = make_message("퇴근")
+        msg = make_message(text)
 
         hub.ordinary_message(msg)
 
         hub.commute.handle_end_keyword.assert_called_once_with(msg)
+
+    @pytest.mark.parametrize("text", ["출근", "퇴근", "출근을 안 찍었으니까", "퇴근하고 밥 먹자"])
+    def test_commute_keyword_without_time_does_not_trigger(self, hub, text):
+        hub.commute.handle_start_keyword = MagicMock()
+        hub.commute.handle_end_keyword = MagicMock()
+
+        hub.ordinary_message(make_message(text))
+
+        hub.commute.handle_start_keyword.assert_not_called()
+        hub.commute.handle_end_keyword.assert_not_called()
 
     def test_normal_message_no_action(self, hub):
         msg = make_message("안녕하세요")
