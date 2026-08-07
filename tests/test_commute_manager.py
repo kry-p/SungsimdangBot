@@ -1,9 +1,11 @@
 import time
 from concurrent.futures import ThreadPoolExecutor
-from unittest.mock import MagicMock
+from datetime import datetime
+from unittest.mock import MagicMock, patch
 
 import pytest
 
+from config import config
 from modules.commute import save_schedule
 from modules.commute_manager import CommuteManager
 from resources import strings
@@ -29,10 +31,10 @@ class TestCommuteMenu:
 
         callback_data = [button.callback_data for row in kwargs["reply_markup"].keyboard for button in row]
         assert callback_data == [
-            "commute:set",
-            "commute:delete",
-            "commute:clear",
-            "commute:cancel",
+            "commute:set:123",
+            "commute:delete:123",
+            "commute:clear:123",
+            "commute:cancel:123",
         ]
 
     def test_shows_user_schedules_in_readable_format(self):
@@ -63,10 +65,13 @@ class TestCommuteCallbacks:
     @staticmethod
     def make_callback(data, user_id=123, chat_id=1, message_id=10):
         call = MagicMock()
-        call.data = data
+        call.data = f"{data}:{user_id}" if data.count(":") == 1 else data
         call.from_user.id = user_id
         call.message.chat.id = chat_id
         call.message.message_id = message_id
+        original_message = make_message("/commute", user_id=user_id, chat_id=chat_id)
+        original_message.message_id = message_id - 1
+        call.message.reply_to_message = original_message
         return call
 
     def test_set_button_requests_input_and_saves_reply(self):
@@ -84,6 +89,8 @@ class TestCommuteCallbacks:
             call.message.chat.id,
             strings.commute_set_input_msg,
         )
+        assert bot.send_message.call_args.kwargs["reply_to_message_id"] == call.message.reply_to_message.message_id
+        assert bot.send_message.call_args.kwargs["reply_markup"].selective is True
 
         reply = make_message("월화 09:00 18:00", user_id=123)
         reply.reply_to_message = prompt_message
@@ -95,6 +102,20 @@ class TestCommuteCallbacks:
             reply,
             strings.commute_set_success_msg.format(count=2),
         )
+
+    def test_set_prompt_falls_back_to_non_selective_force_reply_without_original_message(self):
+        bot = MagicMock()
+        prompt_message = MagicMock()
+        prompt_message.message_id = 99
+        bot.send_message.return_value = prompt_message
+        manager = CommuteManager(bot)
+        call = self.make_callback("commute:set")
+        call.message.reply_to_message = None
+
+        manager.handle_commute_callback(call)
+
+        assert bot.send_message.call_args.kwargs["reply_to_message_id"] is None
+        assert bot.send_message.call_args.kwargs["reply_markup"].selective is False
 
     def test_delete_button_requests_input_and_deletes_reply(self):
         save_schedule(123, "월화", "09:00", "18:00")
@@ -170,8 +191,8 @@ class TestCommuteCallbacks:
         )
         callback_data = [button.callback_data for row in kwargs["reply_markup"].keyboard for button in row]
         assert callback_data == [
-            "commute_clear:confirm",
-            "commute_clear:cancel",
+            "commute_clear:confirm:123",
+            "commute_clear:cancel:123",
         ]
 
         confirm_call = self.make_callback("commute_clear:confirm")
@@ -211,6 +232,31 @@ class TestCommuteCallbacks:
             call.message.chat.id,
             call.message.message_id,
         )
+
+    @pytest.mark.parametrize(
+        "callback_data",
+        (
+            "commute:set:123",
+            "commute:delete:123",
+            "commute:clear:123",
+            "commute:cancel:123",
+            "commute_clear:confirm:123",
+            "commute_clear:cancel:123",
+        ),
+    )
+    def test_other_user_cannot_use_commute_menu(self, callback_data):
+        save_schedule(123, "월", "09:00", "18:00")
+        bot = MagicMock()
+        manager = CommuteManager(bot)
+        call = self.make_callback(callback_data, user_id=456)
+
+        manager.handle_commute_callback(call)
+
+        assert manager._build_schedule_text(123) == "월 09:00~18:00"
+        assert manager._pending_inputs == {}
+        bot.send_message.assert_not_called()
+        bot.edit_message_text.assert_not_called()
+        bot.edit_message_reply_markup.assert_not_called()
 
     def test_other_user_cannot_consume_pending_input(self):
         bot = MagicMock()
@@ -275,6 +321,16 @@ class TestCommuteCallbacks:
 
 
 class TestCommuteKeywords:
+    @patch("modules.commute_manager.datetime.datetime")
+    def test_current_time_uses_configured_timezone(self, datetime_mock):
+        datetime_mock.now.return_value = datetime(2026, 8, 5, 16, 31)
+
+        weekday, minutes = CommuteManager.get_current_commute_time()
+
+        datetime_mock.now.assert_called_once_with(config.TIMEZONE)
+        assert weekday == 2
+        assert minutes == 16 * 60 + 31
+
     def test_start_keyword(self):
         save_schedule(123, "월", "09:00", "18:00")
         bot = MagicMock()

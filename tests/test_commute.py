@@ -9,6 +9,7 @@ from modules.commute import (
     get_schedules,
     minutes_until_end,
     minutes_until_start,
+    parse_end_time_to_minutes,
     parse_time_to_minutes,
     parse_weekdays,
     save_schedule,
@@ -28,6 +29,13 @@ class TestParseTime:
     def test_invalid_minute(self):
         with pytest.raises(ValueError):
             parse_time_to_minutes("09:60")
+
+    def test_end_time_accepts_end_of_day(self):
+        assert parse_end_time_to_minutes("24:00") == 24 * 60
+
+    def test_end_time_rejects_minutes_after_end_of_day(self):
+        with pytest.raises(ValueError):
+            parse_end_time_to_minutes("24:01")
 
 
 class TestParseWeekdays:
@@ -68,6 +76,19 @@ class TestSaveSchedule:
     def test_reject_same_start_and_end_time(self):
         with pytest.raises(ValueError):
             save_schedule(123, "월", "09:00", "09:00")
+
+        assert CommuteSchedule.select().count() == 0
+
+    def test_accept_end_of_day_only_as_end_time(self):
+        save_schedule(123, "월", "00:01", "24:00")
+
+        schedule = CommuteSchedule.get()
+        assert schedule.start_time_minutes == 1
+        assert schedule.end_time_minutes == 24 * 60
+
+    def test_reject_end_of_day_as_start_time(self):
+        with pytest.raises(ValueError):
+            save_schedule(123, "월", "24:00", "00:01")
 
         assert CommuteSchedule.select().count() == 0
 
@@ -232,6 +253,18 @@ class TestFindActiveSchedule:
         assert schedule is None
         assert remaining_minutes is None
 
+    def test_finds_shift_ending_at_end_of_day(self):
+        save_schedule(123, "월", "00:01", "24:00")
+
+        schedule, remaining_minutes = find_active_schedule(
+            user_id=123,
+            current_weekday=0,
+            current_time_minutes=23 * 60 + 59,
+        )
+
+        assert schedule.weekday == 0
+        assert remaining_minutes == 1
+
 
 class TestMinutesUntilEnd:
     def test_day_shift(self):
@@ -251,6 +284,15 @@ class TestMinutesUntilEnd:
         )
 
         assert result is None
+
+    def test_end_of_day(self):
+        result = minutes_until_end(
+            current_time_minutes=23 * 60 + 59,
+            start_time_minutes=1,
+            end_time_minutes=24 * 60,
+        )
+
+        assert result == 1
 
     def test_night_shift_before_midnight(self):
         result = minutes_until_end(

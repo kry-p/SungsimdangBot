@@ -96,6 +96,7 @@ temp_keywords = ("수온", "자살")
 magic_conch_keywords = ("마법의 소라고둥", "마법의 소라고동")
 commute_start_keywords = ("출근",)
 commute_end_keywords = ("퇴근",)
+commute_time_keywords = ("시간",)
 
 # commute messages
 commute_weekday_names = ("월", "화", "수", "목", "금", "토", "일")
