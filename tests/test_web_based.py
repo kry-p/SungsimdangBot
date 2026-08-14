@@ -1,5 +1,7 @@
 import datetime
+import html
 import json
+import re
 import urllib.parse
 from unittest.mock import MagicMock, patch
 
@@ -7,9 +9,17 @@ import pytest
 import requests
 
 from modules.api_models import KakaoSearchDocument, KakaoSearchResponse
-from modules.web_based import WebManager
+from modules.web_based import BFRSS_MESSAGE_MAX_UTF16_LENGTH, WebManager
 from resources import strings
 from tests.conftest import make_message
+
+
+def _html_visible_text(text):
+    return html.unescape(re.sub(r"<[^>]+>", "", text))
+
+
+def _utf16_length(text):
+    return len(text.encode("utf-16-le")) // 2
 
 
 class TestWebManagerInit:
@@ -293,8 +303,10 @@ class TestRssHandler:
 
         with patch.object(WebManager, "__init__", lambda self: None):
             wm = WebManager()
-            text, parse_mode = wm.fetch_rss()
+            messages, parse_mode = wm.fetch_rss()
+            text = messages[0]
             assert parse_mode == "HTML"
+            assert len(messages) == 1
             assert "THE HACKER NEWS" in text
             assert "Test Article" in text
             assert "&lt;special&gt;" in text
@@ -316,7 +328,8 @@ class TestRssHandler:
 
         with patch.object(WebManager, "__init__", lambda self: None):
             wm = WebManager()
-            text, parse_mode = wm.fetch_rss(slug="lob")
+            messages, parse_mode = wm.fetch_rss(slug="lob")
+            text = messages[0]
             assert parse_mode == "HTML"
             assert "LOBSTERS" in text
             mock_get.assert_called_once_with(
@@ -354,7 +367,8 @@ class TestRssHandler:
 
         with patch.object(WebManager, "__init__", lambda self: None):
             wm = WebManager()
-            text, parse_mode = wm.fetch_rss()
+            messages, parse_mode = wm.fetch_rss()
+            text = messages[0]
             assert parse_mode == "HTML"
             assert "오전" not in text
             assert "오후" not in text
@@ -362,8 +376,8 @@ class TestRssHandler:
     def test_unknown_slug(self):
         with patch.object(WebManager, "__init__", lambda self: None):
             wm = WebManager()
-            text, parse_mode = wm.fetch_rss(slug="xyz")
-            assert text == strings.bfrss_unknown_slug_msg
+            messages, parse_mode = wm.fetch_rss(slug="xyz")
+            assert messages == [strings.bfrss_unknown_slug_msg]
             assert parse_mode is None
 
     @patch("modules.web_based.config.RSSF_URL", "http://test-server")
@@ -374,8 +388,8 @@ class TestRssHandler:
 
         with patch.object(WebManager, "__init__", lambda self: None):
             wm = WebManager()
-            text, parse_mode = wm.fetch_rss()
-            assert text == strings.bfrss_error_msg
+            messages, parse_mode = wm.fetch_rss()
+            assert messages == [strings.bfrss_error_msg]
             assert parse_mode is None
 
     @patch("modules.web_based.config.RSSF_URL", "http://test-server")
@@ -388,7 +402,60 @@ class TestRssHandler:
 
         with patch.object(WebManager, "__init__", lambda self: None):
             wm = WebManager()
-            text, parse_mode = wm.fetch_rss()
-            assert text == strings.bfrss_error_msg
+            messages, parse_mode = wm.fetch_rss()
+            assert messages == [strings.bfrss_error_msg]
             assert parse_mode is None
             response.raise_for_status.assert_called_once()
+
+    @patch("modules.web_based.config.RSSF_URL", "http://test-server")
+    @patch("modules.web_based.config.RSSF_TOKEN", "test_token")
+    @patch("modules.web_based.requests.get")
+    def test_many_entries_are_split_at_article_boundaries(self, mock_get):
+        entries = [
+            {
+                "title": f"번역 기사 {index} " + "긴 문장 내용 " * 30,
+                "link": f"https://example.com/articles/{index}?a=1&b=2",
+            }
+            for index in range(80)
+        ]
+        response = MagicMock()
+        response.text = json.dumps({**self._response_data, "entries": entries})
+        mock_get.return_value = response
+
+        with patch.object(WebManager, "__init__", lambda self: None):
+            messages, parse_mode = WebManager().fetch_rss()
+
+        assert parse_mode == "HTML"
+        assert len(messages) > 1
+        assert "THE HACKER NEWS" in messages[0]
+        assert all("THE HACKER NEWS" not in message for message in messages[1:])
+        assert sum(message.count("<a href=") for message in messages) == len(entries)
+        assert all(message.count("<a href=") == message.count("</a>") for message in messages)
+        assert all(_utf16_length(_html_visible_text(message)) <= BFRSS_MESSAGE_MAX_UTF16_LENGTH for message in messages)
+
+        combined = "\n".join(messages)
+        for entry in entries:
+            assert html.escape(entry["title"]) in combined
+
+    @patch("modules.web_based.config.RSSF_URL", "http://test-server")
+    @patch("modules.web_based.config.RSSF_TOKEN", "test_token")
+    @patch("modules.web_based.requests.get")
+    def test_oversized_single_title_is_split_without_breaking_html(self, mock_get):
+        title = "😀" * 5000
+        response = MagicMock()
+        response.text = json.dumps(
+            {
+                **self._response_data,
+                "entries": [{"title": title, "link": "https://example.com/long"}],
+            }
+        )
+        mock_get.return_value = response
+
+        with patch.object(WebManager, "__init__", lambda self: None):
+            messages, parse_mode = WebManager().fetch_rss()
+
+        assert parse_mode == "HTML"
+        assert len(messages) > 1
+        assert sum(message.count("😀") for message in messages) == len(title)
+        assert all(message.count("<a href=") == message.count("</a>") for message in messages)
+        assert all(_utf16_length(_html_visible_text(message)) <= BFRSS_MESSAGE_MAX_UTF16_LENGTH for message in messages)

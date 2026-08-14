@@ -1,5 +1,5 @@
 import datetime
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, call, patch
 
 import pytest
 
@@ -365,6 +365,30 @@ class TestParseBfrssArgs:
     def test_invalid_date_non_numeric(self):
         _, _, error = BotFeaturesHub._parse_bfrss_args("/bfrss -lob 26050a")
         assert error == "invalid_date"
+
+
+class TestBfrssHandler:
+    def test_sends_only_last_chunk_as_reply(self, hub):
+        hub.web_manager.fetch_rss.return_value = (["first", "middle", "last"], "HTML")
+        msg = make_message("/bfrss")
+
+        hub.rss_handler(msg)
+
+        assert hub.bot.send_message.call_args_list == [
+            call(msg.chat.id, "first", parse_mode="HTML"),
+            call(msg.chat.id, "middle", parse_mode="HTML"),
+        ]
+        hub.bot.reply_to.assert_called_once_with(msg, "last", parse_mode="HTML")
+
+    def test_single_chunk_is_sent_as_reply(self, hub):
+        hub.web_manager.fetch_rss.return_value = (["only"], "HTML")
+        msg = make_message("/bfrss -lob 260507")
+
+        hub.rss_handler(msg)
+
+        hub.web_manager.fetch_rss.assert_called_once_with("lob", "20260507")
+        hub.bot.send_message.assert_not_called()
+        hub.bot.reply_to.assert_called_once_with(msg, "only", parse_mode="HTML")
 
 
 class TestClearChatHandler:
