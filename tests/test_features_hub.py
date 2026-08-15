@@ -2,6 +2,7 @@ import datetime
 from unittest.mock import MagicMock, call, patch
 
 import pytest
+from telegramify_markdown import MessageEntity
 
 from modules.features_hub import BotFeaturesHub
 from resources import strings
@@ -369,26 +370,32 @@ class TestParseBfrssArgs:
 
 class TestBfrssHandler:
     def test_sends_only_last_chunk_as_reply(self, hub):
-        hub.web_manager.fetch_rss.return_value = (["first", "middle", "last"], "HTML")
+        first_entity = MessageEntity(type="text_link", offset=0, length=5, url="https://example.com/first")
+        last_entity = MessageEntity(type="text_link", offset=0, length=4, url="https://example.com/last")
+        hub.web_manager.fetch_rss.return_value = [
+            ("first", [first_entity]),
+            ("middle", []),
+            ("last", [last_entity]),
+        ]
         msg = make_message("/bfrss")
 
         hub.rss_handler(msg)
 
         assert hub.bot.send_message.call_args_list == [
-            call(msg.chat.id, "first", parse_mode="HTML"),
-            call(msg.chat.id, "middle", parse_mode="HTML"),
+            call(msg.chat.id, "first", entities=[first_entity.to_dict()]),
+            call(msg.chat.id, "middle", entities=[]),
         ]
-        hub.bot.reply_to.assert_called_once_with(msg, "last", parse_mode="HTML")
+        hub.bot.reply_to.assert_called_once_with(msg, "last", entities=[last_entity.to_dict()])
 
     def test_single_chunk_is_sent_as_reply(self, hub):
-        hub.web_manager.fetch_rss.return_value = (["only"], "HTML")
+        hub.web_manager.fetch_rss.return_value = [("only", [])]
         msg = make_message("/bfrss -lob 260507")
 
         hub.rss_handler(msg)
 
         hub.web_manager.fetch_rss.assert_called_once_with("lob", "20260507")
         hub.bot.send_message.assert_not_called()
-        hub.bot.reply_to.assert_called_once_with(msg, "only", parse_mode="HTML")
+        hub.bot.reply_to.assert_called_once_with(msg, "only", entities=[])
 
 
 class TestClearChatHandler:

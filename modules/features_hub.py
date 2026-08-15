@@ -264,10 +264,11 @@ class BotFeaturesHub:
         if error == "invalid_date":
             self.bot.reply_to(message, strings.bfrss_invalid_date_msg)
             return
-        messages, parse_mode = self.web_manager.fetch_rss(slug, date)
-        for text in messages[:-1]:
-            self.bot.send_message(message.chat.id, text, parse_mode=parse_mode)
-        self.bot.reply_to(message, messages[-1], parse_mode=parse_mode)
+        messages = self.web_manager.fetch_rss(slug, date)
+        for text, entities in messages[:-1]:
+            self.bot.send_message(message.chat.id, text, entities=[entity.to_dict() for entity in entities])
+        text, entities = messages[-1]
+        self.bot.reply_to(message, text, entities=[entity.to_dict() for entity in entities])
 
     def commute_start_keyword_handler(self, message):
         self.commute.handle_start_keyword(message)
