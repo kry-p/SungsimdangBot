@@ -24,7 +24,7 @@ SEARCH_BASE_URL = config.SEARCH_BASE_URL
 MAP_BASE_URL = "https://dapi.kakao.com/v2/local/geo/coord2address.json?"
 WEATHER_BASE_URL = "https://api.openweathermap.org/data/2.5/weather?"
 SUON_REFRESH_INTERVAL = 600  # seconds
-# Telegram Bot API의 4096자 제한에 여유를 둔다.
+# Telegram Bot API의 4096자 제한에 여유를 둔 바운더리 설정.
 BFRSS_MESSAGE_MAX_UTF16_LENGTH = 4090
 
 
