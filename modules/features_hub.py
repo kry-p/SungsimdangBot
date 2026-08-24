@@ -33,10 +33,6 @@ class BotFeaturesHub:
     def is_spotify_callback(data):
         return SpotifyService.is_spotify_callback(data)
 
-    @staticmethod
-    def is_commute_callback(data):
-        return CommuteManager.is_commute_callback(data)
-
     # init
     def __init__(self, bot):
         self.bot = bot
@@ -65,9 +61,6 @@ class BotFeaturesHub:
     def handle_spotify_callback(self, call):
         self.spotify.handle_spotify_callback(call)
 
-    def handle_commute_callback(self, call):
-        self.commute.handle_commute_callback(call)
-
     def allow_chat_handler(self, message):
         self.admin.allow_chat_handler(message)
 
@@ -80,11 +73,8 @@ class BotFeaturesHub:
     def handle_prompt_reply(self, message):
         self.admin.handle_prompt_reply(message)
 
-    def commute_menu_handler(self, message):
-        self.commute.show_menu(message)
-
-    def handle_commute_reply(self, message):
-        self.commute.handle_input_reply(message)
+    def commute_handler(self, message):
+        self.commute.handle_command(message)
 
     # --- Features ---
 

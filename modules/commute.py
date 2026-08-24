@@ -7,14 +7,13 @@ DAYS_PER_WEEK = 7
 MINUTES_PER_DAY = HOURS_PER_DAY * MINUTES_PER_HOUR
 MINUTES_PER_WEEK = DAYS_PER_WEEK * MINUTES_PER_DAY
 END_OF_DAY_TIME = "24:00"
-
 VALIDATION_ERROR_MESSAGES = {
     "hour_out_of_range": "hour must be between 0 and 23",
     "minute_out_of_range": "minute must be between 0 and 59",
     "invalid_weekday": "invalid weekday",
     "empty_weekday": "weekday cannot be empty",
     "same_start_and_end": "start and end time must be different",
-    "negative_minutes": "minutes must not be negative",
+    "negative_minutes": "minutes cannot be negative",
 }
 
 WEEKDAY_MAP = {name: index for index, name in enumerate(strings.commute_weekday_names)}

@@ -93,6 +93,7 @@ class TestSaveSchedule:
         assert CommuteSchedule.select().count() == 0
 
     def test_rolls_back_all_weekdays_when_save_fails(self, monkeypatch):
+        save_schedule(123, "월", "09:00", "18:00")
         original_replace = CommuteSchedule.replace
         call_count = 0
 
@@ -108,9 +109,13 @@ class TestSaveSchedule:
         monkeypatch.setattr(CommuteSchedule, "replace", replace_with_failure)
 
         with pytest.raises(RuntimeError, match="simulated database failure"):
-            save_schedule(123, "월화", "09:00", "18:00")
+            save_schedule(123, "월화", "10:00", "19:00")
 
-        assert CommuteSchedule.select().count() == 0
+        schedules = list(CommuteSchedule.select())
+        assert len(schedules) == 1
+        assert schedules[0].weekday == 0
+        assert schedules[0].start_time_minutes == 9 * 60
+        assert schedules[0].end_time_minutes == 18 * 60
 
 
 class TestGetSchedules:
