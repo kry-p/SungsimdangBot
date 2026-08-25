@@ -19,8 +19,17 @@ from modules.database import CommuteSchedule
 
 class TestParseTime:
     def test_valid_time(self):
+        assert parse_time_to_minutes("9:00") == 540
         assert parse_time_to_minutes("09:00") == 540
         assert parse_time_to_minutes("18:30") == 1110
+
+    @pytest.mark.parametrize(
+        "time_text",
+        ("9:0", "9:5", "009:00", "09:000", "+9:00", "09:+00"),
+    )
+    def test_invalid_time_format(self, time_text):
+        with pytest.raises(ValueError):
+            parse_time_to_minutes(time_text)
 
     def test_invalid_hour(self):
         with pytest.raises(ValueError):

@@ -1,3 +1,5 @@
+import re
+
 from modules.database import CommuteSchedule, db
 from resources import strings
 
@@ -7,7 +9,9 @@ DAYS_PER_WEEK = 7
 MINUTES_PER_DAY = HOURS_PER_DAY * MINUTES_PER_HOUR
 MINUTES_PER_WEEK = DAYS_PER_WEEK * MINUTES_PER_DAY
 END_OF_DAY_TIME = "24:00"
+TIME_FORMAT_PATTERN = re.compile(r"[0-9]{1,2}:[0-9]{2}")
 VALIDATION_ERROR_MESSAGES = {
+    "invalid_time_format": "time must use H:mm or HH:mm format",
     "hour_out_of_range": "hour must be between 0 and 23",
     "minute_out_of_range": "minute must be between 0 and 59",
     "invalid_weekday": "invalid weekday",
@@ -20,6 +24,9 @@ WEEKDAY_MAP = {name: index for index, name in enumerate(strings.commute_weekday_
 
 
 def parse_time_to_minutes(time_text):
+    if TIME_FORMAT_PATTERN.fullmatch(time_text) is None:
+        raise ValueError(VALIDATION_ERROR_MESSAGES["invalid_time_format"])
+
     hour_text, minute_text = time_text.split(":")
     hour = int(hour_text)
     minute = int(minute_text)
