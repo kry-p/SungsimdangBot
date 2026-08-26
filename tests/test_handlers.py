@@ -99,7 +99,7 @@ class TestHandlerDelegation:
         msg = make_message("/commute")
         handlers["commute"](msg)
 
-        hub.commute_menu_handler.assert_called_once_with(msg)
+        hub.commute_handler.assert_called_once_with(msg)
 
     def test_search_delegates_to_hub(self):
         hub = MagicMock()
@@ -205,28 +205,17 @@ class TestHandlerDelegation:
 
         hub.handle_spotify_callback.assert_called_once_with(query)
 
-    def test_commute_callback_delegates_to_hub(self):
+    def test_stale_commute_callback_is_ignored(self):
         hub = MagicMock()
         logger = MagicMock()
-        _, handlers = _capture_handlers(hub, logger)
+        bot, handlers = _capture_handlers(hub, logger)
 
         query = MagicMock()
-        query.data = "commute:set"
+        query.data = "commute:set:123"
         handlers["callback"](query)
 
-        hub.handle_commute_callback.assert_called_once_with(query)
-
-    def test_commute_reply_delegates_to_hub(self):
-        hub = MagicMock()
-        logger = MagicMock()
-        _, handlers = _capture_handlers(hub, logger)
-
-        msg = make_message("월화 09:00 18:00")
-        msg.reply_to_message = MagicMock()
-        msg.reply_to_message.text = strings.commute_set_input_msg
-        handlers["prompt_reply"](msg)
-
-        hub.handle_commute_reply.assert_called_once_with(msg)
+        hub.handle_commute_callback.assert_not_called()
+        bot.send_message.assert_not_called()
 
 
 class TestCallbackErrorBoundary:

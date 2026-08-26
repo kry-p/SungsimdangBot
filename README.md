@@ -53,7 +53,7 @@ modules/
   api_models.py              # 외부 API pydantic 응답 모델
   calculator.py              # 수식 계산기
   commute.py                 # 출퇴근 일정 저장과 남은 시간 계산
-  commute_manager.py         # 출퇴근 일정 관리 UI와 callback 처리
+  commute_manager.py         # 출퇴근 일정 명령과 남은 시간 응답 처리
   database.py                # peewee ORM 모델과 SQLite 초기화
   laftel.py                  # Laftel 편성표, 랭킹, 검색
   spotify.py                 # Spotify 곡 검색과 상세 카드
@@ -119,8 +119,9 @@ docker compose --env-file .deploy.env up -d
 - 현재 위치 정보: 텔레그램 위치 메시지에 주소, 좌표, 날씨 응답
 - D-day: `/dday YYYY M D`
 - 계산기: `/calc sin ( pi / 2 )`
-- 출퇴근 상태 확인: `출근`·`퇴근` 키워드로 현재 근무 상태 또는 다음 출근·퇴근까지 남은 시간 확인
-- 출퇴근 일정 관리: `/commute`로 요일별 출퇴근 일정 등록·조회·삭제
+- 출퇴근 상태 확인: `출근 시간`·`퇴근 시간` 키워드로 현재 근무 상태 또는 다음 출근·퇴근까지 남은 시간 확인
+- 출퇴근 일정 관리: `/commute`로 조회, `/commute 등록 월화 9:00 18:00`으로 등록,
+  `/commute 삭제 월화`로 일부 삭제, `/commute 전체삭제`로 전체 삭제
 - 검색: `/search`
 - 나무위키 검색: `/namu`
 - AI 질문: `/ask`, 이미지 caption 또는 사진 reply 지원

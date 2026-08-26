@@ -19,8 +19,17 @@ from modules.database import CommuteSchedule
 
 class TestParseTime:
     def test_valid_time(self):
+        assert parse_time_to_minutes("9:00") == 540
         assert parse_time_to_minutes("09:00") == 540
         assert parse_time_to_minutes("18:30") == 1110
+
+    @pytest.mark.parametrize(
+        "time_text",
+        ("9:0", "9:5", "009:00", "09:000", "+9:00", "09:+00"),
+    )
+    def test_invalid_time_format(self, time_text):
+        with pytest.raises(ValueError):
+            parse_time_to_minutes(time_text)
 
     def test_invalid_hour(self):
         with pytest.raises(ValueError):
@@ -93,6 +102,7 @@ class TestSaveSchedule:
         assert CommuteSchedule.select().count() == 0
 
     def test_rolls_back_all_weekdays_when_save_fails(self, monkeypatch):
+        save_schedule(123, "월", "09:00", "18:00")
         original_replace = CommuteSchedule.replace
         call_count = 0
 
@@ -108,9 +118,13 @@ class TestSaveSchedule:
         monkeypatch.setattr(CommuteSchedule, "replace", replace_with_failure)
 
         with pytest.raises(RuntimeError, match="simulated database failure"):
-            save_schedule(123, "월화", "09:00", "18:00")
+            save_schedule(123, "월화", "10:00", "19:00")
 
-        assert CommuteSchedule.select().count() == 0
+        schedules = list(CommuteSchedule.select())
+        assert len(schedules) == 1
+        assert schedules[0].weekday == 0
+        assert schedules[0].start_time_minutes == 9 * 60
+        assert schedules[0].end_time_minutes == 18 * 60
 
 
 class TestGetSchedules:

@@ -97,30 +97,30 @@ magic_conch_keywords = ("마법의 소라고둥", "마법의 소라고동")
 commute_start_keywords = ("출근",)
 commute_end_keywords = ("퇴근",)
 commute_time_keywords = ("시간",)
+commute_register_action = "등록"
+commute_delete_action = "삭제"
+commute_delete_all_action = "전체삭제"
 
 # commute messages
 commute_weekday_names = ("월", "화", "수", "목", "금", "토", "일")
-commute_menu_msg = "출퇴근 일정 관리\n\n{schedule}"
-commute_schedule_empty_msg = "등록된 일정이 없습니다."
-commute_schedule_item_msg = "{weekday} {start_time}~{end_time}"
-commute_set_btn = "일정 등록"
-commute_delete_btn = "일부 삭제"
-commute_clear_btn = "전체 삭제"
-commute_close_btn = "닫기"
-commute_menu_cancelled_msg = "취소되었습니다."
-commute_confirm_btn = "삭제"
-commute_cancel_btn = "취소"
-commute_set_input_msg = "등록할 요일과 출퇴근 시간을 입력해 주세요.\n예: 월화수목금 09:00 18:00"
-commute_delete_input_msg = "삭제할 요일을 입력해 주세요.\n예: 월화"
+commute_menu_msg = (
+    "출퇴근 일정 관리\n\n"
+    "[현재 일정]\n"
+    "{schedule}\n\n"
+    "[사용법]\n"
+    "• /commute 등록 월화 9:00 18:00\n"
+    "• /commute 삭제 월화\n"
+    "• /commute 전체삭제"
+)
+commute_schedule_empty_msg = "• 없음"
+commute_schedule_item_msg = "• {weekday} {start_time}~{end_time}"
+commute_command_error_msg = "출퇴근 일정 관리 명령어가 올바르지 않습니다.\n/commute에서 사용법을 확인해 주세요."
 commute_set_error_msg = "일정 등록 형식이 올바르지 않습니다.\n/commute에서 다시 시도해 주세요."
 commute_delete_error_msg = "삭제할 요일 형식이 올바르지 않습니다.\n/commute에서 다시 시도해 주세요."
-commute_clear_confirm_msg = "등록된 출퇴근 일정을 모두 삭제할까요?"
-commute_clear_cancelled_msg = "출퇴근 일정 전체 삭제를 취소했습니다."
-commute_input_expired_msg = "입력 시간이 만료되었습니다. /commute에서 다시 시도해 주세요."
 
 commute_set_success_msg = "{count}개 요일의 출퇴근 일정을 등록했습니다."
 commute_delete_success_msg = "{count}개 요일의 출퇴근 일정을 삭제했습니다."
-commute_clear_success_msg = "등록된 출퇴근 일정을 모두 삭제했습니다."
+commute_delete_all_success_msg = "등록된 출퇴근 일정을 모두 삭제했습니다."
 commute_delete_missing_msg = "삭제할 출퇴근 일정이 없습니다."
 commute_working_msg = "현재 근무 중입니다."
 commute_not_working_msg = "현재 근무 시간이 아닙니다."
