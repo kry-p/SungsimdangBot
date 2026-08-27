@@ -65,9 +65,6 @@ def register_handlers(bot, hub, logger):
             if BotFeaturesHub.is_spotify_callback(query.data):
                 hub.handle_spotify_callback(query)
                 return
-            if BotFeaturesHub.is_commute_callback(query.data):
-                hub.handle_commute_callback(query)
-                return
             result = QUERY_STRINGS.get(query.data)
             if result is not None:
                 bot.send_chat_action(query.message.chat.id, "typing")
@@ -168,7 +165,7 @@ def register_handlers(bot, hub, logger):
     @bot.message_handler(commands=["commute"])
     @safe_handler
     def handle_commute(message):
-        hub.commute_menu_handler(message)
+        hub.commute_handler(message)
 
     # Admin commands
     @bot.message_handler(commands=["allow_chat"])
@@ -217,21 +214,6 @@ def register_handlers(bot, hub, logger):
     @safe_handler
     def handle_laftel_search_reply(message):
         hub.laftel.handle_search_reply(message)
-
-    # ForceReply handler for commute schedule input
-    def is_commute_reply(message):
-        if not message.reply_to_message:
-            return False
-
-        return message.reply_to_message.text in {
-            strings.commute_set_input_msg,
-            strings.commute_delete_input_msg,
-        }
-
-    @bot.message_handler(func=is_commute_reply)
-    @safe_handler
-    def handle_commute_reply(message):
-        hub.handle_commute_reply(message)
 
     # Ordinary message
     @bot.message_handler(content_types=["text"])

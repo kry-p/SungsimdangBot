@@ -1,5 +1,3 @@
-import time
-from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from unittest.mock import MagicMock, patch
 
@@ -13,29 +11,19 @@ from tests.conftest import make_message
 
 
 class TestCommuteMenu:
-    def test_shows_empty_schedule_and_menu_buttons(self):
+    def test_shows_empty_schedule_without_menu_buttons(self):
         bot = MagicMock()
         manager = CommuteManager(bot)
         message = make_message("/commute", user_id=123)
 
         manager.show_menu(message)
 
-        bot.reply_to.assert_called_once()
-        args, kwargs = bot.reply_to.call_args
-        assert args == (
+        bot.reply_to.assert_called_once_with(
             message,
             strings.commute_menu_msg.format(
                 schedule=strings.commute_schedule_empty_msg,
             ),
         )
-
-        callback_data = [button.callback_data for row in kwargs["reply_markup"].keyboard for button in row]
-        assert callback_data == [
-            "commute:set:123",
-            "commute:delete:123",
-            "commute:clear:123",
-            "commute:cancel:123",
-        ]
 
     def test_shows_user_schedules_in_readable_format(self):
         save_schedule(123, "월화", "09:00", "18:00")
@@ -49,275 +37,132 @@ class TestCommuteMenu:
 
         expected_schedule = "\n".join(
             (
-                "월 09:00~18:00",
-                "화 09:00~18:00",
-                "금 22:00~07:00",
+                "• 월 09:00~18:00",
+                "• 화 09:00~18:00",
+                "• 금 22:00~07:00",
             )
         )
         bot.reply_to.assert_called_once_with(
             message,
             strings.commute_menu_msg.format(schedule=expected_schedule),
-            reply_markup=bot.reply_to.call_args.kwargs["reply_markup"],
         )
 
 
-class TestCommuteCallbacks:
-    @staticmethod
-    def make_callback(data, user_id=123, chat_id=1, message_id=10):
-        call = MagicMock()
-        call.data = f"{data}:{user_id}" if data.count(":") == 1 else data
-        call.from_user.id = user_id
-        call.message.chat.id = chat_id
-        call.message.message_id = message_id
-        original_message = make_message("/commute", user_id=user_id, chat_id=chat_id)
-        original_message.message_id = message_id - 1
-        call.message.reply_to_message = original_message
-        return call
+class TestCommuteCommands:
+    def test_command_without_action_shows_menu(self):
+        manager = CommuteManager(MagicMock())
+        manager.show_menu = MagicMock()
+        message = make_message("/commute", user_id=123)
 
-    def test_set_button_requests_input_and_saves_reply(self):
+        manager.handle_command(message)
+
+        manager.show_menu.assert_called_once_with(message)
+
+    def test_registers_schedule(self):
         bot = MagicMock()
-        prompt_message = MagicMock()
-        prompt_message.message_id = 99
-        bot.send_message.return_value = prompt_message
         manager = CommuteManager(bot)
-        call = self.make_callback("commute:set")
+        message = make_message("/commute 등록 월화 9:00 18:00", user_id=123)
 
-        manager.handle_commute_callback(call)
+        manager.handle_command(message)
 
-        bot.send_message.assert_called_once()
-        assert bot.send_message.call_args.args[:2] == (
-            call.message.chat.id,
-            strings.commute_set_input_msg,
-        )
-        assert bot.send_message.call_args.kwargs["reply_to_message_id"] == call.message.reply_to_message.message_id
-        assert bot.send_message.call_args.kwargs["reply_markup"].selective is True
-
-        reply = make_message("월화 09:00 18:00", user_id=123)
-        reply.reply_to_message = prompt_message
-        manager.handle_input_reply(reply)
-
-        schedules = manager._build_schedule_text(123)
-        assert schedules == "월 09:00~18:00\n화 09:00~18:00"
-        bot.reply_to.assert_called_once_with(
-            reply,
-            strings.commute_set_success_msg.format(count=2),
-        )
-
-    def test_set_prompt_falls_back_to_non_selective_force_reply_without_original_message(self):
-        bot = MagicMock()
-        prompt_message = MagicMock()
-        prompt_message.message_id = 99
-        bot.send_message.return_value = prompt_message
-        manager = CommuteManager(bot)
-        call = self.make_callback("commute:set")
-        call.message.reply_to_message = None
-
-        manager.handle_commute_callback(call)
-
-        assert bot.send_message.call_args.kwargs["reply_to_message_id"] is None
-        assert bot.send_message.call_args.kwargs["reply_markup"].selective is False
-
-    def test_delete_button_requests_input_and_deletes_reply(self):
-        save_schedule(123, "월화", "09:00", "18:00")
-        bot = MagicMock()
-        prompt_message = MagicMock()
-        prompt_message.message_id = 99
-        bot.send_message.return_value = prompt_message
-        manager = CommuteManager(bot)
-        call = self.make_callback("commute:delete")
-
-        manager.handle_commute_callback(call)
-
-        assert bot.send_message.call_args.args[:2] == (
-            call.message.chat.id,
-            strings.commute_delete_input_msg,
-        )
-
-        reply = make_message("월", user_id=123)
-        reply.reply_to_message = prompt_message
-        manager.handle_input_reply(reply)
-
-        assert manager._build_schedule_text(123) == "화 09:00~18:00"
-        bot.reply_to.assert_called_once_with(
-            reply,
-            strings.commute_delete_success_msg.format(count=1),
-        )
+        assert manager._build_schedule_text(123) == "• 월 09:00~18:00\n• 화 09:00~18:00"
+        bot.reply_to.assert_called_once_with(message, strings.commute_set_success_msg.format(count=2))
 
     @pytest.mark.parametrize(
         "text",
         (
-            "월 09:00",
-            "월 잘못된시간 18:00",
+            "/commute 등록",
+            "/commute 등록 월 09:00",
+            "/commute 등록 월 잘못된시간 18:00",
+            "/commute 등록 잘못된요일 09:00 18:00",
+            "/commute 등록 월 09:00 09:00",
         ),
     )
-    def test_invalid_set_reply_shows_set_error(self, text):
+    def test_invalid_register_command_shows_error(self, text):
         bot = MagicMock()
         manager = CommuteManager(bot)
         message = make_message(text, user_id=123)
 
-        manager._save_schedule_from_reply(message)
+        manager.handle_command(message)
 
+        assert manager._build_schedule_text(123) == strings.commute_schedule_empty_msg
         bot.reply_to.assert_called_once_with(message, strings.commute_set_error_msg)
 
+    def test_deletes_selected_schedules(self):
+        save_schedule(123, "월화수", "09:00", "18:00")
+        bot = MagicMock()
+        manager = CommuteManager(bot)
+        message = make_message("/commute 삭제 월화", user_id=123)
+
+        manager.handle_command(message)
+
+        assert manager._build_schedule_text(123) == "• 수 09:00~18:00"
+        bot.reply_to.assert_called_once_with(message, strings.commute_delete_success_msg.format(count=2))
+
     @pytest.mark.parametrize(
         "text",
         (
-            "월 화",
-            "잘못된요일",
+            "/commute 삭제",
+            "/commute 삭제 잘못된요일",
         ),
     )
-    def test_invalid_delete_reply_shows_delete_error(self, text):
+    def test_invalid_delete_command_shows_error(self, text):
         bot = MagicMock()
         manager = CommuteManager(bot)
         message = make_message(text, user_id=123)
 
-        manager._delete_schedules_from_reply(message)
+        manager.handle_command(message)
 
         bot.reply_to.assert_called_once_with(message, strings.commute_delete_error_msg)
 
-    def test_clear_button_asks_for_confirmation_and_clears_schedule(self):
+    def test_delete_missing_schedule_shows_error(self):
+        bot = MagicMock()
+        manager = CommuteManager(bot)
+        message = make_message("/commute 삭제 월", user_id=123)
+
+        manager.handle_command(message)
+
+        bot.reply_to.assert_called_once_with(message, strings.commute_delete_missing_msg)
+
+    def test_deletes_all_schedules(self):
         save_schedule(123, "월화", "09:00", "18:00")
         bot = MagicMock()
         manager = CommuteManager(bot)
-        call = self.make_callback("commute:clear")
+        message = make_message("/commute 전체삭제", user_id=123)
 
-        manager.handle_commute_callback(call)
-
-        args, kwargs = bot.edit_message_text.call_args
-        assert args == (
-            strings.commute_clear_confirm_msg,
-            call.message.chat.id,
-            call.message.message_id,
-        )
-        callback_data = [button.callback_data for row in kwargs["reply_markup"].keyboard for button in row]
-        assert callback_data == [
-            "commute_clear:confirm:123",
-            "commute_clear:cancel:123",
-        ]
-
-        confirm_call = self.make_callback("commute_clear:confirm")
-        manager.handle_commute_callback(confirm_call)
+        manager.handle_command(message)
 
         assert manager._build_schedule_text(123) == strings.commute_schedule_empty_msg
-        bot.edit_message_text.assert_called_with(
-            strings.commute_clear_success_msg,
-            confirm_call.message.chat.id,
-            confirm_call.message.message_id,
-        )
+        bot.reply_to.assert_called_once_with(message, strings.commute_delete_all_success_msg)
 
-    def test_clear_cancel_keeps_schedule(self):
+    def test_delete_all_without_schedules_shows_error(self):
+        bot = MagicMock()
+        manager = CommuteManager(bot)
+        message = make_message("/commute 전체삭제", user_id=123)
+
+        manager.handle_command(message)
+
+        bot.reply_to.assert_called_once_with(message, strings.commute_delete_missing_msg)
+
+    def test_delete_all_with_extra_argument_does_not_delete(self):
         save_schedule(123, "월", "09:00", "18:00")
         bot = MagicMock()
         manager = CommuteManager(bot)
-        call = self.make_callback("commute_clear:cancel")
+        message = make_message("/commute 전체삭제 월", user_id=123)
 
-        manager.handle_commute_callback(call)
+        manager.handle_command(message)
 
-        assert manager._build_schedule_text(123) == "월 09:00~18:00"
-        bot.edit_message_text.assert_called_once_with(
-            strings.commute_clear_cancelled_msg,
-            call.message.chat.id,
-            call.message.message_id,
-        )
+        assert manager._build_schedule_text(123) == "• 월 09:00~18:00"
+        bot.reply_to.assert_called_once_with(message, strings.commute_command_error_msg)
 
-    def test_close_button_closes_menu(self):
+    def test_unknown_action_shows_error(self):
         bot = MagicMock()
         manager = CommuteManager(bot)
-        call = self.make_callback("commute:cancel")
+        message = make_message("/commute 알수없음", user_id=123)
 
-        manager.handle_commute_callback(call)
+        manager.handle_command(message)
 
-        bot.edit_message_text.assert_called_once_with(
-            strings.commute_menu_cancelled_msg,
-            call.message.chat.id,
-            call.message.message_id,
-        )
-
-    @pytest.mark.parametrize(
-        "callback_data",
-        (
-            "commute:set:123",
-            "commute:delete:123",
-            "commute:clear:123",
-            "commute:cancel:123",
-            "commute_clear:confirm:123",
-            "commute_clear:cancel:123",
-        ),
-    )
-    def test_other_user_cannot_use_commute_menu(self, callback_data):
-        save_schedule(123, "월", "09:00", "18:00")
-        bot = MagicMock()
-        manager = CommuteManager(bot)
-        call = self.make_callback(callback_data, user_id=456)
-
-        manager.handle_commute_callback(call)
-
-        assert manager._build_schedule_text(123) == "월 09:00~18:00"
-        assert manager._pending_inputs == {}
-        bot.send_message.assert_not_called()
-        bot.edit_message_text.assert_not_called()
-        bot.edit_message_reply_markup.assert_not_called()
-
-    def test_other_user_cannot_consume_pending_input(self):
-        bot = MagicMock()
-        prompt_message = MagicMock()
-        prompt_message.message_id = 99
-        bot.send_message.return_value = prompt_message
-        manager = CommuteManager(bot)
-        manager.handle_commute_callback(self.make_callback("commute:set", user_id=123))
-
-        other_user_reply = make_message("월 09:00 18:00", user_id=456)
-        other_user_reply.reply_to_message = prompt_message
-        manager.handle_input_reply(other_user_reply)
-
-        assert manager._build_schedule_text(456) == strings.commute_schedule_empty_msg
-        assert (1, 99) in manager._pending_inputs
-
-    def test_pending_input_is_consumed_once_by_concurrent_replies(self):
-        bot = MagicMock()
-        manager = CommuteManager(bot)
-        manager._save_schedule_from_reply = MagicMock()
-        manager._pending_inputs[(1, 99)] = (123, "set", time.time())
-
-        replies = [
-            make_message("월 09:00 18:00", user_id=123),
-            make_message("월 09:00 18:00", user_id=123),
-        ]
-        prompt_message = MagicMock()
-        prompt_message.message_id = 99
-        for reply in replies:
-            reply.reply_to_message = prompt_message
-
-        with ThreadPoolExecutor(max_workers=2) as executor:
-            list(executor.map(manager.handle_input_reply, replies))
-
-        manager._save_schedule_from_reply.assert_called_once()
-        assert (1, 99) not in manager._pending_inputs
-
-    def test_same_message_id_is_handled_separately_per_chat(self):
-        bot = MagicMock()
-        prompt_message = MagicMock()
-        prompt_message.message_id = 99
-        bot.send_message.return_value = prompt_message
-        manager = CommuteManager(bot)
-
-        manager.handle_commute_callback(self.make_callback("commute:set", user_id=123, chat_id=1))
-        manager.handle_commute_callback(self.make_callback("commute:set", user_id=456, chat_id=2))
-
-        assert (1, 99) in manager._pending_inputs
-        assert (2, 99) in manager._pending_inputs
-
-        first_reply = make_message("월 09:00 18:00", user_id=123, chat_id=1)
-        first_reply.reply_to_message = prompt_message
-        second_reply = make_message("화 10:00 19:00", user_id=456, chat_id=2)
-        second_reply.reply_to_message = prompt_message
-
-        manager.handle_input_reply(first_reply)
-        manager.handle_input_reply(second_reply)
-
-        assert manager._build_schedule_text(123) == "월 09:00~18:00"
-        assert manager._build_schedule_text(456) == "화 10:00~19:00"
-        assert manager._pending_inputs == {}
+        bot.reply_to.assert_called_once_with(message, strings.commute_command_error_msg)
 
 
 class TestCommuteKeywords:

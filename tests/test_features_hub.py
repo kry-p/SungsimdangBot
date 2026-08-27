@@ -108,30 +108,14 @@ class TestCalculatorHandler:
         hub.bot.reply_to.assert_not_called()
 
 
-class TestCommuteMenuHandler:
+class TestCommuteHandler:
     def test_delegates_to_commute_manager(self, hub):
-        hub.commute.show_menu = MagicMock()
+        hub.commute.handle_command = MagicMock()
         msg = make_message("/commute")
 
-        hub.commute_menu_handler(msg)
+        hub.commute_handler(msg)
 
-        hub.commute.show_menu.assert_called_once_with(msg)
-
-    def test_callback_delegates_to_commute_manager(self, hub):
-        hub.commute.handle_commute_callback = MagicMock()
-        call = MagicMock()
-
-        hub.handle_commute_callback(call)
-
-        hub.commute.handle_commute_callback.assert_called_once_with(call)
-
-    def test_reply_delegates_to_commute_manager(self, hub):
-        hub.commute.handle_input_reply = MagicMock()
-        msg = make_message("월화 09:00 18:00")
-
-        hub.handle_commute_reply(msg)
-
-        hub.commute.handle_input_reply.assert_called_once_with(msg)
+        hub.commute.handle_command.assert_called_once_with(msg)
 
 
 class TestOrdinaryMessage:
