@@ -338,7 +338,7 @@ bfrss_am = "오전"
 bfrss_pm = "오후"
 bfrss_header_msg = " {feed_name} ({month}월 {day}일 {time_of_day})\n\n"
 bfrss_header_msg_no_time = " {feed_name} ({month}월 {day}일)\n\n"
-bfrss_entry_msg = '• <a href="{link}">{title}</a>'
+bfrss_entry_msg = "• {title}"
 bfrss_feed_names = {"hn": "THE HACKER NEWS", "lob": "LOBSTERS", "reg": "THE REGISTER"}
 
 # Resources

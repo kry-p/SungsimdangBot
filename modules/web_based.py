@@ -1,8 +1,8 @@
 import datetime
-import html
 import urllib.parse
 
 import requests
+from telegramify_markdown import MessageEntity, split_entities, utf16_len
 
 from config import config
 from modules import log
@@ -24,6 +24,8 @@ SEARCH_BASE_URL = config.SEARCH_BASE_URL
 MAP_BASE_URL = "https://dapi.kakao.com/v2/local/geo/coord2address.json?"
 WEATHER_BASE_URL = "https://api.openweathermap.org/data/2.5/weather?"
 SUON_REFRESH_INTERVAL = 600  # seconds
+# Telegram Bot API의 4096자 제한에 여유를 둔 바운더리 설정.
+BFRSS_MESSAGE_MAX_UTF16_LENGTH = 4090
 
 
 # 강물 온도 조회
@@ -144,7 +146,7 @@ class WebManager:
 
     def fetch_rss(self, slug="hn", date=""):
         if slug not in strings.bfrss_feed_names:
-            return strings.bfrss_unknown_slug_msg, None
+            return [(strings.bfrss_unknown_slug_msg, [])]
         try:
             headers = {"Authorization": f"Bearer {config.RSSF_TOKEN}"}
             params = {}
@@ -154,20 +156,54 @@ class WebManager:
             res.raise_for_status()
             data = RssfResponse.model_validate_json(res.text)
             feed_name = strings.bfrss_feed_names[slug]
-            if data.hour is not None:
-                time_of_day = strings.bfrss_am if data.hour < 12 else strings.bfrss_pm
-                text = strings.bfrss_header_msg.format(
-                    feed_name=feed_name, month=data.date[4:6], day=data.date[6:], time_of_day=time_of_day
-                )
-            else:
-                text = strings.bfrss_header_msg_no_time.format(
-                    feed_name=feed_name, month=data.date[4:6], day=data.date[6:]
-                )
-            text += "\n".join(
-                strings.bfrss_entry_msg.format(link=html.escape(e.link, quote=True), title=html.escape(e.title))
-                for e in data.entries
-            )
-            return text, "HTML"
+            return self._build_rss_messages(data, feed_name)
         except Exception as e:
             logger.log_error(f"rss_handler failed: {e}")
-            return strings.bfrss_error_msg, None
+            return [(strings.bfrss_error_msg, [])]
+
+    @staticmethod
+    def _build_rss_header(data, feed_name):
+        if data.hour is not None:
+            time_of_day = strings.bfrss_am if data.hour < 12 else strings.bfrss_pm
+            return strings.bfrss_header_msg.format(
+                feed_name=feed_name,
+                month=data.date[4:6],
+                day=data.date[6:],
+                time_of_day=time_of_day,
+            )
+        return strings.bfrss_header_msg_no_time.format(
+            feed_name=feed_name,
+            month=data.date[4:6],
+            day=data.date[6:],
+        )
+
+    @classmethod
+    def _build_rss_messages(cls, data, feed_name):
+        header = cls._build_rss_header(data, feed_name)
+        entry_prefix = strings.bfrss_entry_msg.format(title="")
+        entry_prefix_length = utf16_len(entry_prefix)
+        text_parts = [header]
+        entities = []
+        current_offset = utf16_len(header)
+
+        for index, entry in enumerate(data.entries):
+            separator = "\n" if index else ""
+            entry_text = strings.bfrss_entry_msg.format(title=entry.title)
+            title_offset = current_offset + utf16_len(separator) + entry_prefix_length
+            if entry.title and entry.link:
+                entities.append(
+                    MessageEntity(
+                        type="text_link",
+                        offset=title_offset,
+                        length=utf16_len(entry.title),
+                        url=entry.link,
+                    )
+                )
+            text_parts.extend((separator, entry_text))
+            current_offset += utf16_len(separator + entry_text)
+
+        return split_entities(
+            "".join(text_parts),
+            entities,
+            max_utf16_len=BFRSS_MESSAGE_MAX_UTF16_LENGTH,
+        )
