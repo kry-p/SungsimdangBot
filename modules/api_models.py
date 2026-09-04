@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from pydantic import BaseModel, ConfigDict, Field
 
 # --- 서울 한강 수온 ---
@@ -173,3 +175,58 @@ class RssfResponse(BaseModel):
     date: str = ""
     hour: int | None = None
     entries: list[RssfEntry] = Field(default_factory=list)
+
+
+# --- Codex Reset ---
+
+
+class CodexResetProbabilities(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    rounded_24h: int
+    rounded_48h: int
+
+
+class CodexResetLatestAlert(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    id: str
+    kind: str
+    state: str
+    source_at: datetime | None = None
+    summary: str = ""
+    url: str = ""
+
+
+class CodexResetForecastResponse(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    updated_at: datetime
+    probabilities: CodexResetProbabilities
+    confidence: str = "unknown"
+    confidence_note: str = ""
+    last_reset_at: datetime | None = None
+    age_days: float | None = None
+    latest_alert: CodexResetLatestAlert | None = None
+
+
+# --- Codex Banked Reset ---
+
+
+class CodexResetTimelineEvent(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    id: str
+    announced_at: datetime
+    summary: str = ""
+    url: str = ""
+    reset_kind: str | None = None
+    banked_state: str | None = None
+    confidence: str = "unknown"
+
+
+class CodexResetTimelineResponse(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    updated_at: datetime
+    events: list[CodexResetTimelineEvent] = Field(default_factory=list)

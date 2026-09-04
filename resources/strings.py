@@ -32,6 +32,7 @@ bot_command_descriptions = {
     "spotify": "Spotify 노래 검색",
     "bfrss": "해외 rss 번역수신",
     "commute": "출퇴근 일정 관리",
+    "codex": "Codex 초기화 정보",
 }
 
 # Guideline message
@@ -410,3 +411,24 @@ coin_toss_result = [
     "뒷면",
     "수직으로 섰음",
 ]
+
+# Codex Reset
+
+codex_reset_forecast_msg = (
+    "🎫 Codex 전체 초기화 정보\n\n"
+    "• 최근 초기화: {last_reset_at}\n"
+    "• 24시간 이내 확률: {probability_24h}%(신뢰도 {confidence})\n"
+    "{source}"
+)
+
+codex_reset_source_msg = "• 출처: {source_url}"
+codex_reset_source_unavailable_msg = "• 출처: 확인할 수 없음"
+codex_reset_date_unavailable_msg = "확인할 수 없음"
+
+codex_reset_error_msg = "Codex 초기화 정보를 가져오는 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요."
+
+codex_banked_announcement_msg = "\n\n🎟️ Codex 초기화권 정보\n\n• 최근 발표: {announced_at}\n• 출처: {source_url}"
+
+codex_banked_announcement_unavailable_msg = "\n\n🎟️ Codex 초기화권 정보\n\n• 최근 발표: 확인할 수 없음"
+
+codex_reset_disclaimer_msg = "\n\n※ 공식 정보가 아니므로 참고용으로만 이용해 주세요."

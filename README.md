@@ -52,6 +52,7 @@ modules/
       openai.py              # OpenAI provider
   api_models.py              # 외부 API pydantic 응답 모델
   calculator.py              # 수식 계산기
+  codex_reset.py             # Codex 전체 초기화 예측과 초기화권 발표 조회
   commute.py                 # 출퇴근 일정 저장과 남은 시간 계산
   commute_manager.py         # 출퇴근 일정 명령과 남은 시간 응답 처리
   database.py                # peewee ORM 모델과 SQLite 초기화
@@ -129,6 +130,7 @@ docker compose --env-file .deploy.env up -d
 - AI 설정 확인/변경: `/ask_settings`
 - 내 사용자 ID 확인: `/myid`
 - 봇 상태 확인: `/ping`
+- Codex 전체 초기화 예측과 최근 초기화권 발표 조회: `/codex` (비공식 커뮤니티 트래커 기반)
 - Laftel 정보: `/laftel`
 - Spotify 노래 검색: `/spotify 곡명 또는 아티스트`
 - 번역 RSS 수신: `/bfrss`
