@@ -33,10 +33,6 @@ class BotFeaturesHub:
     def is_spotify_callback(data):
         return SpotifyService.is_spotify_callback(data)
 
-    @staticmethod
-    def is_commute_callback(data):
-        return CommuteManager.is_commute_callback(data)
-
     # init
     def __init__(self, bot):
         self.bot = bot
@@ -65,9 +61,6 @@ class BotFeaturesHub:
     def handle_spotify_callback(self, call):
         self.spotify.handle_spotify_callback(call)
 
-    def handle_commute_callback(self, call):
-        self.commute.handle_commute_callback(call)
-
     def allow_chat_handler(self, message):
         self.admin.allow_chat_handler(message)
 
@@ -80,11 +73,8 @@ class BotFeaturesHub:
     def handle_prompt_reply(self, message):
         self.admin.handle_prompt_reply(message)
 
-    def commute_menu_handler(self, message):
-        self.commute.show_menu(message)
-
-    def handle_commute_reply(self, message):
-        self.commute.handle_input_reply(message)
+    def commute_handler(self, message):
+        self.commute.handle_command(message)
 
     # --- Features ---
 
@@ -264,8 +254,11 @@ class BotFeaturesHub:
         if error == "invalid_date":
             self.bot.reply_to(message, strings.bfrss_invalid_date_msg)
             return
-        text, parse_mode = self.web_manager.fetch_rss(slug, date)
-        self.bot.reply_to(message, text, parse_mode=parse_mode)
+        messages = self.web_manager.fetch_rss(slug, date)
+        for text, entities in messages[:-1]:
+            self.bot.send_message(message.chat.id, text, entities=[entity.to_dict() for entity in entities])
+        text, entities = messages[-1]
+        self.bot.reply_to(message, text, entities=[entity.to_dict() for entity in entities])
 
     def commute_start_keyword_handler(self, message):
         self.commute.handle_start_keyword(message)
