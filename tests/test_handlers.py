@@ -52,6 +52,16 @@ def test_register_commands_uses_descriptions_from_strings():
     assert actual == list(strings.bot_command_descriptions.items())
 
 
+def test_register_commands_includes_codex():
+    bot = MagicMock()
+
+    register_commands(bot)
+
+    commands = bot.set_my_commands.call_args.args[0]
+    actual = [(command.command, command.description) for command in commands]
+    assert ("codex", "Codex 초기화 정보") in actual
+
+
 class TestSafeHandlerErrorBoundary:
     def test_exception_logs_and_replies_error(self):
         hub = MagicMock()
@@ -89,8 +99,30 @@ class TestSafeHandlerErrorBoundary:
         bot.send_message.assert_called_once_with(msg.chat.id, strings.working_msg)
         logger.log_error.assert_not_called()
 
+    def test_codex_handler_exception_is_caught(self):
+        hub = MagicMock()
+        hub.codex_handler.side_effect = Exception("unexpected error")
+        logger = MagicMock()
+        bot, handlers = _capture_handlers(hub, logger)
+
+        msg = make_message("/codex")
+        handlers["codex"](msg)
+
+        logger.log_error.assert_called_once()
+        bot.reply_to.assert_called_once_with(msg, strings.generic_error_msg)
+
 
 class TestHandlerDelegation:
+    def test_codex_delegates_to_hub(self):
+        hub = MagicMock()
+        logger = MagicMock()
+        _, handlers = _capture_handlers(hub, logger)
+
+        msg = make_message("/codex")
+        handlers["codex"](msg)
+
+        hub.codex_handler.assert_called_once_with(msg)
+
     def test_commute_delegates_to_hub(self):
         hub = MagicMock()
         logger = MagicMock()

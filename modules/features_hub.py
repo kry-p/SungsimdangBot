@@ -3,12 +3,15 @@
 import datetime
 import re
 
+import requests
+from pydantic import ValidationError
 from telegramify_markdown import convert, split_entities
 
 from modules import log
 from modules.admin import AdminManager
 from modules.ai.chat import AIChatManager
 from modules.calculator import Calculator
+from modules.codex_reset import CodexResetService
 from modules.commute_manager import CommuteManager
 from modules.laftel import LaftelService
 from modules.random_based import RandomBasedFeatures
@@ -45,6 +48,7 @@ class BotFeaturesHub:
         self.laftel = LaftelService(bot)
         self.spotify = SpotifyService(bot)
         self.commute = CommuteManager(bot)
+        self.codex_reset = CodexResetService()
 
     # --- Admin delegation ---
 
@@ -285,3 +289,28 @@ class BotFeaturesHub:
 
         if has_commute_time_keyword and any(kw in message.text for kw in strings.commute_end_keywords):
             self.commute_end_keyword_handler(message)
+
+    def codex_handler(self, message):
+        try:
+            forecast = self.codex_reset.fetch_forecast()
+            response_message = self.codex_reset.build_forecast_message(forecast)
+        except (requests.RequestException, ValidationError):
+            logger.log_error("Failed to fetch Codex reset forecast.")
+            self.bot.reply_to(message, strings.codex_reset_error_msg)
+            return
+
+        try:
+            timeline = self.codex_reset.fetch_timeline()
+            announcement = self.codex_reset.find_latest_banked_announcement(timeline)
+        except (requests.RequestException, ValidationError):
+            logger.log_error("Failed to fetch Codex banked reset timeline.")
+            announcement = None
+
+        response_message += self.codex_reset.build_banked_announcement_message(announcement)
+        response_message += strings.codex_reset_disclaimer_msg
+
+        self.bot.reply_to(
+            message,
+            response_message,
+            disable_web_page_preview=True,
+        )

@@ -2,8 +2,11 @@ import datetime
 from unittest.mock import MagicMock, call, patch
 
 import pytest
+import requests
+from pydantic import ValidationError
 from telegramify_markdown import MessageEntity
 
+from modules.api_models import CodexResetForecastResponse, CodexResetTimelineResponse
 from modules.features_hub import BotFeaturesHub
 from resources import strings
 from tests.conftest import make_message
@@ -17,6 +20,7 @@ def hub():
         patch("modules.features_hub.AIChatManager"),
         patch("modules.features_hub.AdminManager"),
         patch("modules.features_hub.SpotifyService"),
+        patch("modules.features_hub.CodexResetService"),
     ):
         h = BotFeaturesHub(bot)
     return h
@@ -116,6 +120,101 @@ class TestCommuteHandler:
         hub.commute_handler(msg)
 
         hub.commute.handle_command.assert_called_once_with(msg)
+
+
+class TestCodexHandler:
+    def test_success_replies_with_forecast_and_banked_announcement(self, hub):
+        forecast = MagicMock()
+        timeline = MagicMock()
+        announcement = MagicMock()
+        hub.codex_reset.fetch_forecast.return_value = forecast
+        hub.codex_reset.build_forecast_message.return_value = "Codex forecast"
+        hub.codex_reset.fetch_timeline.return_value = timeline
+        hub.codex_reset.find_latest_banked_announcement.return_value = announcement
+        hub.codex_reset.build_banked_announcement_message.return_value = "\n\nBanked announcement"
+        msg = make_message("/codex")
+
+        hub.codex_handler(msg)
+
+        hub.codex_reset.fetch_forecast.assert_called_once_with()
+        hub.codex_reset.build_forecast_message.assert_called_once_with(forecast)
+        hub.codex_reset.fetch_timeline.assert_called_once_with()
+        hub.codex_reset.find_latest_banked_announcement.assert_called_once_with(timeline)
+        hub.codex_reset.build_banked_announcement_message.assert_called_once_with(announcement)
+        hub.bot.reply_to.assert_called_once_with(
+            msg,
+            f"Codex forecast\n\nBanked announcement{strings.codex_reset_disclaimer_msg}",
+            disable_web_page_preview=True,
+        )
+        reply_text = hub.bot.reply_to.call_args.args[1]
+        assert "공식 정보가 아니므로 참고용으로만 이용해 주세요." in reply_text
+        assert "codex-reset.com" not in reply_text
+
+    @patch("modules.features_hub.logger")
+    def test_timeline_error_replies_with_forecast_and_unavailable_announcement(self, mock_logger, hub):
+        forecast = MagicMock()
+        hub.codex_reset.fetch_forecast.return_value = forecast
+        hub.codex_reset.build_forecast_message.return_value = "Codex forecast"
+        hub.codex_reset.fetch_timeline.side_effect = requests.Timeout("timed out")
+        hub.codex_reset.build_banked_announcement_message.return_value = "\n\nUnavailable"
+        msg = make_message("/codex")
+
+        hub.codex_handler(msg)
+
+        hub.codex_reset.find_latest_banked_announcement.assert_not_called()
+        hub.codex_reset.build_banked_announcement_message.assert_called_once_with(None)
+        mock_logger.log_error.assert_called_once_with("Failed to fetch Codex banked reset timeline.")
+        hub.bot.reply_to.assert_called_once_with(
+            msg,
+            f"Codex forecast\n\nUnavailable{strings.codex_reset_disclaimer_msg}",
+            disable_web_page_preview=True,
+        )
+
+    @patch("modules.features_hub.logger")
+    def test_timeline_validation_error_keeps_forecast_response(self, mock_logger, hub):
+        with pytest.raises(ValidationError) as error_info:
+            CodexResetTimelineResponse.model_validate({})
+        hub.codex_reset.build_forecast_message.return_value = "Codex forecast"
+        hub.codex_reset.fetch_timeline.side_effect = error_info.value
+        hub.codex_reset.build_banked_announcement_message.return_value = "\n\nUnavailable"
+        msg = make_message("/codex")
+
+        hub.codex_handler(msg)
+
+        hub.codex_reset.find_latest_banked_announcement.assert_not_called()
+        hub.codex_reset.build_banked_announcement_message.assert_called_once_with(None)
+        mock_logger.log_error.assert_called_once_with("Failed to fetch Codex banked reset timeline.")
+        hub.bot.reply_to.assert_called_once_with(
+            msg,
+            f"Codex forecast\n\nUnavailable{strings.codex_reset_disclaimer_msg}",
+            disable_web_page_preview=True,
+        )
+
+    @patch("modules.features_hub.logger")
+    def test_request_error_replies_with_codex_error(self, mock_logger, hub):
+        hub.codex_reset.fetch_forecast.side_effect = requests.Timeout("timed out")
+        msg = make_message("/codex")
+
+        hub.codex_handler(msg)
+
+        hub.codex_reset.build_forecast_message.assert_not_called()
+        hub.codex_reset.fetch_timeline.assert_not_called()
+        mock_logger.log_error.assert_called_once_with("Failed to fetch Codex reset forecast.")
+        hub.bot.reply_to.assert_called_once_with(msg, strings.codex_reset_error_msg)
+
+    @patch("modules.features_hub.logger")
+    def test_validation_error_replies_with_codex_error(self, mock_logger, hub):
+        with pytest.raises(ValidationError) as error_info:
+            CodexResetForecastResponse.model_validate({})
+        hub.codex_reset.fetch_forecast.side_effect = error_info.value
+        msg = make_message("/codex")
+
+        hub.codex_handler(msg)
+
+        hub.codex_reset.build_forecast_message.assert_not_called()
+        hub.codex_reset.fetch_timeline.assert_not_called()
+        mock_logger.log_error.assert_called_once_with("Failed to fetch Codex reset forecast.")
+        hub.bot.reply_to.assert_called_once_with(msg, strings.codex_reset_error_msg)
 
 
 class TestOrdinaryMessage:

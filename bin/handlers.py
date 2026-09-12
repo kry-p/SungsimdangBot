@@ -77,6 +77,12 @@ def register_handlers(bot, hub, logger):
     def handle_ping(message):
         bot.send_message(message.chat.id, strings.working_msg)
 
+    # Codex reset forecast and banked reset announcement
+    @bot.message_handler(commands=["codex"])
+    @safe_handler
+    def handle_codex(message):
+        hub.codex_handler(message)
+
     # User ID
     @bot.message_handler(commands=["myid"])
     def handle_myid(message):
