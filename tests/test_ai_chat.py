@@ -2,6 +2,8 @@ import threading
 import time
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 from modules.ai.chat import AIChatManager
 from modules.database import AllowedChat
 from resources import strings
@@ -80,6 +82,21 @@ class TestAsk:
 
         provider = make_provider_mock()
         provider.ask.side_effect = AIServerError
+        m = make_manager(provider_mock=provider, allowlist={1: "test"})
+        with patch("modules.ai.chat.config") as mc:
+            mc.AI_RATE_LIMIT = 5
+            result = m.ask(1, 1, "질문", "ko")
+        assert result == [strings.ask_error_msg]
+
+    def test_allowlist_lookup_error(self):
+        m = make_manager()
+        with patch.object(m, "is_chat_allowed", side_effect=Exception("database error")):
+            result = m.ask(1, 1, "질문", "ko")
+        assert result == [strings.ask_error_msg]
+
+    @pytest.mark.parametrize("response", [None, "", " \n\t"])
+    def test_invalid_provider_result(self, response):
+        provider = make_provider_mock(response)
         m = make_manager(provider_mock=provider, allowlist={1: "test"})
         with patch("modules.ai.chat.config") as mc:
             mc.AI_RATE_LIMIT = 5
