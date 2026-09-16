@@ -130,7 +130,7 @@ docker compose --env-file .deploy.env up -d
 - AI 설정 확인/변경: `/ask_settings`
 - 내 사용자 ID 확인: `/myid`
 - 봇 상태 확인: `/ping`
-- Codex 전체 초기화 예측과 최근 초기화권 발표 조회: `/codex` (비공식 커뮤니티 트래커 기반)
+- Codex 전체 초기화 예측과 초기화권 상태 조회: `/codex` ([codex-reset.com](https://codex-reset.com/) 비공식 데이터 기반)
 - Laftel 정보: `/laftel`
 - Spotify 노래 검색: `/spotify 곡명 또는 아티스트`
 - 번역 RSS 수신: `/bfrss`

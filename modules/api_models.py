@@ -184,18 +184,7 @@ class CodexResetProbabilities(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
     rounded_24h: int
-    rounded_48h: int
-
-
-class CodexResetLatestAlert(BaseModel):
-    model_config = ConfigDict(extra="ignore")
-
-    id: str
-    kind: str
-    state: str
-    source_at: datetime | None = None
-    summary: str = ""
-    url: str = ""
+    # 외부 API는 `rounded_48h`도 제공하며, 추후 48시간 예측을 표시할 때 추가할 수 있습니다.
 
 
 class CodexResetForecastResponse(BaseModel):
@@ -207,7 +196,6 @@ class CodexResetForecastResponse(BaseModel):
     confidence_note: str = ""
     last_reset_at: datetime | None = None
     age_days: float | None = None
-    latest_alert: CodexResetLatestAlert | None = None
 
 
 # --- Codex Banked Reset ---

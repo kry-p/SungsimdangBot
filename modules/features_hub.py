@@ -295,18 +295,19 @@ class BotFeaturesHub:
             forecast = self.codex_reset.fetch_forecast()
             response_message = self.codex_reset.build_forecast_message(forecast)
         except (requests.RequestException, ValidationError):
-            logger.log_error("Failed to fetch Codex reset forecast.")
+            logger.log_error(strings.codex_reset_forecast_log_error_msg)
             self.bot.reply_to(message, strings.codex_reset_error_msg)
             return
 
         try:
             timeline = self.codex_reset.fetch_timeline()
-            announcement = self.codex_reset.find_latest_banked_announcement(timeline)
+            banked_updates = self.codex_reset.find_latest_banked_updates(timeline)
         except (requests.RequestException, ValidationError):
-            logger.log_error("Failed to fetch Codex banked reset timeline.")
-            announcement = None
+            logger.log_error(strings.codex_banked_timeline_log_error_msg)
+            banked_updates = {}
 
-        response_message += self.codex_reset.build_banked_announcement_message(announcement)
+        response_message += self.codex_reset.build_banked_updates_message(banked_updates)
+        response_message += strings.codex_reset_source_msg
         response_message += strings.codex_reset_disclaimer_msg
 
         self.bot.reply_to(
