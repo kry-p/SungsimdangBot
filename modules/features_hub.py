@@ -222,8 +222,8 @@ class BotFeaturesHub:
             self._reply_plain(message, text, waiting_message)
             return
 
-        try:
-            for index, (part_text, part_entities) in enumerate(parts):
+        for index, (part_text, part_entities) in enumerate(parts):
+            try:
                 if index == 0 and waiting_message is not None:
                     self.bot.edit_message_text(
                         part_text,
@@ -233,11 +233,17 @@ class BotFeaturesHub:
                     )
                 else:
                     self.bot.reply_to(message, part_text, entities=part_entities)
-        except Exception:
-            if waiting_message is None and not any(part_entities for _, part_entities in parts):
-                raise
-            logger.log_error("Failed to deliver formatted AI response, retrying as plain text.")
-            self._reply_plain(message, text, waiting_message)
+            except Exception:
+                if index == 0:
+                    if waiting_message is None and not any(part_entities for _, part_entities in parts):
+                        raise
+                    logger.log_error("Failed to deliver formatted AI response, retrying as plain text.")
+                    self._reply_plain(message, text, waiting_message)
+                else:
+                    logger.log_error("Failed to deliver formatted AI response, retrying remaining parts as plain text.")
+                    for remaining_text, _ in parts[index:]:
+                        self.bot.reply_to(message, remaining_text)
+                return
 
     def _reply_plain(self, message, text, waiting_message=None):
         parts = [part_text for part_text, _ in split_entities(text, [], max_utf16_len=4090)]

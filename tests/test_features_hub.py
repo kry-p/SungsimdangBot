@@ -487,6 +487,35 @@ class TestAskHandler:
         assert formatted_reply.kwargs["entities"]
         assert plain_reply == call(msg, "[공식 문서](https://example.com/docs)")
 
+    @patch("modules.features_hub.convert", return_value=("ABCD", []))
+    @patch("modules.features_hub.split_entities")
+    def test_partial_formatted_delivery_retries_only_remaining_parts_as_plain_text(
+        self, mock_split_entities, mock_convert, hub
+    ):
+        entity = MagicMock()
+        entity.to_dict.return_value = {"type": "bold"}
+        mock_split_entities.return_value = [
+            ("A", [entity]),
+            ("B", [entity]),
+            ("C", [entity]),
+            ("D", [entity]),
+        ]
+        hub.bot.reply_to.side_effect = [None, Exception("formatted send failed"), None, None]
+        waiting_message = MagicMock()
+        waiting_message.chat.id = 1
+        waiting_message.message_id = 999
+        msg = make_message("/ask 질문", user_id=1)
+
+        hub._reply_markdown(msg, "ABCD", waiting_message)
+
+        hub.bot.edit_message_text.assert_called_once_with("A", 1, 999, entities=[{"type": "bold"}])
+        assert hub.bot.reply_to.call_args_list == [
+            call(msg, "B", entities=[{"type": "bold"}]),
+            call(msg, "C", entities=[{"type": "bold"}]),
+            call(msg, "C"),
+            call(msg, "D"),
+        ]
+
     def test_plain_follow_up_failure_is_propagated(self, hub):
         msg = make_message("/ask 질문", user_id=1)
         hub.bot.reply_to.side_effect = Exception("plain send failed")
