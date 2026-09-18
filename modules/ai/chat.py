@@ -58,18 +58,21 @@ class AIChatManager:
     # --- Public API ---
 
     def ask(self, chat_id, user_id, question, language_code, context=None, image=None):
-        with self._lock:
-            if not self.is_chat_allowed(chat_id):
-                return [strings.ask_not_allowed_msg]
-            if not self.check_rate_limit(chat_id, user_id):
-                return [strings.ask_rate_limit_msg]
-            session_key = (chat_id, user_id)
-
-        system_prompt = self._build_system_prompt(language_code)
-        text = strings.ask_context_format.format(context=context, question=question) if context else question
-
         try:
+            with self._lock:
+                if not self.is_chat_allowed(chat_id):
+                    return [strings.ask_not_allowed_msg]
+                if not self.check_rate_limit(chat_id, user_id):
+                    return [strings.ask_rate_limit_msg]
+                session_key = (chat_id, user_id)
+
+            system_prompt = self._build_system_prompt(language_code)
+            text = strings.ask_context_format.format(context=context, question=question) if context else question
             result = self.provider.ask(session_key, system_prompt, text, image)
+            if not isinstance(result, str) or not result.strip():
+                logger.log_error("AI provider returned an empty response.")
+                return [strings.ask_error_msg]
+            return self.split_response(result)
         except TimeoutError:
             return [strings.ask_timeout_msg]
         except AIClientError:
@@ -79,8 +82,6 @@ class AIChatManager:
         except Exception:
             logger.log_error("Unexpected error in ask()")
             return [strings.ask_error_msg]
-
-        return self.split_response(result)
 
     def clear_session(self, chat_id, user_id):
         self.provider.clear_session((chat_id, user_id))

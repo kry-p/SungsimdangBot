@@ -175,10 +175,10 @@ class BotFeaturesHub:
             self.bot.reply_to(message, strings.ask_photo_download_error_msg)
             return
 
-        self.bot.send_chat_action(message.chat.id, "typing")
+        waiting_message = self.bot.reply_to(message, strings.ask_waiting_msg)
         result = self.ai_chat.ask(message.chat.id, message.from_user.id, question, language_code, context, image)
-        for chunk in result:
-            self._reply_markdown(message, chunk)
+        for index, chunk in enumerate(result):
+            self._reply_markdown(message, chunk, waiting_message if index == 0 else None)
 
     def _extract_ask_params(self, message):
         """메시지에서 이미지와 컨텍스트를 추출한다. 사진 다운로드 실패 시 (False, None)을 반환."""
@@ -210,20 +210,58 @@ class BotFeaturesHub:
             logger.log_error("Failed to download photo.")
             return None
 
-    def _reply_markdown(self, message, text):
+    def _reply_markdown(self, message, text, waiting_message=None):
         try:
             converted_text, entities = convert(text)
-            parts = split_entities(converted_text, entities, max_utf16_len=4090)
-            for part_text, part_entities in parts:
-                self.bot.reply_to(
-                    message,
-                    part_text,
-                    entities=[e.to_dict() for e in part_entities],
-                )
+            parts = [
+                (part_text, [entity.to_dict() for entity in part_entities])
+                for part_text, part_entities in split_entities(converted_text, entities, max_utf16_len=4090)
+            ]
         except Exception:
             logger.log_error("Markdown conversion failed, sending as plain text.")
-            for plain_chunk in AIChatManager.split_response(text):
-                self.bot.reply_to(message, plain_chunk)
+            self._reply_plain(message, text, waiting_message)
+            return
+
+        for index, (part_text, part_entities) in enumerate(parts):
+            try:
+                if index == 0 and waiting_message is not None:
+                    self.bot.edit_message_text(
+                        part_text,
+                        waiting_message.chat.id,
+                        waiting_message.message_id,
+                        entities=part_entities,
+                    )
+                else:
+                    self.bot.reply_to(message, part_text, entities=part_entities)
+            except Exception:
+                if index == 0:
+                    if waiting_message is None and not any(part_entities for _, part_entities in parts):
+                        raise
+                    logger.log_error("Failed to deliver formatted AI response, retrying as plain text.")
+                    self._reply_plain(message, text, waiting_message)
+                else:
+                    logger.log_error("Failed to deliver formatted AI response, retrying remaining parts as plain text.")
+                    for remaining_text, _ in parts[index:]:
+                        self.bot.reply_to(message, remaining_text)
+                return
+
+    def _reply_plain(self, message, text, waiting_message=None):
+        parts = [part_text for part_text, _ in split_entities(text, [], max_utf16_len=4090)]
+        start_index = 0
+        if waiting_message is not None:
+            try:
+                self.bot.edit_message_text(parts[0], waiting_message.chat.id, waiting_message.message_id)
+            except Exception:
+                logger.log_error("Failed to update AI waiting message as plain text.")
+                self.bot.reply_to(message, parts[0])
+                try:
+                    self.bot.delete_message(waiting_message.chat.id, waiting_message.message_id)
+                except Exception:
+                    logger.log_error("Failed to delete stale AI waiting message.")
+            start_index = 1
+
+        for part_text in parts[start_index:]:
+            self.bot.reply_to(message, part_text)
 
     # RSS JSON request
     @staticmethod

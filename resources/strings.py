@@ -201,6 +201,7 @@ ask_help_msg = (
 )
 ask_context_format = "[참조된 메시지]\n{context}\n\n[질문]\n{question}"
 ask_empty_msg = "질문을 입력해 주세요.\n\n예) /ask 오늘 날씨 어때?"
+ask_waiting_msg = "🤔 답변 준비 중..."
 ask_photo_download_error_msg = "사진을 가져오는 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요."
 ask_error_msg = "AI 응답을 가져오는 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요."
 ask_timeout_msg = "AI 응답 시간이 초과되었습니다. 잠시 후 다시 시도해 주세요."
