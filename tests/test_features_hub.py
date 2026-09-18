@@ -2,8 +2,11 @@ import datetime
 from unittest.mock import MagicMock, call, patch
 
 import pytest
+import requests
+from pydantic import ValidationError
 from telegramify_markdown import MessageEntity
 
+from modules.api_models import CodexResetForecastResponse, CodexResetTimelineResponse
 from modules.features_hub import BotFeaturesHub
 from resources import strings
 from tests.conftest import make_message
@@ -12,11 +15,14 @@ from tests.conftest import make_message
 @pytest.fixture
 def hub():
     bot = MagicMock()
+    bot.reply_to.return_value.chat.id = 1
+    bot.reply_to.return_value.message_id = 999
     with (
         patch("modules.features_hub.WebManager"),
         patch("modules.features_hub.AIChatManager"),
         patch("modules.features_hub.AdminManager"),
         patch("modules.features_hub.SpotifyService"),
+        patch("modules.features_hub.CodexResetService"),
     ):
         h = BotFeaturesHub(bot)
     return h
@@ -118,6 +124,101 @@ class TestCommuteHandler:
         hub.commute.handle_command.assert_called_once_with(msg)
 
 
+class TestCodexHandler:
+    def test_success_replies_with_forecast_and_banked_updates(self, hub):
+        forecast = MagicMock()
+        timeline = MagicMock()
+        banked_updates = {"announced": MagicMock()}
+        hub.codex_reset.fetch_forecast.return_value = forecast
+        hub.codex_reset.build_forecast_message.return_value = "Codex forecast"
+        hub.codex_reset.fetch_timeline.return_value = timeline
+        hub.codex_reset.find_latest_banked_updates.return_value = banked_updates
+        hub.codex_reset.build_banked_updates_message.return_value = "\n\nBanked updates"
+        msg = make_message("/codex")
+
+        hub.codex_handler(msg)
+
+        hub.codex_reset.fetch_forecast.assert_called_once_with()
+        hub.codex_reset.build_forecast_message.assert_called_once_with(forecast)
+        hub.codex_reset.fetch_timeline.assert_called_once_with()
+        hub.codex_reset.find_latest_banked_updates.assert_called_once_with(timeline)
+        hub.codex_reset.build_banked_updates_message.assert_called_once_with(banked_updates)
+        hub.bot.reply_to.assert_called_once_with(
+            msg,
+            f"Codex forecast\n\nBanked updates{strings.codex_reset_source_msg}{strings.codex_reset_disclaimer_msg}",
+            disable_web_page_preview=True,
+        )
+        reply_text = hub.bot.reply_to.call_args.args[1]
+        assert strings.codex_reset_disclaimer_msg in reply_text
+        assert strings.codex_reset_source_msg in reply_text
+
+    @patch("modules.features_hub.logger")
+    def test_timeline_error_replies_with_forecast_and_unavailable_updates(self, mock_logger, hub):
+        forecast = MagicMock()
+        hub.codex_reset.fetch_forecast.return_value = forecast
+        hub.codex_reset.build_forecast_message.return_value = "Codex forecast"
+        hub.codex_reset.fetch_timeline.side_effect = requests.Timeout("timed out")
+        hub.codex_reset.build_banked_updates_message.return_value = "\n\nUnavailable"
+        msg = make_message("/codex")
+
+        hub.codex_handler(msg)
+
+        hub.codex_reset.find_latest_banked_updates.assert_not_called()
+        hub.codex_reset.build_banked_updates_message.assert_called_once_with({})
+        mock_logger.log_error.assert_called_once_with("Failed to fetch Codex banked reset timeline.")
+        hub.bot.reply_to.assert_called_once_with(
+            msg,
+            f"Codex forecast\n\nUnavailable{strings.codex_reset_source_msg}{strings.codex_reset_disclaimer_msg}",
+            disable_web_page_preview=True,
+        )
+
+    @patch("modules.features_hub.logger")
+    def test_timeline_validation_error_keeps_forecast_response(self, mock_logger, hub):
+        with pytest.raises(ValidationError) as error_info:
+            CodexResetTimelineResponse.model_validate({})
+        hub.codex_reset.build_forecast_message.return_value = "Codex forecast"
+        hub.codex_reset.fetch_timeline.side_effect = error_info.value
+        hub.codex_reset.build_banked_updates_message.return_value = "\n\nUnavailable"
+        msg = make_message("/codex")
+
+        hub.codex_handler(msg)
+
+        hub.codex_reset.find_latest_banked_updates.assert_not_called()
+        hub.codex_reset.build_banked_updates_message.assert_called_once_with({})
+        mock_logger.log_error.assert_called_once_with("Failed to fetch Codex banked reset timeline.")
+        hub.bot.reply_to.assert_called_once_with(
+            msg,
+            f"Codex forecast\n\nUnavailable{strings.codex_reset_source_msg}{strings.codex_reset_disclaimer_msg}",
+            disable_web_page_preview=True,
+        )
+
+    @patch("modules.features_hub.logger")
+    def test_request_error_replies_with_codex_error(self, mock_logger, hub):
+        hub.codex_reset.fetch_forecast.side_effect = requests.Timeout("timed out")
+        msg = make_message("/codex")
+
+        hub.codex_handler(msg)
+
+        hub.codex_reset.build_forecast_message.assert_not_called()
+        hub.codex_reset.fetch_timeline.assert_not_called()
+        mock_logger.log_error.assert_called_once_with("Failed to fetch Codex reset forecast.")
+        hub.bot.reply_to.assert_called_once_with(msg, strings.codex_reset_error_msg)
+
+    @patch("modules.features_hub.logger")
+    def test_validation_error_replies_with_codex_error(self, mock_logger, hub):
+        with pytest.raises(ValidationError) as error_info:
+            CodexResetForecastResponse.model_validate({})
+        hub.codex_reset.fetch_forecast.side_effect = error_info.value
+        msg = make_message("/codex")
+
+        hub.codex_handler(msg)
+
+        hub.codex_reset.build_forecast_message.assert_not_called()
+        hub.codex_reset.fetch_timeline.assert_not_called()
+        mock_logger.log_error.assert_called_once_with("Failed to fetch Codex reset forecast.")
+        hub.bot.reply_to.assert_called_once_with(msg, strings.codex_reset_error_msg)
+
+
 class TestOrdinaryMessage:
     def test_suon_keyword_triggers_temp(self, hub):
         hub.web_manager.provide_suon_v2.return_value = "20.0"
@@ -195,10 +296,9 @@ class TestAskHandler:
         msg.from_user.language_code = "ko"
         hub.ask_handler(msg)
         hub.ai_chat.ask.assert_called_once_with(1, 1, "질문", "ko", None, None)
-        hub.bot.reply_to.assert_called_once()
-        call_kwargs = hub.bot.reply_to.call_args
-        assert call_kwargs[0][1] == "답변입니다"
-        assert "entities" in call_kwargs.kwargs
+        hub.bot.reply_to.assert_called_once_with(msg, strings.ask_waiting_msg)
+        hub.bot.edit_message_text.assert_called_once_with("답변입니다", 1, 999, entities=[])
+        hub.bot.send_chat_action.assert_not_called()
 
     def test_reply_with_context(self, hub):
         hub.ai_chat.ask.return_value = ["요약입니다"]
@@ -293,8 +393,8 @@ class TestAskHandler:
         msg = make_message("/ask 질문", user_id=1)
         msg.from_user.language_code = "ko"
         hub.ask_handler(msg)
-        hub.bot.reply_to.assert_called_once()
-        call_kwargs = hub.bot.reply_to.call_args
+        hub.bot.reply_to.assert_called_once_with(msg, strings.ask_waiting_msg)
+        call_kwargs = hub.bot.edit_message_text.call_args
         assert "entities" in call_kwargs.kwargs
         entities = call_kwargs.kwargs["entities"]
         assert len(entities) > 0
@@ -304,7 +404,8 @@ class TestAskHandler:
         msg = make_message("/ask 질문", user_id=1)
         msg.from_user.language_code = "ko"
         hub.ask_handler(msg)
-        hub.bot.reply_to.assert_called_once()
+        hub.bot.reply_to.assert_called_once_with(msg, strings.ask_waiting_msg)
+        hub.bot.edit_message_text.assert_called_once_with(strings.ask_not_allowed_msg, 1, 999, entities=[])
 
     @patch("modules.features_hub.convert", side_effect=Exception("parse error"))
     def test_convert_failure_fallback(self, mock_convert, hub):
@@ -312,7 +413,115 @@ class TestAskHandler:
         msg = make_message("/ask 질문", user_id=1)
         msg.from_user.language_code = "ko"
         hub.ask_handler(msg)
-        hub.bot.reply_to.assert_called_once_with(msg, "plain text response")
+        hub.bot.reply_to.assert_called_once_with(msg, strings.ask_waiting_msg)
+        hub.bot.edit_message_text.assert_called_once_with("plain text response", 1, 999)
+
+    def test_multiple_response_chunks_edit_waiting_message_then_send_replies(self, hub):
+        hub.ai_chat.ask.return_value = ["첫 번째", "두 번째"]
+        msg = make_message("/ask 긴 질문", user_id=1)
+        msg.from_user.language_code = "ko"
+
+        hub.ask_handler(msg)
+
+        assert hub.bot.reply_to.call_args_list == [
+            call(msg, strings.ask_waiting_msg),
+            call(msg, "두 번째", entities=[]),
+        ]
+        hub.bot.edit_message_text.assert_called_once_with("첫 번째", 1, 999, entities=[])
+
+    def test_edit_failure_sends_final_answer_as_new_reply(self, hub):
+        hub.ai_chat.ask.return_value = ["**답변입니다**"]
+        hub.bot.edit_message_text.side_effect = Exception("edit failed")
+        msg = make_message("/ask 질문", user_id=1)
+        msg.from_user.language_code = "ko"
+
+        hub.ask_handler(msg)
+
+        assert hub.bot.reply_to.call_args_list == [
+            call(msg, strings.ask_waiting_msg),
+            call(msg, "**답변입니다**"),
+        ]
+        assert hub.bot.edit_message_text.call_count == 2
+        hub.bot.delete_message.assert_called_once_with(1, 999)
+
+    def test_formatted_edit_failure_preserves_link_in_plain_text(self, hub):
+        hub.ai_chat.ask.return_value = ["[공식 문서](https://example.com/docs)"]
+        hub.bot.edit_message_text.side_effect = [Exception("formatted edit failed"), None]
+        msg = make_message("/ask 질문", user_id=1)
+        msg.from_user.language_code = "ko"
+
+        hub.ask_handler(msg)
+
+        assert hub.bot.edit_message_text.call_count == 2
+        first_edit, second_edit = hub.bot.edit_message_text.call_args_list
+        assert first_edit.args[:3] == ("공식 문서", 1, 999)
+        assert first_edit.kwargs["entities"]
+        assert second_edit == call("[공식 문서](https://example.com/docs)", 1, 999)
+        hub.bot.reply_to.assert_called_once_with(msg, strings.ask_waiting_msg)
+        hub.bot.delete_message.assert_not_called()
+
+    def test_delete_failure_does_not_interrupt_fallback_reply(self, hub):
+        hub.ai_chat.ask.return_value = ["답변입니다"]
+        hub.bot.edit_message_text.side_effect = Exception("edit failed")
+        hub.bot.delete_message.side_effect = Exception("delete failed")
+        msg = make_message("/ask 질문", user_id=1)
+        msg.from_user.language_code = "ko"
+
+        hub.ask_handler(msg)
+
+        assert hub.bot.reply_to.call_args_list == [
+            call(msg, strings.ask_waiting_msg),
+            call(msg, "답변입니다"),
+        ]
+        hub.bot.delete_message.assert_called_once_with(1, 999)
+
+    def test_formatted_follow_up_failure_retries_as_plain_text(self, hub):
+        msg = make_message("/ask 질문", user_id=1)
+        hub.bot.reply_to.side_effect = [Exception("formatted send failed"), None]
+
+        hub._reply_markdown(msg, "[공식 문서](https://example.com/docs)")
+
+        assert hub.bot.reply_to.call_count == 2
+        formatted_reply, plain_reply = hub.bot.reply_to.call_args_list
+        assert formatted_reply.args == (msg, "공식 문서")
+        assert formatted_reply.kwargs["entities"]
+        assert plain_reply == call(msg, "[공식 문서](https://example.com/docs)")
+
+    @patch("modules.features_hub.convert", return_value=("ABCD", []))
+    @patch("modules.features_hub.split_entities")
+    def test_partial_formatted_delivery_retries_only_remaining_parts_as_plain_text(
+        self, mock_split_entities, mock_convert, hub
+    ):
+        entity = MagicMock()
+        entity.to_dict.return_value = {"type": "bold"}
+        mock_split_entities.return_value = [
+            ("A", [entity]),
+            ("B", [entity]),
+            ("C", [entity]),
+            ("D", [entity]),
+        ]
+        hub.bot.reply_to.side_effect = [None, Exception("formatted send failed"), None, None]
+        waiting_message = MagicMock()
+        waiting_message.chat.id = 1
+        waiting_message.message_id = 999
+        msg = make_message("/ask 질문", user_id=1)
+
+        hub._reply_markdown(msg, "ABCD", waiting_message)
+
+        hub.bot.edit_message_text.assert_called_once_with("A", 1, 999, entities=[{"type": "bold"}])
+        assert hub.bot.reply_to.call_args_list == [
+            call(msg, "B", entities=[{"type": "bold"}]),
+            call(msg, "C", entities=[{"type": "bold"}]),
+            call(msg, "C"),
+            call(msg, "D"),
+        ]
+
+    def test_plain_follow_up_failure_is_propagated(self, hub):
+        msg = make_message("/ask 질문", user_id=1)
+        hub.bot.reply_to.side_effect = Exception("plain send failed")
+
+        with pytest.raises(Exception, match="plain send failed"):
+            hub._reply_markdown(msg, "답변입니다")
 
 
 class TestParseBfrssArgs:
