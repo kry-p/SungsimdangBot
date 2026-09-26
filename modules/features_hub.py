@@ -331,25 +331,32 @@ class BotFeaturesHub:
     def codex_handler(self, message):
         try:
             forecast = self.codex_reset.fetch_forecast()
-            response_message = self.codex_reset.build_forecast_message(forecast)
+            forecast_message = self.codex_reset.build_forecast_message(forecast)
         except (requests.RequestException, ValidationError):
             logger.log_error(strings.codex_reset_forecast_log_error_msg)
             self.bot.reply_to(message, strings.codex_reset_error_msg)
             return
 
         try:
-            timeline = self.codex_reset.fetch_timeline()
-            banked_updates = self.codex_reset.find_latest_banked_updates(timeline)
+            history = self.codex_reset.fetch_history()
+            last_reset_at = forecast.latest_reset.occurred_at if forecast.latest_reset else None
+            active_notice = self.codex_reset.find_latest_active_notice(history, last_reset_at)
+            banked_update = self.codex_reset.find_latest_banked_update(history)
         except (requests.RequestException, ValidationError):
-            logger.log_error(strings.codex_banked_timeline_log_error_msg)
-            banked_updates = {}
+            logger.log_error(strings.codex_reset_history_log_error_msg)
+            active_notice = None
+            banked_update = None
 
-        response_message += self.codex_reset.build_banked_updates_message(banked_updates)
-        response_message += strings.codex_reset_source_msg
+        response_message = strings.codex_reset_header_msg
+        response_message += self.codex_reset.build_active_notice_message(active_notice)
+        response_message += forecast_message
+        response_message += self.codex_reset.build_banked_updates_message(banked_update)
+        response_message += strings.codex_reset_timezone_msg
         response_message += strings.codex_reset_disclaimer_msg
 
         self.bot.reply_to(
             message,
             response_message,
+            parse_mode="Markdown",
             disable_web_page_preview=True,
         )
