@@ -103,6 +103,19 @@ commute_delete_action = "삭제"
 commute_delete_all_action = "전체삭제"
 
 # commute messages
+commute_help_msg = (
+    "💼 출퇴근 일정 관리 도움말\n\n"
+    "명령어 형식\n"
+    "/commute [동작] [요일] [출근 시각] [퇴근 시각]\n\n"
+    "설명\n"
+    "요일별 출퇴근 일정을 등록, 조회, 삭제할 수 있습니다.\n\n"
+    "예시\n"
+    "• 일정 등록: /commute 등록 월화 9:00 18:00\n"
+    "• 일정 삭제: /commute 삭제 월화\n"
+    "• 전체 삭제: /commute 전체삭제\n\n"
+    "'출근 시간'을 입력하면 현재 근무 상태 또는 다음 출근까지 남은 시간을 알려드립니다.\n"
+    "'퇴근 시간'을 입력하면 퇴근까지 남은 시간을 알려드립니다."
+)
 commute_weekday_names = ("월", "화", "수", "목", "금", "토", "일")
 commute_menu_msg = (
     "출퇴근 일정 관리\n\n"
@@ -376,6 +389,7 @@ main_keyboard.row(
     telebot.types.InlineKeyboardButton("해외 RSS", callback_data="bfrss"),
 )
 main_keyboard.row(
+    telebot.types.InlineKeyboardButton("출퇴근 일정 관리", callback_data="commute"),
     telebot.types.InlineKeyboardButton("Codex 초기화 정보", callback_data="codex"),
 )
 
