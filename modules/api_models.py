@@ -180,41 +180,49 @@ class RssfResponse(BaseModel):
 # --- Codex Reset ---
 
 
+class CodexResetProbabilityWindow(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    display: int
+
+
 class CodexResetProbabilities(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
-    rounded_24h: int
-    # 외부 API는 `rounded_48h`도 제공하며, 추후 48시간 예측을 표시할 때 추가할 수 있습니다.
+    h24: CodexResetProbabilityWindow
+
+
+class CodexResetLatestReset(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    occurred_at: datetime = Field(alias="occurredAt")
 
 
 class CodexResetForecastResponse(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
-    updated_at: datetime
-    probabilities: CodexResetProbabilities
-    confidence: str = "unknown"
-    confidence_note: str = ""
-    last_reset_at: datetime | None = None
-    age_days: float | None = None
+    calculated_at: datetime | None = Field(alias="calculatedAt")
+    valid_until: datetime | None = Field(alias="validUntil")
+    publication_state: str = Field(alias="publicationState")
+    display_mode: str = Field(alias="displayMode")
+    probabilities: CodexResetProbabilities | None = None
+    latest_reset: CodexResetLatestReset | None = Field(default=None, alias="latestReset")
 
 
-# --- Codex Banked Reset ---
+# --- Codex Reset History ---
 
 
-class CodexResetTimelineEvent(BaseModel):
+class CodexResetHistoryEvent(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
     id: str
-    announced_at: datetime
-    summary: str = ""
-    url: str = ""
-    reset_kind: str | None = None
-    banked_state: str | None = None
-    confidence: str = "unknown"
+    announced_at: datetime = Field(alias="announcedAt")
+    kind: str
+    event_kind: str = Field(default="", alias="eventKind")
+    status: str = ""
 
 
-class CodexResetTimelineResponse(BaseModel):
+class CodexResetHistoryResponse(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
-    updated_at: datetime
-    events: list[CodexResetTimelineEvent] = Field(default_factory=list)
+    items: list[CodexResetHistoryEvent]

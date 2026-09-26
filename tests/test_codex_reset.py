@@ -1,4 +1,5 @@
 import json
+from datetime import datetime
 from unittest.mock import MagicMock, patch
 from zoneinfo import ZoneInfo
 
@@ -7,75 +8,60 @@ import requests
 from pydantic import ValidationError
 
 from config import config
-from modules.api_models import CodexResetForecastResponse, CodexResetTimelineResponse
+from modules.api_models import CodexResetForecastResponse, CodexResetHistoryResponse
 from modules.codex_reset import CodexResetService
 
 
 def _forecast_response():
     return {
-        "updated_at": "2026-09-01T12:35:40.496Z",
-        "probabilities": {
-            "raw_24h": 0.2745,
-            "raw_48h": 0.4737,
-            "rounded_24h": 25,
-            "rounded_48h": 45,
-        },
-        "confidence": "low",
-        "confidence_note": "Experimental forecast",
-        "last_reset_at": "2026-08-31T02:34:27.000Z",
-        "age_days": 1.4,
-        "latest_alert": {
-            "id": "2094252447271366730",
-            "kind": "reset",
-            "state": "confirmed",
-            "source_at": "2026-08-31T02:34:27.000Z",
-            "summary": "Usage reset confirmed",
-            "url": "https://example.com/reset",
-            "corrected": True,
-        },
+        "calculatedAt": "2026-09-26T01:20:00.000Z",
+        "validUntil": "2026-09-26T02:05:00.000Z",
+        "publicationState": "hinted",
+        "displayMode": "probability",
+        "probabilities": {"h24": {"display": 39}, "h48": {"display": 64}},
+        "latestReset": {"occurredAt": "2026-09-12T08:09:17.000Z"},
     }
 
 
-def _timeline_response():
+def _history_response():
     return {
-        "updated_at": "2026-09-04T12:22:15.405Z",
-        "events": [
+        "items": [
             {
-                "id": "newer-hard-reset",
-                "announced_at": "2026-09-04T01:00:00.000Z",
-                "summary": "Global usage reset",
-                "url": "https://example.com/hard-reset",
-                "reset_kind": "hard",
-                "confidence": "high",
+                "id": "old-banked",
+                "announcedAt": "2026-09-03T23:12:09.000Z",
+                "kind": "banked",
+                "eventKind": "policy_change",
+                "status": "recorded",
             },
             {
-                "id": "latest-banked-announcement",
-                "announced_at": "2026-09-03T23:12:09.000Z",
-                "summary": "New banked reset announcement",
-                "url": "https://example.com/latest-banked",
-                "reset_kind": "banked",
-                "banked_state": "announced",
-                "confidence": "medium",
+                "id": "completed-global",
+                "announcedAt": "2026-09-12T08:09:17.000Z",
+                "kind": "special_global",
+                "eventKind": "completed",
+                "status": "completed",
             },
             {
-                "id": "available-banked-reset",
-                "announced_at": "2026-08-22T00:50:36.000Z",
-                "summary": "Banked reset available",
-                "url": "https://example.com/available-banked",
-                "reset_kind": "banked",
-                "banked_state": "available",
-                "confidence": "high",
+                "id": "missed-notice",
+                "announcedAt": "2026-09-22T04:31:32.000Z",
+                "kind": "special_global",
+                "eventKind": "scheduled",
+                "status": "missed",
             },
             {
-                "id": "older-banked-announcement",
-                "announced_at": "2026-08-21T11:43:19.000Z",
-                "summary": "Old banked reset announcement",
-                "url": "https://example.com/older-banked",
-                "reset_kind": "banked",
-                "banked_state": "announced",
-                "confidence": "high",
+                "id": "new-banked",
+                "announcedAt": "2026-09-22T18:23:37.000Z",
+                "kind": "banked",
+                "eventKind": "policy_change",
+                "status": "recorded",
             },
-        ],
+            {
+                "id": "active-notice",
+                "announcedAt": "2026-09-26T00:07:13.000Z",
+                "kind": "special_global",
+                "eventKind": "intent",
+                "status": "active",
+            },
+        ]
     }
 
 
@@ -87,225 +73,174 @@ def test_fetch_forecast(mock_get):
 
     forecast = CodexResetService.fetch_forecast()
 
-    mock_get.assert_called_once_with(
-        config.CODEX_RESET_FORECAST_URL,
-        timeout=10,
-    )
+    mock_get.assert_called_once_with(config.CODEX_RESET_FORECAST_URL, timeout=10)
     response.raise_for_status.assert_called_once_with()
-    assert forecast.probabilities.rounded_24h == 25
-    assert forecast.confidence == "low"
-    assert forecast.age_days == 1.4
+    assert forecast.probabilities.h24.display == 39
+    assert forecast.latest_reset.occurred_at.isoformat() == "2026-09-12T08:09:17+00:00"
 
 
+@pytest.mark.parametrize("error", [requests.Timeout, requests.HTTPError])
 @patch("modules.codex_reset.requests.get")
-def test_fetch_forecast_propagates_timeout(mock_get):
-    mock_get.side_effect = requests.Timeout
+def test_fetch_forecast_propagates_request_errors(mock_get, error):
+    if error is requests.Timeout:
+        mock_get.side_effect = error
+    else:
+        mock_get.return_value.raise_for_status.side_effect = error
 
-    with pytest.raises(requests.Timeout):
+    with pytest.raises(error):
         CodexResetService.fetch_forecast()
 
 
 @patch("modules.codex_reset.requests.get")
-def test_fetch_forecast_propagates_http_error(mock_get):
-    response = MagicMock()
-    response.raise_for_status.side_effect = requests.HTTPError
-    mock_get.return_value = response
-
-    with pytest.raises(requests.HTTPError):
-        CodexResetService.fetch_forecast()
-
-
-@patch("modules.codex_reset.requests.get")
-def test_fetch_forecast_rejects_invalid_json(mock_get):
-    response = MagicMock()
-    response.text = "not-json"
-    mock_get.return_value = response
+def test_fetch_forecast_rejects_invalid_response(mock_get):
+    mock_get.return_value.text = json.dumps({"calculatedAt": "2026-09-26T01:20:00.000Z"})
 
     with pytest.raises(ValidationError):
         CodexResetService.fetch_forecast()
 
 
-@patch("modules.codex_reset.requests.get")
-def test_fetch_forecast_rejects_missing_required_fields(mock_get):
-    response = MagicMock()
-    response.text = json.dumps({"updated_at": "2026-09-01T12:35:40.496Z"})
-    mock_get.return_value = response
-
-    with pytest.raises(ValidationError):
-        CodexResetService.fetch_forecast()
-
-
-def test_build_forecast_message_translates_forecast_to_korean():
+def test_build_forecast_message_shows_last_reset_and_probability():
     forecast = CodexResetForecastResponse.model_validate(_forecast_response())
+    now = datetime.fromisoformat("2026-09-26T01:30:00+00:00")
 
     with patch.object(config, "TIMEZONE", ZoneInfo("Asia/Seoul")):
-        message = CodexResetService.build_forecast_message(forecast)
+        message = CodexResetService.build_forecast_message(forecast, now=now)
 
-    assert message.startswith("🎫 Codex 전체 초기화 정보\n\n")
-    assert "2026년 8월 31일 11:34 (KST)" in message
-    assert "약 1.4일 전" not in message
-    assert "• 24시간 이내 확률: 25%(신뢰도 낮음)" in message
-    assert "https://example.com/reset" not in message
-    assert "48시간 이내: 45%" not in message
-    assert "• 예측 신뢰도:" not in message
-    assert "예측 기준" not in message
-    assert "예측 데이터 갱신" not in message
-    assert "https://codex-reset.com/" not in message
-
-
-def test_build_forecast_message_handles_missing_optional_values():
-    response_data = _forecast_response()
-    response_data.update(
-        {
-            "confidence": "unexpected",
-            "last_reset_at": None,
-            "age_days": None,
-        }
+    assert message == (
+        "🎫 Codex 전체 초기화 정보\n\n• 최근 초기화: 2026년 9월 12일 17:09 (KST)\n• 24시간 이내 확률: 39%"
     )
-    forecast = CodexResetForecastResponse.model_validate(response_data)
+
+
+@pytest.mark.parametrize("stale", ["expired", "publication_state", "missing_probabilities", "missing_valid_until"])
+def test_build_forecast_message_hides_unavailable_probability(stale):
+    data = _forecast_response()
+    if stale == "publication_state":
+        data["publicationState"] = "stale"
+    if stale == "missing_probabilities":
+        data["probabilities"] = None
+    if stale == "missing_valid_until":
+        data["validUntil"] = None
+    forecast = CodexResetForecastResponse.model_validate(data)
+    now = datetime.fromisoformat("2026-09-26T02:10:00+00:00" if stale == "expired" else "2026-09-26T01:30:00+00:00")
+
+    message = CodexResetService.build_forecast_message(forecast, now=now)
+
+    assert "• 24시간 이내 확률: 확인할 수 없음" in message
+
+
+def test_build_forecast_message_handles_unavailable_snapshot():
+    data = _forecast_response()
+    data["calculatedAt"] = None
+    data["validUntil"] = None
+    data["probabilities"] = None
+    data["publicationState"] = "unavailable"
+    forecast = CodexResetForecastResponse.model_validate(data)
 
     message = CodexResetService.build_forecast_message(forecast)
+
+    assert "• 24시간 이내 확률: 확인할 수 없음" in message
+
+
+def test_build_forecast_message_handles_missing_last_reset():
+    data = _forecast_response()
+    data["latestReset"] = None
+    forecast = CodexResetForecastResponse.model_validate(data)
+
+    message = CodexResetService.build_forecast_message(
+        forecast,
+        now=datetime.fromisoformat("2026-09-26T01:30:00+00:00"),
+    )
 
     assert "• 최근 초기화: 확인할 수 없음" in message
-    assert "경과 시간을 확인할 수 없음" not in message
-    assert "24시간 이내 확률: 25%(신뢰도 알 수 없음)" in message
-
-
-@pytest.mark.parametrize(
-    ("confidence", "expected_label"),
-    [
-        ("low", "낮음"),
-        ("medium", "보통"),
-        ("high", "높음"),
-    ],
-)
-def test_build_forecast_message_translates_known_confidence_levels(confidence, expected_label):
-    response_data = _forecast_response()
-    response_data["confidence"] = confidence
-    forecast = CodexResetForecastResponse.model_validate(response_data)
-
-    message = CodexResetService.build_forecast_message(forecast)
-
-    assert f"24시간 이내 확률: 25%(신뢰도 {expected_label})" in message
-
-
-def test_build_forecast_message_uses_configured_timezone():
-    forecast = CodexResetForecastResponse.model_validate(_forecast_response())
-
-    with patch.object(config, "TIMEZONE", ZoneInfo("UTC")):
-        message = CodexResetService.build_forecast_message(forecast)
-
-    assert "2026년 8월 31일 02:34 (UTC)" in message
 
 
 @patch("modules.codex_reset.requests.get")
-def test_fetch_timeline(mock_get):
+def test_fetch_history(mock_get):
     response = MagicMock()
-    response.text = json.dumps(_timeline_response())
+    response.text = json.dumps(_history_response())
     mock_get.return_value = response
 
-    timeline = CodexResetService.fetch_timeline()
+    history = CodexResetService.fetch_history()
 
-    mock_get.assert_called_once_with(
-        config.CODEX_RESET_TIMELINE_URL,
-        timeout=10,
-    )
+    mock_get.assert_called_once_with(config.CODEX_RESET_HISTORY_URL, timeout=10)
     response.raise_for_status.assert_called_once_with()
-    assert len(timeline.events) == 4
-    assert timeline.events[1].banked_state == "announced"
+    assert len(history.items) == 5
 
 
 @patch("modules.codex_reset.requests.get")
-def test_fetch_timeline_propagates_timeout(mock_get):
-    mock_get.side_effect = requests.Timeout
-
-    with pytest.raises(requests.Timeout):
-        CodexResetService.fetch_timeline()
-
-
-@patch("modules.codex_reset.requests.get")
-def test_fetch_timeline_propagates_http_error(mock_get):
-    response = MagicMock()
-    response.raise_for_status.side_effect = requests.HTTPError
-    mock_get.return_value = response
-
-    with pytest.raises(requests.HTTPError):
-        CodexResetService.fetch_timeline()
-
-
-@patch("modules.codex_reset.requests.get")
-def test_fetch_timeline_rejects_invalid_json(mock_get):
-    response = MagicMock()
-    response.text = "not-json"
-    mock_get.return_value = response
+def test_fetch_history_rejects_missing_items(mock_get):
+    mock_get.return_value.text = "{}"
 
     with pytest.raises(ValidationError):
-        CodexResetService.fetch_timeline()
+        CodexResetService.fetch_history()
 
 
-@patch("modules.codex_reset.requests.get")
-def test_fetch_timeline_rejects_missing_required_fields(mock_get):
-    response = MagicMock()
-    response.text = json.dumps({"events": []})
-    mock_get.return_value = response
+def test_find_latest_active_notice_skips_completed_and_missed_events():
+    history = CodexResetHistoryResponse.model_validate(_history_response())
+    last_reset_at = datetime.fromisoformat("2026-09-12T08:09:17+00:00")
 
-    with pytest.raises(ValidationError):
-        CodexResetService.fetch_timeline()
+    notice = CodexResetService.find_latest_active_notice(history, last_reset_at)
 
-
-def test_find_latest_banked_updates_filters_states_older_than_previous_state():
-    timeline = CodexResetTimelineResponse.model_validate(_timeline_response())
-
-    updates = CodexResetService.find_latest_banked_updates(timeline)
-
-    assert updates["announced"].id == "latest-banked-announcement"
-    assert "arriving" not in updates
-    assert "available" not in updates
+    assert notice.id == "active-notice"
+    assert "초기화 예고: 2026년 9월 26일 09:07 (KST)" in CodexResetService.build_active_notice_message(notice)
 
 
-def test_find_latest_banked_updates_keeps_states_in_timestamp_order():
-    response_data = _timeline_response()
-    response_data["events"].append(
+def test_find_latest_active_notice_ignores_notice_before_last_reset():
+    history = CodexResetHistoryResponse.model_validate(_history_response())
+    last_reset_at = datetime.fromisoformat("2026-09-27T00:00:00+00:00")
+
+    notice = CodexResetService.find_latest_active_notice(history, last_reset_at)
+
+    assert notice is None
+    assert CodexResetService.build_active_notice_message(notice) == ""
+
+
+def test_find_latest_banked_update_uses_newest_announcement():
+    history = CodexResetHistoryResponse.model_validate(_history_response())
+
+    update = CodexResetService.find_latest_banked_update(history)
+
+    assert update.id == "new-banked"
+    assert CodexResetService.build_banked_updates_message(update) == (
+        "\n\n🎟️ Codex 초기화권 정보\n\n• 최근 지급 발표: 2026년 9월 23일 03:23 (KST)"
+    )
+
+
+def test_find_latest_banked_update_ignores_superseded_announcement():
+    data = _history_response()
+    data["items"].append(
         {
-            "id": "arriving-banked-reset",
-            "announced_at": "2026-09-04T00:00:00.000Z",
-            "summary": "Banked reset arriving",
-            "url": "https://example.com/arriving-banked",
-            "reset_kind": "banked",
-            "banked_state": "arriving",
-            "confidence": "high",
+            "id": "superseded-banked",
+            "announcedAt": "2026-09-24T00:00:00.000Z",
+            "kind": "banked",
+            "eventKind": "policy_change",
+            "status": "superseded",
         }
     )
-    response_data["events"][2]["announced_at"] = "2026-09-05T00:00:00.000Z"
-    timeline = CodexResetTimelineResponse.model_validate(response_data)
+    history = CodexResetHistoryResponse.model_validate(data)
 
-    updates = CodexResetService.find_latest_banked_updates(timeline)
+    update = CodexResetService.find_latest_banked_update(history)
 
-    assert list(updates) == ["announced", "arriving", "available"]
-
-
-def test_find_latest_banked_updates_returns_empty_dict_when_missing():
-    response_data = _timeline_response()
-    for event in response_data["events"]:
-        event["banked_state"] = None
-    timeline = CodexResetTimelineResponse.model_validate(response_data)
-
-    updates = CodexResetService.find_latest_banked_updates(timeline)
-
-    assert updates == {}
+    assert update.id == "new-banked"
 
 
-def test_build_banked_updates_message():
-    timeline = CodexResetTimelineResponse.model_validate(_timeline_response())
-    updates = CodexResetService.find_latest_banked_updates(timeline)
+def test_find_latest_banked_update_returns_none_for_only_superseded_announcements():
+    history = CodexResetHistoryResponse.model_validate(
+        {
+            "items": [
+                {
+                    "id": "superseded-banked",
+                    "announcedAt": "2026-09-24T00:00:00.000Z",
+                    "kind": "banked",
+                    "eventKind": "policy_change",
+                    "status": "superseded",
+                }
+            ]
+        }
+    )
 
-    with patch.object(config, "TIMEZONE", ZoneInfo("Asia/Seoul")):
-        message = CodexResetService.build_banked_updates_message(updates)
-
-    assert message == ("\n\n🎟️ Codex 초기화권 정보\n\n• 최근 지급 발표: 2026년 9월 4일 08:12 (KST)")
+    assert CodexResetService.find_latest_banked_update(history) is None
 
 
-def test_build_banked_updates_message_handles_missing_updates():
-    message = CodexResetService.build_banked_updates_message({})
-
-    assert message == "\n\n🎟️ Codex 초기화권 정보\n\n• 확인할 수 없음"
+def test_build_banked_updates_message_handles_missing_update():
+    assert CodexResetService.build_banked_updates_message(None) == ("\n\n🎟️ Codex 초기화권 정보\n\n• 확인할 수 없음")
