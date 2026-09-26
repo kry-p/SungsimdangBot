@@ -71,8 +71,8 @@ SEARCH_BASE_URL = "https://dapi.kakao.com/v2/search/web?"
 # NOTE: 서울 열린데이터 API는 HTTPS를 지원하지 않음 (2026-03-23 확인)
 SEOUL_HANGANG_WATER_URL = f"http://openapi.seoul.go.kr:8088/{SEOUL_HANGANG_WATER_TOKEN}/json/WPOSInformationTime/1/5/"
 # Codex usage reset APIs
-CODEX_RESET_FORECAST_URL = "https://codex-reset.com/api/forecast"
-CODEX_RESET_TIMELINE_URL = "https://codex-reset.com/api/timeline"
+CODEX_RESET_FORECAST_URL = "https://resetbeacon.com/api/forecast"
+CODEX_RESET_HISTORY_URL = "https://resetbeacon.com/api/history"
 
 REQUIRED_VARS = {"BOT_TOKEN": BOT_TOKEN}
 

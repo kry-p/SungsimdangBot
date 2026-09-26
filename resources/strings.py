@@ -103,6 +103,19 @@ commute_delete_action = "삭제"
 commute_delete_all_action = "전체삭제"
 
 # commute messages
+commute_help_msg = (
+    "💼 출퇴근 일정 관리 도움말\n\n"
+    "명령어 형식\n"
+    "/commute [동작] [요일] [출근 시각] [퇴근 시각]\n\n"
+    "설명\n"
+    "요일별 출퇴근 일정을 등록, 조회, 삭제할 수 있습니다.\n\n"
+    "예시\n"
+    "• 일정 등록: /commute 등록 월화 9:00 18:00\n"
+    "• 일정 삭제: /commute 삭제 월화\n"
+    "• 전체 삭제: /commute 전체삭제\n\n"
+    "'출근 시간'을 입력하면 현재 근무 상태 또는 다음 출근까지 남은 시간을 알려드립니다.\n"
+    "'퇴근 시간'을 입력하면 퇴근까지 남은 시간을 알려드립니다."
+)
 commute_weekday_names = ("월", "화", "수", "목", "금", "토", "일")
 commute_menu_msg = (
     "출퇴근 일정 관리\n\n"
@@ -375,6 +388,10 @@ main_keyboard.row(
     telebot.types.InlineKeyboardButton("라프텔", callback_data="laftel_menu:portal"),
     telebot.types.InlineKeyboardButton("해외 RSS", callback_data="bfrss"),
 )
+main_keyboard.row(
+    telebot.types.InlineKeyboardButton("출퇴근 일정 관리", callback_data="commute"),
+    telebot.types.InlineKeyboardButton("Codex 초기화 정보", callback_data="codex"),
+)
 
 
 # Magic conch reaction
@@ -415,37 +432,33 @@ coin_toss_result = [
 
 # Codex Reset
 
-codex_reset_datetime_msg = "{year}년 {month}월 {day}일 {time} ({timezone})"
-
-codex_reset_forecast_msg = (
-    "🎫 Codex 전체 초기화 정보\n\n"
-    "• 최근 초기화: {last_reset_at}\n"
-    "• 24시간 이내 확률: {probability_24h}%(신뢰도 {confidence})"
+codex_help_msg = (
+    "🎫 Codex 초기화 정보 도움말\n\n"
+    "명령어 형식\n/codex\n\n"
+    "설명\n전체 초기화 예고의 발표 시각, 24시간 이내 전체 초기화 확률, "
+    "마지막 전체 초기화 시각과 초기화권의 최근 발표 시각을 보여줍니다.\n"
+    "모든 시각은 KST 기준입니다.\n\n"
+    "출처: [Reset Beacon](https://resetbeacon.com)"
 )
 
-codex_reset_confidence_labels = {
-    "low": "낮음",
-    "medium": "보통",
-    "high": "높음",
-    "unknown": "알 수 없음",
-}
+codex_reset_datetime_msg = "{year:04d}-{month:02d}-{day:02d} {time}"
+
+codex_reset_header_msg = "🎫 Codex 전체 초기화 정보\n\n"
+codex_reset_forecast_msg = "• 24시간 이내 전체 초기화 확률 {probability_24h}\n• 마지막 전체 초기화 {last_reset_at}"
 
 codex_reset_date_unavailable_msg = "확인할 수 없음"
+codex_reset_probability_unavailable_msg = "확인할 수 없음"
+codex_reset_active_notice_msg = "• 전체 초기화 예고 (Global Reset Notice)\n  발표 시각 {announced_at}"
+codex_reset_notice_source_msg = "\n  [예고 원문 (Original Notice)]({url})"
 
 codex_reset_error_msg = "Codex 초기화 정보를 가져오는 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요."
 
-codex_banked_updates_header_msg = "\n\n🎟️ Codex 초기화권 정보\n\n"
-codex_banked_update_msg = "• {label}: {updated_at}"
-codex_banked_state_labels = {
-    "announced": "최근 지급 발표",
-    "arriving": "최근 지급 안내",
-    "available": "최근 도착 확인",
-}
+codex_banked_updates_header_msg = "\n\n🎟️ Codex 초기화권 정보 (Banked Reset)\n\n"
+codex_banked_update_msg = "• 최근 발표 (Latest Announcement)\n  {updated_at}"
 codex_banked_updates_unavailable_msg = "• 확인할 수 없음"
 
-codex_reset_source_msg = "\n\n• 출처: codex-reset.com"
-
-codex_reset_disclaimer_msg = "\n\n※ 공식 정보가 아니므로 참고용으로만 이용해 주세요."
+codex_reset_timezone_msg = "\n\n※ 모든 시각은 KST 기준입니다."
+codex_reset_disclaimer_msg = "\n※ 공식 정보가 아니므로 참고용으로만 이용해 주세요."
 
 codex_reset_forecast_log_error_msg = "Failed to fetch Codex reset forecast."
-codex_banked_timeline_log_error_msg = "Failed to fetch Codex banked reset timeline."
+codex_reset_history_log_error_msg = "Failed to fetch Codex reset history."
