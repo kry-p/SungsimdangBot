@@ -30,6 +30,7 @@ pip install -e ".[dev]"
 - 서울 열린데이터 광장: https://data.seoul.go.kr/dataList/OA-15488/S/1/datasetView.do
 - Google Gemini API
 - OpenAI API
+- Reset Beacon (Codex 초기화 정보, 비공식): https://resetbeacon.com/
 - Spotify Web API
 - Laftel public API
 
@@ -130,7 +131,7 @@ docker compose --env-file .deploy.env up -d
 - AI 설정 확인/변경: `/ask_settings`
 - 내 사용자 ID 확인: `/myid`
 - 봇 상태 확인: `/ping`
-- Codex 전체 초기화 예측·예고와 초기화권 발표 조회: `/codex` ([Reset Beacon](https://resetbeacon.com/) 비공식 데이터 기반)
+- Codex 전체 초기화 예측·예고와 초기화권 발표 조회: `/codex`
 - Laftel 정보: `/laftel`
 - Spotify 노래 검색: `/spotify 곡명 또는 아티스트`
 - 번역 RSS 수신: `/bfrss`
