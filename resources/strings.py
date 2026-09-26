@@ -424,6 +424,7 @@ codex_reset_forecast_msg = (
 codex_reset_date_unavailable_msg = "확인할 수 없음"
 codex_reset_probability_unavailable_msg = "확인할 수 없음"
 codex_reset_active_notice_msg = "\n• 초기화 예고: {announced_at}"
+codex_reset_scheduled_notice_msg = "\n• 초기화 예상 시각: {target_at}"
 
 codex_reset_error_msg = "Codex 초기화 정보를 가져오는 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요."
 

@@ -75,6 +75,10 @@ class CodexResetService:
     def build_active_notice_message(notice: CodexResetHistoryEvent | None) -> str:
         if notice is None:
             return ""
+        if notice.target_at is not None:
+            return strings.codex_reset_scheduled_notice_msg.format(
+                target_at=CodexResetService._format_datetime(notice.target_at),
+            )
         return strings.codex_reset_active_notice_msg.format(
             announced_at=CodexResetService._format_datetime(notice.announced_at),
         )

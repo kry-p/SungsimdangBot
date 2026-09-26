@@ -185,6 +185,19 @@ def test_find_latest_active_notice_skips_completed_and_missed_events():
     assert "초기화 예고: 2026년 9월 26일 09:07 (KST)" in CodexResetService.build_active_notice_message(notice)
 
 
+def test_active_scheduled_notice_shows_target_time():
+    data = _history_response()
+    data["items"][-1]["eventKind"] = "scheduled"
+    data["items"][-1]["targetAt"] = "2026-09-26T12:00:00.000Z"
+    history = CodexResetHistoryResponse.model_validate(data)
+    last_reset_at = datetime.fromisoformat("2026-09-12T08:09:17+00:00")
+
+    notice = CodexResetService.find_latest_active_notice(history, last_reset_at)
+
+    assert notice.target_at == datetime.fromisoformat("2026-09-26T12:00:00+00:00")
+    assert CodexResetService.build_active_notice_message(notice) == "\n• 초기화 예상 시각: 2026년 9월 26일 21:00 (KST)"
+
+
 def test_find_latest_active_notice_ignores_notice_before_last_reset():
     history = CodexResetHistoryResponse.model_validate(_history_response())
     last_reset_at = datetime.fromisoformat("2026-09-27T00:00:00+00:00")

@@ -217,6 +217,7 @@ class CodexResetHistoryEvent(BaseModel):
 
     id: str
     announced_at: datetime = Field(alias="announcedAt")
+    target_at: datetime | None = Field(default=None, alias="targetAt")
     kind: str
     event_kind: str = Field(default="", alias="eventKind")
     status: str = ""
