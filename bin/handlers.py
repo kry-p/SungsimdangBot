@@ -12,11 +12,13 @@ QUERY_STRINGS = {
     "geolocation": strings.geolocation_help_msg,
     "dday": strings.day_help_msg,
     "calc": strings.calc_help_msg,
+    "commute": strings.commute_help_msg,
     "ask": strings.ask_help_msg,
     "search": strings.search_help_msg,
     "namu": strings.namu_help_msg,
     "laftel": strings.laftel_help_msg,
     "bfrss": strings.bfrss_help_msg,
+    "codex": strings.codex_help_msg,
 }
 
 
@@ -68,7 +70,15 @@ def register_handlers(bot, hub, logger):
             result = QUERY_STRINGS.get(query.data)
             if result is not None:
                 bot.send_chat_action(query.message.chat.id, "typing")
-                bot.send_message(query.message.chat.id, result)
+                if query.data == "codex":
+                    bot.send_message(
+                        query.message.chat.id,
+                        result,
+                        parse_mode="Markdown",
+                        disable_web_page_preview=True,
+                    )
+                else:
+                    bot.send_message(query.message.chat.id, result)
         except Exception:
             logger.log_error(f"Callback handler failed for data: {query.data}")
 
