@@ -1,47 +1,45 @@
-from datetime import datetime
+import re
+from datetime import datetime, timezone
+from urllib.parse import urljoin
+from zoneinfo import ZoneInfo
 
 import requests
 
 from config import config
-from modules.api_models import CodexResetForecastResponse, CodexResetTimelineEvent, CodexResetTimelineResponse
+from modules.api_models import CodexResetForecastResponse, CodexResetHistoryEvent, CodexResetHistoryResponse
 from resources import strings
 
-BANKED_RESET_STATES = (
-    "announced",
-    "arriving",
-    "available",
-)
+EVIDENCE_PATH_PATTERN = re.compile(r"/evidence/[A-Za-z0-9-]+/")
+CODEX_RESET_TIMEZONE = ZoneInfo("Asia/Seoul")
 
 
 class CodexResetService:
     @staticmethod
     def fetch_forecast() -> CodexResetForecastResponse:
-        response = requests.get(
-            config.CODEX_RESET_FORECAST_URL,
-            timeout=10,
-        )
+        response = requests.get(config.CODEX_RESET_FORECAST_URL, timeout=10)
         response.raise_for_status()
-
-        forecast = CodexResetForecastResponse.model_validate_json(response.text)
-
-        return forecast
+        return CodexResetForecastResponse.model_validate_json(response.text)
 
     @staticmethod
     def build_forecast_message(
         forecast: CodexResetForecastResponse,
+        now: datetime | None = None,
     ) -> str:
-        confidence = strings.codex_reset_confidence_labels.get(
-            forecast.confidence,
-            strings.codex_reset_confidence_labels["unknown"],
-        )
-        last_reset_at = CodexResetService._format_datetime(
-            forecast.last_reset_at,
-        )
+        now = now or datetime.now(timezone.utc)
+        probability = strings.codex_reset_probability_unavailable_msg
+        if (
+            forecast.probabilities is not None
+            and forecast.display_mode == "probability"
+            and forecast.publication_state not in {"stale", "unavailable"}
+            and forecast.valid_until is not None
+            and forecast.valid_until > now
+        ):
+            probability = f"{forecast.probabilities.h24.display}%"
 
+        last_reset_at = forecast.latest_reset.occurred_at if forecast.latest_reset else None
         return strings.codex_reset_forecast_msg.format(
-            last_reset_at=last_reset_at,
-            probability_24h=forecast.probabilities.rounded_24h,
-            confidence=confidence,
+            last_reset_at=CodexResetService._format_datetime(last_reset_at),
+            probability_24h=probability,
         )
 
     @staticmethod
@@ -49,82 +47,60 @@ class CodexResetService:
         if value is None:
             return strings.codex_reset_date_unavailable_msg
 
-        value_local = value.astimezone(config.TIMEZONE)
-
-        formatted_datetime = strings.codex_reset_datetime_msg.format(
+        value_local = value.astimezone(CODEX_RESET_TIMEZONE)
+        return strings.codex_reset_datetime_msg.format(
             year=value_local.year,
             month=value_local.month,
             day=value_local.day,
             time=value_local.strftime("%H:%M"),
-            timezone=value_local.strftime("%Z"),
         )
-
-        return formatted_datetime
 
     @staticmethod
-    def fetch_timeline() -> CodexResetTimelineResponse:
-        response = requests.get(
-            config.CODEX_RESET_TIMELINE_URL,
-            timeout=10,
-        )
+    def fetch_history() -> CodexResetHistoryResponse:
+        response = requests.get(config.CODEX_RESET_HISTORY_URL, timeout=10)
         response.raise_for_status()
-
-        timeline = CodexResetTimelineResponse.model_validate_json(response.text)
-
-        return timeline
+        return CodexResetHistoryResponse.model_validate_json(response.text)
 
     @staticmethod
-    def find_latest_banked_updates(
-        timeline: CodexResetTimelineResponse,
-    ) -> dict[str, CodexResetTimelineEvent]:
-        latest_updates = {}
-
-        for event in timeline.events:
-            state = event.banked_state
-            if state not in BANKED_RESET_STATES:
-                continue
-
-            latest_event = latest_updates.get(state)
-            if latest_event is None or event.announced_at > latest_event.announced_at:
-                latest_updates[state] = event
-
-        visible_updates = {}
-        latest_timestamp = None
-
-        for state in BANKED_RESET_STATES:
-            event = latest_updates.get(state)
-            if event is None:
-                continue
-
-            if latest_timestamp is not None and event.announced_at < latest_timestamp:
-                continue
-
-            visible_updates[state] = event
-            latest_timestamp = event.announced_at
-
-        return visible_updates
+    def find_latest_active_notice(
+        history: CodexResetHistoryResponse,
+        last_reset_at: datetime | None,
+    ) -> CodexResetHistoryEvent | None:
+        notices = (
+            event
+            for event in history.items
+            if event.kind == "special_global"
+            and event.scope == "all"
+            and event.event_kind in {"intent", "scheduled"}
+            and event.status == "active"
+            and (last_reset_at is None or event.announced_at > last_reset_at)
+        )
+        return max(notices, key=lambda event: event.announced_at, default=None)
 
     @staticmethod
-    def build_banked_updates_message(
-        updates: dict[str, CodexResetTimelineEvent],
-    ) -> str:
-        message = strings.codex_banked_updates_header_msg
-
-        if not updates:
-            return message + strings.codex_banked_updates_unavailable_msg
-
-        update_messages = []
-
-        for state in BANKED_RESET_STATES:
-            event = updates.get(state)
-            if event is None:
-                continue
-
-            update_messages.append(
-                strings.codex_banked_update_msg.format(
-                    label=strings.codex_banked_state_labels[state],
-                    updated_at=CodexResetService._format_datetime(event.announced_at),
-                )
+    def build_active_notice_message(notice: CodexResetHistoryEvent | None) -> str:
+        if notice is None:
+            return ""
+        message = strings.codex_reset_active_notice_msg.format(
+            announced_at=CodexResetService._format_datetime(notice.announced_at),
+        )
+        # targetAt can mark the end of a promised day rather than an exact reset time.
+        if notice.evidence_url and EVIDENCE_PATH_PATTERN.fullmatch(notice.evidence_url):
+            message += strings.codex_reset_notice_source_msg.format(
+                url=urljoin(config.CODEX_RESET_HISTORY_URL, notice.evidence_url),
             )
+        return message + "\n\n"
 
-        return message + "\n".join(update_messages)
+    @staticmethod
+    def find_latest_banked_update(history: CodexResetHistoryResponse) -> CodexResetHistoryEvent | None:
+        banked_events = (event for event in history.items if event.kind == "banked" and event.status != "superseded")
+        return max(banked_events, key=lambda event: event.announced_at, default=None)
+
+    @staticmethod
+    def build_banked_updates_message(update: CodexResetHistoryEvent | None) -> str:
+        message = strings.codex_banked_updates_header_msg
+        if update is None:
+            return message + strings.codex_banked_updates_unavailable_msg
+        return message + strings.codex_banked_update_msg.format(
+            updated_at=CodexResetService._format_datetime(update.announced_at),
+        )
