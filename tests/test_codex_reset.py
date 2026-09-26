@@ -39,6 +39,7 @@ def _history_response():
                 "kind": "special_global",
                 "eventKind": "completed",
                 "status": "completed",
+                "scope": "all",
             },
             {
                 "id": "missed-notice",
@@ -46,6 +47,7 @@ def _history_response():
                 "kind": "special_global",
                 "eventKind": "scheduled",
                 "status": "missed",
+                "scope": "all",
             },
             {
                 "id": "new-banked",
@@ -60,6 +62,8 @@ def _history_response():
                 "kind": "special_global",
                 "eventKind": "intent",
                 "status": "active",
+                "scope": "all",
+                "evidenceUrl": "/evidence/95a0a970-fd44-4b12-a4d8-d01919074777/",
             },
         ]
     }
@@ -99,16 +103,14 @@ def test_fetch_forecast_rejects_invalid_response(mock_get):
         CodexResetService.fetch_forecast()
 
 
-def test_build_forecast_message_shows_last_reset_and_probability():
+def test_build_forecast_message_shows_probability_before_last_reset():
     forecast = CodexResetForecastResponse.model_validate(_forecast_response())
     now = datetime.fromisoformat("2026-09-26T01:30:00+00:00")
 
     with patch.object(config, "TIMEZONE", ZoneInfo("Asia/Seoul")):
         message = CodexResetService.build_forecast_message(forecast, now=now)
 
-    assert message == (
-        "🎫 Codex 전체 초기화 정보\n\n• 최근 초기화: 2026년 9월 12일 17:09 (KST)\n• 24시간 이내 확률: 39%"
-    )
+    assert message == ("• 24시간 이내 확률: 39%\n• 마지막 전체 초기화: 2026년 9월 12일 17:09 (KST)")
 
 
 @pytest.mark.parametrize("stale", ["expired", "publication_state", "missing_probabilities", "missing_valid_until"])
@@ -151,7 +153,7 @@ def test_build_forecast_message_handles_missing_last_reset():
         now=datetime.fromisoformat("2026-09-26T01:30:00+00:00"),
     )
 
-    assert "• 최근 초기화: 확인할 수 없음" in message
+    assert "• 마지막 전체 초기화: 확인할 수 없음" in message
 
 
 @patch("modules.codex_reset.requests.get")
@@ -165,6 +167,8 @@ def test_fetch_history(mock_get):
     mock_get.assert_called_once_with(config.CODEX_RESET_HISTORY_URL, timeout=10)
     response.raise_for_status.assert_called_once_with()
     assert len(history.items) == 5
+    assert history.items[-1].scope == "all"
+    assert history.items[-1].evidence_url == "/evidence/95a0a970-fd44-4b12-a4d8-d01919074777/"
 
 
 @patch("modules.codex_reset.requests.get")
@@ -182,20 +186,52 @@ def test_find_latest_active_notice_skips_completed_and_missed_events():
     notice = CodexResetService.find_latest_active_notice(history, last_reset_at)
 
     assert notice.id == "active-notice"
-    assert "초기화 예고: 2026년 9월 26일 09:07 (KST)" in CodexResetService.build_active_notice_message(notice)
+    assert CodexResetService.build_active_notice_message(notice) == (
+        "• 전체 초기화 예고 발표: 2026년 9월 26일 09:07 (KST)\n"
+        "[예고 원문](https://resetbeacon.com/evidence/95a0a970-fd44-4b12-a4d8-d01919074777/)\n"
+    )
 
 
-def test_active_scheduled_notice_shows_target_time():
+def test_active_scheduled_notice_does_not_show_day_deadline_as_reset_time():
     data = _history_response()
     data["items"][-1]["eventKind"] = "scheduled"
-    data["items"][-1]["targetAt"] = "2026-09-26T12:00:00.000Z"
+    data["items"][-1]["targetAt"] = "2026-09-27T07:00:00.000Z"
     history = CodexResetHistoryResponse.model_validate(data)
     last_reset_at = datetime.fromisoformat("2026-09-12T08:09:17+00:00")
 
     notice = CodexResetService.find_latest_active_notice(history, last_reset_at)
 
-    assert notice.target_at == datetime.fromisoformat("2026-09-26T12:00:00+00:00")
-    assert CodexResetService.build_active_notice_message(notice) == "\n• 초기화 예상 시각: 2026년 9월 26일 21:00 (KST)"
+    assert CodexResetService.build_active_notice_message(notice) == (
+        "• 전체 초기화 예고 발표: 2026년 9월 26일 09:07 (KST)\n"
+        "[예고 원문](https://resetbeacon.com/evidence/95a0a970-fd44-4b12-a4d8-d01919074777/)\n"
+    )
+
+
+@pytest.mark.parametrize("scope", ["plus_pro", "model", "unknown", None])
+def test_find_latest_active_notice_ignores_non_global_scopes(scope):
+    data = _history_response()
+    if scope is None:
+        del data["items"][-1]["scope"]
+    else:
+        data["items"][-1]["scope"] = scope
+    history = CodexResetHistoryResponse.model_validate(data)
+
+    notice = CodexResetService.find_latest_active_notice(history, None)
+
+    assert notice is None
+
+
+@pytest.mark.parametrize("evidence_url", [None, "https://example.com/evidence/123/", "/evidence/123/)oops"])
+def test_active_notice_omits_missing_or_unsafe_evidence_link(evidence_url):
+    data = _history_response()
+    data["items"][-1]["evidenceUrl"] = evidence_url
+    history = CodexResetHistoryResponse.model_validate(data)
+
+    notice = CodexResetService.find_latest_active_notice(history, None)
+
+    assert CodexResetService.build_active_notice_message(notice) == (
+        "• 전체 초기화 예고 발표: 2026년 9월 26일 09:07 (KST)\n"
+    )
 
 
 def test_find_latest_active_notice_ignores_notice_before_last_reset():

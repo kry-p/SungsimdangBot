@@ -417,14 +417,13 @@ coin_toss_result = [
 
 codex_reset_datetime_msg = "{year}년 {month}월 {day}일 {time} ({timezone})"
 
-codex_reset_forecast_msg = (
-    "🎫 Codex 전체 초기화 정보\n\n• 최근 초기화: {last_reset_at}\n• 24시간 이내 확률: {probability_24h}"
-)
+codex_reset_header_msg = "🎫 Codex 전체 초기화 정보\n\n"
+codex_reset_forecast_msg = "• 24시간 이내 확률: {probability_24h}\n• 마지막 전체 초기화: {last_reset_at}"
 
 codex_reset_date_unavailable_msg = "확인할 수 없음"
 codex_reset_probability_unavailable_msg = "확인할 수 없음"
-codex_reset_active_notice_msg = "\n• 초기화 예고: {announced_at}"
-codex_reset_scheduled_notice_msg = "\n• 초기화 예상 시각: {target_at}"
+codex_reset_active_notice_msg = "• 전체 초기화 예고 발표: {announced_at}\n"
+codex_reset_notice_source_msg = "[예고 원문]({url})\n"
 
 codex_reset_error_msg = "Codex 초기화 정보를 가져오는 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요."
 
@@ -432,7 +431,7 @@ codex_banked_updates_header_msg = "\n\n🎟️ Codex 초기화권 정보\n\n"
 codex_banked_update_msg = "• 최근 지급 발표: {updated_at}"
 codex_banked_updates_unavailable_msg = "• 확인할 수 없음"
 
-codex_reset_source_msg = "\n\n• 출처: resetbeacon.com"
+codex_reset_source_msg = "\n\n[출처: Reset Beacon](https://resetbeacon.com/)"
 
 codex_reset_disclaimer_msg = "\n\n※ 공식 정보가 아니므로 참고용으로만 이용해 주세요."
 

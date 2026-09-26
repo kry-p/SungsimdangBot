@@ -136,7 +136,7 @@ class TestCodexHandler:
         hub.codex_reset.build_forecast_message.return_value = "Codex forecast"
         hub.codex_reset.fetch_history.return_value = history
         hub.codex_reset.find_latest_active_notice.return_value = notice
-        hub.codex_reset.build_active_notice_message.return_value = "\nActive notice"
+        hub.codex_reset.build_active_notice_message.return_value = "Active notice\n"
         hub.codex_reset.find_latest_banked_update.return_value = banked_update
         hub.codex_reset.build_banked_updates_message.return_value = "\n\nBanked updates"
         msg = make_message("/codex")
@@ -153,9 +153,10 @@ class TestCodexHandler:
         hub.bot.reply_to.assert_called_once_with(
             msg,
             (
-                "Codex forecast\nActive notice\n\nBanked updates"
+                f"{strings.codex_reset_header_msg}Active notice\nCodex forecast\n\nBanked updates"
                 f"{strings.codex_reset_source_msg}{strings.codex_reset_disclaimer_msg}"
             ),
+            parse_mode="Markdown",
             disable_web_page_preview=True,
         )
         reply_text = hub.bot.reply_to.call_args.args[1]
@@ -182,7 +183,11 @@ class TestCodexHandler:
         mock_logger.log_error.assert_called_once_with("Failed to fetch Codex reset history.")
         hub.bot.reply_to.assert_called_once_with(
             msg,
-            f"Codex forecast\n\nUnavailable{strings.codex_reset_source_msg}{strings.codex_reset_disclaimer_msg}",
+            (
+                f"{strings.codex_reset_header_msg}Codex forecast\n\nUnavailable"
+                f"{strings.codex_reset_source_msg}{strings.codex_reset_disclaimer_msg}"
+            ),
+            parse_mode="Markdown",
             disable_web_page_preview=True,
         )
 
@@ -208,7 +213,11 @@ class TestCodexHandler:
         mock_logger.log_error.assert_called_once_with("Failed to fetch Codex reset history.")
         hub.bot.reply_to.assert_called_once_with(
             msg,
-            f"Codex forecast\n\nUnavailable{strings.codex_reset_source_msg}{strings.codex_reset_disclaimer_msg}",
+            (
+                f"{strings.codex_reset_header_msg}Codex forecast\n\nUnavailable"
+                f"{strings.codex_reset_source_msg}{strings.codex_reset_disclaimer_msg}"
+            ),
+            parse_mode="Markdown",
             disable_web_page_preview=True,
         )
 

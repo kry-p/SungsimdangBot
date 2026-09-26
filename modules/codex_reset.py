@@ -1,10 +1,14 @@
+import re
 from datetime import datetime, timezone
+from urllib.parse import urljoin
 
 import requests
 
 from config import config
 from modules.api_models import CodexResetForecastResponse, CodexResetHistoryEvent, CodexResetHistoryResponse
 from resources import strings
+
+EVIDENCE_PATH_PATTERN = re.compile(r"/evidence/[A-Za-z0-9-]+/")
 
 
 class CodexResetService:
@@ -65,6 +69,7 @@ class CodexResetService:
             event
             for event in history.items
             if event.kind == "special_global"
+            and event.scope == "all"
             and event.event_kind in {"intent", "scheduled"}
             and event.status == "active"
             and (last_reset_at is None or event.announced_at > last_reset_at)
@@ -75,13 +80,15 @@ class CodexResetService:
     def build_active_notice_message(notice: CodexResetHistoryEvent | None) -> str:
         if notice is None:
             return ""
-        if notice.target_at is not None:
-            return strings.codex_reset_scheduled_notice_msg.format(
-                target_at=CodexResetService._format_datetime(notice.target_at),
-            )
-        return strings.codex_reset_active_notice_msg.format(
+        message = strings.codex_reset_active_notice_msg.format(
             announced_at=CodexResetService._format_datetime(notice.announced_at),
         )
+        # targetAt can mark the end of a promised day rather than an exact reset time.
+        if notice.evidence_url and EVIDENCE_PATH_PATTERN.fullmatch(notice.evidence_url):
+            message += strings.codex_reset_notice_source_msg.format(
+                url=urljoin(config.CODEX_RESET_HISTORY_URL, notice.evidence_url),
+            )
+        return message
 
     @staticmethod
     def find_latest_banked_update(history: CodexResetHistoryResponse) -> CodexResetHistoryEvent | None:

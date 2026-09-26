@@ -331,7 +331,7 @@ class BotFeaturesHub:
     def codex_handler(self, message):
         try:
             forecast = self.codex_reset.fetch_forecast()
-            response_message = self.codex_reset.build_forecast_message(forecast)
+            forecast_message = self.codex_reset.build_forecast_message(forecast)
         except (requests.RequestException, ValidationError):
             logger.log_error(strings.codex_reset_forecast_log_error_msg)
             self.bot.reply_to(message, strings.codex_reset_error_msg)
@@ -347,7 +347,9 @@ class BotFeaturesHub:
             active_notice = None
             banked_update = None
 
+        response_message = strings.codex_reset_header_msg
         response_message += self.codex_reset.build_active_notice_message(active_notice)
+        response_message += forecast_message
         response_message += self.codex_reset.build_banked_updates_message(banked_update)
         response_message += strings.codex_reset_source_msg
         response_message += strings.codex_reset_disclaimer_msg
@@ -355,5 +357,6 @@ class BotFeaturesHub:
         self.bot.reply_to(
             message,
             response_message,
+            parse_mode="Markdown",
             disable_web_page_preview=True,
         )
