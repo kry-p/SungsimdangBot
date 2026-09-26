@@ -351,6 +351,7 @@ class BotFeaturesHub:
         response_message += self.codex_reset.build_active_notice_message(active_notice)
         response_message += forecast_message
         response_message += self.codex_reset.build_banked_updates_message(banked_update)
+        response_message += strings.codex_reset_timezone_msg
         response_message += strings.codex_reset_disclaimer_msg
 
         self.bot.reply_to(

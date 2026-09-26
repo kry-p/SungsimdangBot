@@ -1,6 +1,7 @@
 import re
 from datetime import datetime, timezone
 from urllib.parse import urljoin
+from zoneinfo import ZoneInfo
 
 import requests
 
@@ -9,6 +10,7 @@ from modules.api_models import CodexResetForecastResponse, CodexResetHistoryEven
 from resources import strings
 
 EVIDENCE_PATH_PATTERN = re.compile(r"/evidence/[A-Za-z0-9-]+/")
+CODEX_RESET_TIMEZONE = ZoneInfo("Asia/Seoul")
 
 
 class CodexResetService:
@@ -45,13 +47,12 @@ class CodexResetService:
         if value is None:
             return strings.codex_reset_date_unavailable_msg
 
-        value_local = value.astimezone(config.TIMEZONE)
+        value_local = value.astimezone(CODEX_RESET_TIMEZONE)
         return strings.codex_reset_datetime_msg.format(
             year=value_local.year,
             month=value_local.month,
             day=value_local.day,
             time=value_local.strftime("%H:%M"),
-            timezone=value_local.strftime("%Z"),
         )
 
     @staticmethod
@@ -88,7 +89,7 @@ class CodexResetService:
             message += strings.codex_reset_notice_source_msg.format(
                 url=urljoin(config.CODEX_RESET_HISTORY_URL, notice.evidence_url),
             )
-        return message
+        return message + "\n\n"
 
     @staticmethod
     def find_latest_banked_update(history: CodexResetHistoryResponse) -> CodexResetHistoryEvent | None:

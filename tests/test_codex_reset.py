@@ -103,14 +103,14 @@ def test_fetch_forecast_rejects_invalid_response(mock_get):
         CodexResetService.fetch_forecast()
 
 
-def test_build_forecast_message_shows_probability_before_last_reset():
+def test_build_forecast_message_shows_probability_before_last_reset_in_kst():
     forecast = CodexResetForecastResponse.model_validate(_forecast_response())
     now = datetime.fromisoformat("2026-09-26T01:30:00+00:00")
 
-    with patch.object(config, "TIMEZONE", ZoneInfo("Asia/Seoul")):
+    with patch.object(config, "TIMEZONE", ZoneInfo("UTC")):
         message = CodexResetService.build_forecast_message(forecast, now=now)
 
-    assert message == ("• 24시간 이내 확률: 39%\n• 마지막 전체 초기화: 2026년 9월 12일 17:09 (KST)")
+    assert message == ("• 24시간 이내 전체 초기화 확률 39%\n• 마지막 전체 초기화 2026-09-12 17:09")
 
 
 @pytest.mark.parametrize("stale", ["expired", "publication_state", "missing_probabilities", "missing_valid_until"])
@@ -127,7 +127,7 @@ def test_build_forecast_message_hides_unavailable_probability(stale):
 
     message = CodexResetService.build_forecast_message(forecast, now=now)
 
-    assert "• 24시간 이내 확률: 확인할 수 없음" in message
+    assert "• 24시간 이내 전체 초기화 확률 확인할 수 없음" in message
 
 
 def test_build_forecast_message_handles_unavailable_snapshot():
@@ -140,7 +140,7 @@ def test_build_forecast_message_handles_unavailable_snapshot():
 
     message = CodexResetService.build_forecast_message(forecast)
 
-    assert "• 24시간 이내 확률: 확인할 수 없음" in message
+    assert "• 24시간 이내 전체 초기화 확률 확인할 수 없음" in message
 
 
 def test_build_forecast_message_handles_missing_last_reset():
@@ -153,7 +153,7 @@ def test_build_forecast_message_handles_missing_last_reset():
         now=datetime.fromisoformat("2026-09-26T01:30:00+00:00"),
     )
 
-    assert "• 마지막 전체 초기화: 확인할 수 없음" in message
+    assert "• 마지막 전체 초기화 확인할 수 없음" in message
 
 
 @patch("modules.codex_reset.requests.get")
@@ -187,8 +187,9 @@ def test_find_latest_active_notice_skips_completed_and_missed_events():
 
     assert notice.id == "active-notice"
     assert CodexResetService.build_active_notice_message(notice) == (
-        "• 전체 초기화 예고 발표: 2026년 9월 26일 09:07 (KST)\n"
-        "[예고 원문](https://resetbeacon.com/evidence/95a0a970-fd44-4b12-a4d8-d01919074777/)\n"
+        "• 전체 초기화 예고 (Global Reset Notice)\n"
+        "  발표 시각 2026-09-26 09:07\n"
+        "  [예고 원문 (Original Notice)](https://resetbeacon.com/evidence/95a0a970-fd44-4b12-a4d8-d01919074777/)\n\n"
     )
 
 
@@ -202,8 +203,9 @@ def test_active_scheduled_notice_does_not_show_day_deadline_as_reset_time():
     notice = CodexResetService.find_latest_active_notice(history, last_reset_at)
 
     assert CodexResetService.build_active_notice_message(notice) == (
-        "• 전체 초기화 예고 발표: 2026년 9월 26일 09:07 (KST)\n"
-        "[예고 원문](https://resetbeacon.com/evidence/95a0a970-fd44-4b12-a4d8-d01919074777/)\n"
+        "• 전체 초기화 예고 (Global Reset Notice)\n"
+        "  발표 시각 2026-09-26 09:07\n"
+        "  [예고 원문 (Original Notice)](https://resetbeacon.com/evidence/95a0a970-fd44-4b12-a4d8-d01919074777/)\n\n"
     )
 
 
@@ -230,7 +232,7 @@ def test_active_notice_omits_missing_or_unsafe_evidence_link(evidence_url):
     notice = CodexResetService.find_latest_active_notice(history, None)
 
     assert CodexResetService.build_active_notice_message(notice) == (
-        "• 전체 초기화 예고 발표: 2026년 9월 26일 09:07 (KST)\n"
+        "• 전체 초기화 예고 (Global Reset Notice)\n  발표 시각 2026-09-26 09:07\n\n"
     )
 
 
@@ -251,7 +253,7 @@ def test_find_latest_banked_update_uses_newest_announcement():
 
     assert update.id == "new-banked"
     assert CodexResetService.build_banked_updates_message(update) == (
-        "\n\n🎟️ Codex 초기화권 정보\n\n• 최근 지급 발표: 2026년 9월 23일 03:23 (KST)"
+        "\n\n🎟️ Codex 초기화권 정보 (Banked Reset)\n\n• 최근 발표 (Latest Announcement)\n  2026-09-23 03:23"
     )
 
 
@@ -292,4 +294,6 @@ def test_find_latest_banked_update_returns_none_for_only_superseded_announcement
 
 
 def test_build_banked_updates_message_handles_missing_update():
-    assert CodexResetService.build_banked_updates_message(None) == ("\n\n🎟️ Codex 초기화권 정보\n\n• 확인할 수 없음")
+    assert CodexResetService.build_banked_updates_message(None) == (
+        "\n\n🎟️ Codex 초기화권 정보 (Banked Reset)\n\n• 확인할 수 없음"
+    )

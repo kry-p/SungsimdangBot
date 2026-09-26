@@ -127,6 +127,7 @@ class TestHandlerDelegation:
             parse_mode="Markdown",
             disable_web_page_preview=True,
         )
+        assert "모든 시각은 KST 기준입니다." in strings.codex_help_msg
         assert "출처: [Reset Beacon](https://resetbeacon.com)" in strings.codex_help_msg
 
     def test_codex_delegates_to_hub(self):
