@@ -113,6 +113,22 @@ class TestSafeHandlerErrorBoundary:
 
 
 class TestHandlerDelegation:
+    def test_codex_help_callback_shows_source(self):
+        bot, handlers = _capture_handlers(MagicMock(), MagicMock())
+        query = MagicMock()
+        query.data = "codex"
+
+        handlers["callback"](query)
+
+        assert any(button.callback_data == "codex" for row in strings.main_keyboard.keyboard for button in row)
+        bot.send_message.assert_called_once_with(
+            query.message.chat.id,
+            strings.codex_help_msg,
+            parse_mode="Markdown",
+            disable_web_page_preview=True,
+        )
+        assert "출처: [Reset Beacon](https://resetbeacon.com)" in strings.codex_help_msg
+
     def test_codex_delegates_to_hub(self):
         hub = MagicMock()
         logger = MagicMock()

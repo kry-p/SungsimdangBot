@@ -375,6 +375,9 @@ main_keyboard.row(
     telebot.types.InlineKeyboardButton("라프텔", callback_data="laftel_menu:portal"),
     telebot.types.InlineKeyboardButton("해외 RSS", callback_data="bfrss"),
 )
+main_keyboard.row(
+    telebot.types.InlineKeyboardButton("Codex 초기화 정보", callback_data="codex"),
+)
 
 
 # Magic conch reaction
@@ -415,6 +418,14 @@ coin_toss_result = [
 
 # Codex Reset
 
+codex_help_msg = (
+    "🎫 Codex 초기화 정보 도움말\n\n"
+    "명령어 형식\n/codex\n\n"
+    "설명\n전체 초기화의 24시간 이내 확률, 활성 예고 발표, 마지막 전체 초기화 시각과 "
+    "초기화권의 최근 지급 발표 시각을 보여줍니다.\n\n"
+    "출처: [Reset Beacon](https://resetbeacon.com)"
+)
+
 codex_reset_datetime_msg = "{year}년 {month}월 {day}일 {time} ({timezone})"
 
 codex_reset_header_msg = "🎫 Codex 전체 초기화 정보\n\n"
@@ -430,8 +441,6 @@ codex_reset_error_msg = "Codex 초기화 정보를 가져오는 중 오류가 �
 codex_banked_updates_header_msg = "\n\n🎟️ Codex 초기화권 정보\n\n"
 codex_banked_update_msg = "• 최근 지급 발표: {updated_at}"
 codex_banked_updates_unavailable_msg = "• 확인할 수 없음"
-
-codex_reset_source_msg = "\n\n[출처: Reset Beacon](https://resetbeacon.com/)"
 
 codex_reset_disclaimer_msg = "\n\n※ 공식 정보가 아니므로 참고용으로만 이용해 주세요."
 

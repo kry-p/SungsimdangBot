@@ -154,14 +154,14 @@ class TestCodexHandler:
             msg,
             (
                 f"{strings.codex_reset_header_msg}Active notice\nCodex forecast\n\nBanked updates"
-                f"{strings.codex_reset_source_msg}{strings.codex_reset_disclaimer_msg}"
+                + strings.codex_reset_disclaimer_msg
             ),
             parse_mode="Markdown",
             disable_web_page_preview=True,
         )
         reply_text = hub.bot.reply_to.call_args.args[1]
         assert strings.codex_reset_disclaimer_msg in reply_text
-        assert strings.codex_reset_source_msg in reply_text
+        assert "Reset Beacon" not in reply_text
 
     @patch("modules.features_hub.logger")
     def test_history_error_replies_with_forecast_and_unavailable_updates(self, mock_logger, hub):
@@ -183,10 +183,7 @@ class TestCodexHandler:
         mock_logger.log_error.assert_called_once_with("Failed to fetch Codex reset history.")
         hub.bot.reply_to.assert_called_once_with(
             msg,
-            (
-                f"{strings.codex_reset_header_msg}Codex forecast\n\nUnavailable"
-                f"{strings.codex_reset_source_msg}{strings.codex_reset_disclaimer_msg}"
-            ),
+            (f"{strings.codex_reset_header_msg}Codex forecast\n\nUnavailable" + strings.codex_reset_disclaimer_msg),
             parse_mode="Markdown",
             disable_web_page_preview=True,
         )
@@ -213,10 +210,7 @@ class TestCodexHandler:
         mock_logger.log_error.assert_called_once_with("Failed to fetch Codex reset history.")
         hub.bot.reply_to.assert_called_once_with(
             msg,
-            (
-                f"{strings.codex_reset_header_msg}Codex forecast\n\nUnavailable"
-                f"{strings.codex_reset_source_msg}{strings.codex_reset_disclaimer_msg}"
-            ),
+            (f"{strings.codex_reset_header_msg}Codex forecast\n\nUnavailable" + strings.codex_reset_disclaimer_msg),
             parse_mode="Markdown",
             disable_web_page_preview=True,
         )
