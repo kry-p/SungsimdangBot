@@ -339,7 +339,7 @@ class BotFeaturesHub:
 
         try:
             history = self.codex_reset.fetch_history()
-            last_reset_at = forecast.latest_reset.occurred_at if forecast.latest_reset else None
+            last_reset_at = self.codex_reset.get_last_confirmed_reset_at(forecast)
             active_notice = self.codex_reset.find_latest_active_notice(history, last_reset_at)
             banked_update = self.codex_reset.find_latest_banked_update(history)
         except (requests.RequestException, ValidationError):
