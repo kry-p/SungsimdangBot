@@ -36,11 +36,19 @@ class CodexResetService:
         ):
             probability = f"{forecast.probabilities.h24.display}%"
 
-        last_reset_at = forecast.latest_reset.occurred_at if forecast.latest_reset else None
+        last_reset_at = CodexResetService.get_last_confirmed_reset_at(forecast)
         return strings.codex_reset_forecast_msg.format(
             last_reset_at=CodexResetService._format_datetime(last_reset_at),
             probability_24h=probability,
         )
+
+    @staticmethod
+    def get_last_confirmed_reset_at(forecast: CodexResetForecastResponse) -> datetime | None:
+        if forecast.record_facts and forecast.record_facts.latest_confirmed_broad_reset_at:
+            return forecast.record_facts.latest_confirmed_broad_reset_at
+        if forecast.latest_reset:
+            return forecast.latest_reset.occurred_at
+        return None
 
     @staticmethod
     def _format_datetime(value: datetime | None) -> str:
