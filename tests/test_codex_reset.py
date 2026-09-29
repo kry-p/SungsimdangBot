@@ -18,8 +18,52 @@ def _forecast_response():
         "validUntil": "2026-09-26T02:05:00.000Z",
         "publicationState": "hinted",
         "displayMode": "probability",
+        "answer": {
+            "state": "forecast",
+            "headline": "64% chance of a Codex reset within 48 hours",
+            "secondLine": "39% within 24 hours.",
+        },
         "probabilities": {"h24": {"display": 39}, "h48": {"display": 64}},
-        "latestReset": {"occurredAt": "2026-09-12T08:09:17.000Z"},
+        "latestReset": {
+            "status": "completed",
+            "occurredAt": "2026-09-12T08:09:17.000Z",
+            "confirmedAt": "2026-09-12T08:20:00.000Z",
+        },
+        "recordFacts": {"latestConfirmedBroadResetAt": "2026-09-12T08:09:17.000Z"},
+    }
+
+
+def _announced_forecast_response():
+    return {
+        "calculatedAt": "2026-09-29T07:12:03.460Z",
+        "validUntil": "2026-09-29T07:57:03.460Z",
+        "publicationState": "announced",
+        "displayMode": "probability",
+        "answer": {
+            "state": "scheduled",
+            "headline": "Codex reset announced; time not given",
+            "secondLine": "Nothing has changed on your account yet. 41% within 48 hours. 23% within 24 hours.",
+        },
+        "probabilities": {"h24": {"display": 23}, "h48": {"display": 41}},
+        "latestReset": {
+            "status": "announced",
+            "occurredAt": None,
+            "confirmedAt": None,
+        },
+        "recordFacts": {"latestConfirmedBroadResetAt": "2026-09-26T17:15:02.442Z"},
+    }
+
+
+def _unavailable_forecast_response():
+    return {
+        "publicationState": "unavailable",
+        "answer": {
+            "state": "unavailable",
+            "headline": "Forecast unavailable",
+            "secondLine": "No current probability is available.",
+        },
+        "probabilities": None,
+        "latestReset": None,
     }
 
 
@@ -81,6 +125,22 @@ def test_fetch_forecast(mock_get):
     response.raise_for_status.assert_called_once_with()
     assert forecast.probabilities.h24.display == 39
     assert forecast.latest_reset.occurred_at.isoformat() == "2026-09-12T08:09:17+00:00"
+    assert forecast.latest_reset.confirmed_at.isoformat() == "2026-09-12T08:20:00+00:00"
+    assert forecast.answer.second_line == "39% within 24 hours."
+
+
+@patch("modules.codex_reset.requests.get")
+def test_fetch_forecast_accepts_announced_reset_without_occurred_at(mock_get):
+    response = MagicMock()
+    response.text = json.dumps(_announced_forecast_response())
+    mock_get.return_value = response
+
+    forecast = CodexResetService.fetch_forecast()
+
+    assert forecast.latest_reset.status == "announced"
+    assert forecast.latest_reset.occurred_at is None
+    assert forecast.answer.state == "scheduled"
+    assert CodexResetService.get_last_confirmed_reset_at(forecast).isoformat() == "2026-09-26T17:15:02.442000+00:00"
 
 
 @pytest.mark.parametrize("error", [requests.Timeout, requests.HTTPError])
@@ -131,21 +191,31 @@ def test_build_forecast_message_hides_unavailable_probability(stale):
 
 
 def test_build_forecast_message_handles_unavailable_snapshot():
-    data = _forecast_response()
-    data["calculatedAt"] = None
-    data["validUntil"] = None
-    data["probabilities"] = None
-    data["publicationState"] = "unavailable"
-    forecast = CodexResetForecastResponse.model_validate(data)
+    forecast = CodexResetForecastResponse.model_validate(_unavailable_forecast_response())
 
     message = CodexResetService.build_forecast_message(forecast)
 
     assert "• 24시간 이내 전체 초기화 확률 확인할 수 없음" in message
+    assert "• 마지막 전체 초기화 확인할 수 없음" in message
+    assert forecast.calculated_at is None
+    assert forecast.valid_until is None
+    assert forecast.display_mode is None
+    assert forecast.answer.state == "unavailable"
+
+
+def test_build_forecast_message_uses_confirmed_record_for_announced_reset():
+    forecast = CodexResetForecastResponse.model_validate(_announced_forecast_response())
+    now = datetime.fromisoformat("2026-09-29T07:30:00+00:00")
+
+    message = CodexResetService.build_forecast_message(forecast, now=now)
+
+    assert message == ("• 24시간 이내 전체 초기화 확률 23%\n• 마지막 전체 초기화 2026-09-27 02:15")
 
 
 def test_build_forecast_message_handles_missing_last_reset():
     data = _forecast_response()
     data["latestReset"] = None
+    data["recordFacts"] = None
     forecast = CodexResetForecastResponse.model_validate(data)
 
     message = CodexResetService.build_forecast_message(
@@ -154,6 +224,16 @@ def test_build_forecast_message_handles_missing_last_reset():
     )
 
     assert "• 마지막 전체 초기화 확인할 수 없음" in message
+
+
+def test_last_confirmed_reset_falls_back_to_occurred_at_without_record_facts():
+    data = _forecast_response()
+    data["recordFacts"] = None
+    forecast = CodexResetForecastResponse.model_validate(data)
+
+    last_reset_at = CodexResetService.get_last_confirmed_reset_at(forecast)
+
+    assert last_reset_at.isoformat() == "2026-09-12T08:09:17+00:00"
 
 
 @patch("modules.codex_reset.requests.get")

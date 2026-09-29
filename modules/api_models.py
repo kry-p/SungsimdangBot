@@ -192,21 +192,39 @@ class CodexResetProbabilities(BaseModel):
     h24: CodexResetProbabilityWindow
 
 
+class CodexResetAnswer(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    state: str = ""
+    headline: str = ""
+    second_line: str = Field(default="", alias="secondLine")
+
+
 class CodexResetLatestReset(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
-    occurred_at: datetime = Field(alias="occurredAt")
+    status: str = ""
+    occurred_at: datetime | None = Field(default=None, alias="occurredAt")
+    confirmed_at: datetime | None = Field(default=None, alias="confirmedAt")
+
+
+class CodexResetRecordFacts(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    latest_confirmed_broad_reset_at: datetime | None = Field(default=None, alias="latestConfirmedBroadResetAt")
 
 
 class CodexResetForecastResponse(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
-    calculated_at: datetime | None = Field(alias="calculatedAt")
-    valid_until: datetime | None = Field(alias="validUntil")
+    calculated_at: datetime | None = Field(default=None, alias="calculatedAt")
+    valid_until: datetime | None = Field(default=None, alias="validUntil")
     publication_state: str = Field(alias="publicationState")
-    display_mode: str = Field(alias="displayMode")
+    display_mode: str | None = Field(default=None, alias="displayMode")
+    answer: CodexResetAnswer | None = None
     probabilities: CodexResetProbabilities | None = None
     latest_reset: CodexResetLatestReset | None = Field(default=None, alias="latestReset")
+    record_facts: CodexResetRecordFacts | None = Field(default=None, alias="recordFacts")
 
 
 # --- Codex Reset History ---

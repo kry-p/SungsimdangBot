@@ -135,6 +135,7 @@ class TestCodexHandler:
         hub.codex_reset.fetch_forecast.return_value = forecast
         hub.codex_reset.build_forecast_message.return_value = "Codex forecast"
         hub.codex_reset.fetch_history.return_value = history
+        hub.codex_reset.get_last_confirmed_reset_at.return_value = last_reset_at
         hub.codex_reset.find_latest_active_notice.return_value = notice
         hub.codex_reset.build_active_notice_message.return_value = "Active notice\n\n"
         hub.codex_reset.find_latest_banked_update.return_value = banked_update
@@ -146,6 +147,7 @@ class TestCodexHandler:
         hub.codex_reset.fetch_forecast.assert_called_once_with()
         hub.codex_reset.build_forecast_message.assert_called_once_with(forecast)
         hub.codex_reset.fetch_history.assert_called_once_with()
+        hub.codex_reset.get_last_confirmed_reset_at.assert_called_once_with(forecast)
         hub.codex_reset.find_latest_active_notice.assert_called_once_with(history, last_reset_at)
         hub.codex_reset.build_active_notice_message.assert_called_once_with(notice)
         hub.codex_reset.find_latest_banked_update.assert_called_once_with(history)
