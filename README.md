@@ -58,6 +58,7 @@ modules/
   commute_manager.py         # 출퇴근 일정 명령과 남은 시간 응답 처리
   database.py                # peewee ORM 모델과 SQLite 초기화
   laftel.py                  # Laftel 편성표, 랭킹, 검색
+  polling.py                 # TeleBot 생성과 infinity polling 설정
   spotify.py                 # Spotify 곡 검색과 상세 카드
   migration.py               # JSON에서 SQLite로 일회성 마이그레이션
   random_based.py            # 선택봇, 동전 던지기, 러시안 룰렛, 마법의 소라고동
