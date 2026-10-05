@@ -231,12 +231,18 @@ GitHub Actions는 full commit SHA로 고정하며 Dependabot이 `development` �
 Selected branches and tags의 tag 규칙에 `v*.*.*`를 허용합니다. release tag commit의 `master` 포함 여부는 workflow가
 별도로 검증합니다. 운영 배포 secret은 가능한 이 Environment에 저장합니다.
 
-## 기여자
-
-- [@h1ghg3n](https://github.com/h1ghg3n) - 공동 개발
-
 ## FAQ
 
 Q. 봇은 어떻게 만드나요?
 
 먼저 텔레그램 계정이 있어야 합니다. [BotFather](https://t.me/BotFather)의 안내를 따르면 됩니다. 아이디가 `@BotFather`가 아닌 계정은 사칭이니 주의하세요.
+
+## 라이선스
+
+현재 이 프로젝트의 자체 코드는 GNU General Public License version 2 only
+(SPDX: GPL-2.0-only)로 제공됩니다. 전문은 [LICENSE](LICENSE)를 참고하세요.
+외부 라이브러리는 각각의 라이선스를 따릅니다.
+
+향후 GPL 계열 의존성을 제거한 뒤 프로젝트 라이선스를 변경할 계획입니다.
+최종 라이선스와 구현 방식은 추가 논의를 통해 결정합니다.
+진행 상황은 [관련 이슈](https://github.com/kry-p/SungsimdangBot/issues/116)를 참고하세요.
