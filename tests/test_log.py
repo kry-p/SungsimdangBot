@@ -1,3 +1,4 @@
+import logging
 from unittest.mock import patch
 
 from modules.log import Logger
@@ -46,3 +47,23 @@ class TestLogMethods:
         with patch.object(logger.logger, "error") as mock_error:
             logger.log_error("error message")
             mock_error.assert_called_once_with("error message")
+
+
+class TestExternalLogger:
+    def test_add_file_handler(self):
+        logger = Logger.__new__(Logger)
+        logger.timed_file_handler = logging.NullHandler()
+        target_logger = logging.Logger("external")
+
+        logger.add_file_handler_to(target_logger)
+        logger.add_file_handler_to(target_logger)
+
+        assert target_logger.handlers == [logger.timed_file_handler]
+
+    def test_missing_file_handler_is_ignored(self):
+        logger = Logger.__new__(Logger)
+        target_logger = logging.Logger("external")
+
+        logger.add_file_handler_to(target_logger)
+
+        assert target_logger.handlers == []

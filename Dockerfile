@@ -10,7 +10,7 @@ ENV PYTHONPATH=/app \
 ARG VERSION=0.0.0
 
 # 의존성 레이어 (pyproject.toml 변경 시에만 재빌드)
-COPY pyproject.toml .
+COPY pyproject.toml LICENSE ./
 RUN mkdir -p config modules resources bin && \
     touch config/__init__.py modules/__init__.py resources/__init__.py bin/__init__.py && \
     SETUPTOOLS_SCM_PRETEND_VERSION=${VERSION} pip install --no-cache-dir . && \
