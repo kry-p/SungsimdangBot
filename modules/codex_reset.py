@@ -1,5 +1,5 @@
 import re
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 from urllib.parse import urljoin
 from zoneinfo import ZoneInfo
 
