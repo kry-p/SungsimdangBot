@@ -1,7 +1,7 @@
 # 성심당봇
 
 <p>
-    <img src="https://img.shields.io/badge/Python%203.10%2B-%233776AB?style=flat-square&logo=python&logoColor=white"/>&nbsp
+    <img src="https://img.shields.io/badge/Python%203.11%2B-%233776AB?style=flat-square&logo=python&logoColor=white"/>&nbsp
     <img src="https://img.shields.io/badge/Telegram%20Bot-%2326A5E4?style=flat-square&logo=telegram&logoColor=white"/>&nbsp
 </p>
 
@@ -10,7 +10,7 @@
 
 ## 요구사항
 
-- Python 3.10 이상
+- Python 3.11 이상
 - Telegram Bot API 토큰
 - 선택 기능별 외부 API 토큰
 
@@ -190,7 +190,7 @@ CI는 GitHub Actions에서 `master`, `development`, 모든 PR에 대해 실행�
 
 | Job | 내용 |
 |-----|------|
-| `ci` | Python 3.10 + 3.14 matrix, ruff check, ruff format check, pytest coverage |
+| `ci` | Python 3.11 + 3.14 matrix, ruff check, ruff format check, pytest coverage |
 | `secrets` | gitleaks secret scan |
 
 CD는 GitHub Release publish 이벤트에서 실행됩니다.
