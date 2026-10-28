@@ -12,6 +12,32 @@ class TestLoggerInit:
         assert hasattr(logger, "logger")
         assert hasattr(logger, "stream_handler")
 
+    @patch("modules.log.Logger.create_directory", return_value=False)
+    def test_repeated_init_reuses_stream_handler_and_disables_propagation(self, _mock_create):
+        target_logger = logging.Logger("isolated-stream")
+        with patch("modules.log.logging.getLogger", return_value=target_logger):
+            first = Logger()
+            second = Logger()
+
+        assert first.stream_handler is second.stream_handler
+        assert len(target_logger.handlers) == 1
+        assert target_logger.propagate is False
+
+    def test_repeated_init_reuses_timed_file_handler(self):
+        target_logger = logging.Logger("isolated-file")
+        timed_handler = logging.NullHandler()
+        with (
+            patch("modules.log.logging.getLogger", return_value=target_logger),
+            patch("modules.log.Logger.create_directory", return_value=True),
+            patch("modules.log.logging.handlers.TimedRotatingFileHandler", return_value=timed_handler) as factory,
+        ):
+            first = Logger()
+            second = Logger()
+
+        assert first.timed_file_handler is second.timed_file_handler
+        assert factory.call_count == 1
+        assert len(target_logger.handlers) == 2
+
 
 class TestLoggerInitFallback:
     @patch("modules.log.Logger.create_directory", return_value=False)
@@ -47,6 +73,13 @@ class TestLogMethods:
         with patch.object(logger.logger, "error") as mock_error:
             logger.log_error("error message")
             mock_error.assert_called_once_with("error message")
+
+    @patch("modules.log.Logger.create_directory", return_value=False)
+    def test_log_exception(self, _mock_create):
+        logger = Logger()
+        with patch.object(logger.logger, "exception") as mock_exception:
+            logger.log_exception("exception message")
+            mock_exception.assert_called_once_with("exception message")
 
 
 class TestExternalLogger:

@@ -1,3 +1,4 @@
+import json
 import threading
 import time
 from unittest.mock import MagicMock, patch
@@ -90,18 +91,47 @@ class TestAsk:
 
     def test_allowlist_lookup_error(self):
         m = make_manager()
-        with patch.object(m, "is_chat_allowed", side_effect=Exception("database error")):
+        with (
+            patch.object(m, "is_chat_allowed", side_effect=Exception("database error")),
+            patch("modules.ai.chat.logger") as mock_logger,
+        ):
             result = m.ask(1, 1, "질문", "ko")
         assert result == [strings.ask_error_msg]
+        event = json.loads(mock_logger.log_exception.call_args.args[0])
+        assert event["event"] == "ai.ask.unexpected_failure"
+        assert event["stage"] == "manager"
+        assert event["exception_type"] == "Exception"
 
     @pytest.mark.parametrize("response", [None, "", " \n\t"])
     def test_invalid_provider_result(self, response):
         provider = make_provider_mock(response)
         m = make_manager(provider_mock=provider, allowlist={1: "test"})
-        with patch("modules.ai.chat.config") as mc:
+        with patch("modules.ai.chat.config") as mc, patch("modules.ai.chat.logger") as mock_logger:
             mc.AI_RATE_LIMIT = 5
             result = m.ask(1, 1, "질문", "ko")
         assert result == [strings.ask_error_msg]
+        event = json.loads(mock_logger.log_error.call_args.args[0])
+        assert event["event"] == "ai.ask.response_invalid"
+        assert event["result_type"] == type(response).__name__
+
+    def test_unexpected_provider_error_redacts_question(self):
+        question = "민감한 질문"
+        provider = make_provider_mock()
+        provider.ask.side_effect = RuntimeError(f"failed while processing {question} with sk-private-key")
+        m = make_manager(provider_mock=provider, allowlist={1: "test"})
+
+        with patch("modules.ai.chat.config") as mock_config, patch("modules.ai.chat.logger") as mock_logger:
+            mock_config.AI_RATE_LIMIT = 5
+            mock_config.OPENAI_API_KEY = "sk-private-key"
+            mock_config.GEMINI_API_KEY = ""
+            result = m.ask(1, 1, question, "ko")
+
+        assert result == [strings.ask_error_msg]
+        serialized = mock_logger.log_exception.call_args.args[0]
+        event = json.loads(serialized)
+        assert event["exception_type"] == "RuntimeError"
+        assert question not in serialized
+        assert "sk-private-key" not in serialized
 
     def test_context_included_in_prompt(self):
         provider = make_provider_mock()

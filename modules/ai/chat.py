@@ -4,6 +4,7 @@ import time
 
 from config import config
 from modules import log
+from modules.ai.diagnostics import build_diagnostic_event, sanitize_exception_message
 from modules.ai.providers.base import AIClientError, AIServerError
 from modules.ai.providers.gemini import DEFAULT_MODEL as GEMINI_DEFAULT_MODEL
 from modules.ai.providers.gemini import GeminiProvider
@@ -70,7 +71,15 @@ class AIChatManager:
             text = strings.ask_context_format.format(context=context, question=question) if context else question
             result = self.provider.ask(session_key, system_prompt, text, image)
             if not isinstance(result, str) or not result.strip():
-                logger.log_error("AI provider returned an empty response.")
+                logger.log_error(
+                    build_diagnostic_event(
+                        "ai.ask.response_invalid",
+                        strings.ask_provider_response_invalid_log_error_msg,
+                        provider=type(self.provider).__name__,
+                        model=getattr(self.provider, "model", None),
+                        result_type=type(result).__name__,
+                    )
+                )
                 return [strings.ask_error_msg]
             return self.split_response(result)
         except TimeoutError:
@@ -79,8 +88,21 @@ class AIChatManager:
             return [strings.ask_client_error_msg]
         except AIServerError:
             return [strings.ask_error_msg]
-        except Exception:
-            logger.log_error("Unexpected error in ask()")
+        except Exception as e:
+            logger.log_exception(
+                build_diagnostic_event(
+                    "ai.ask.unexpected_failure",
+                    strings.ask_unexpected_log_error_msg,
+                    stage="manager",
+                    provider=type(self.provider).__name__,
+                    model=getattr(self.provider, "model", None),
+                    exception_type=type(e).__name__,
+                    exception_message=sanitize_exception_message(
+                        e,
+                        (question, context, config.OPENAI_API_KEY, config.GEMINI_API_KEY),
+                    ),
+                )
+            )
             return [strings.ask_error_msg]
 
     def clear_session(self, chat_id, user_id):
