@@ -1,7 +1,7 @@
 # 성심당봇
 
 <p>
-    <img src="https://img.shields.io/badge/Python%203.10%2B-%233776AB?style=flat-square&logo=python&logoColor=white"/>&nbsp
+    <img src="https://img.shields.io/badge/Python%203.11%2B-%233776AB?style=flat-square&logo=python&logoColor=white"/>&nbsp
     <img src="https://img.shields.io/badge/Telegram%20Bot-%2326A5E4?style=flat-square&logo=telegram&logoColor=white"/>&nbsp
 </p>
 
