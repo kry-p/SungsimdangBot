@@ -25,7 +25,7 @@ class CodexResetService:
         forecast: CodexResetForecastResponse,
         now: datetime | None = None,
     ) -> str:
-        now = now or datetime.now(timezone.utc)
+        now = now or datetime.now(datetime.utc)
         probability = strings.codex_reset_probability_unavailable_msg
         if (
             forecast.probabilities is not None
