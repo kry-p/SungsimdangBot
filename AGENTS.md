@@ -178,7 +178,7 @@ docker rm -f sungsimdangbot
 ## CI/CD
 
 - CI는 GitHub Actions에서 `master`, `development`, 모든 PR에 대해 실행된다.
-- CI matrix는 Python 3.10과 3.14를 사용하며 `ruff check`, `ruff format --check`, pytest coverage를 실행한다.
+- CI matrix는 Python 3.11과 3.14를 사용하며 `ruff check`, `ruff format --check`, pytest coverage를 실행한다.
 - Workflow의 Action 참조는 full commit SHA로 고정하고 Dependabot으로 갱신한다.
 - CD는 GitHub Release publish 이벤트에서 실행된다.
 - release tag `vX.Y.Z`의 commit이 `master` 이력에 포함되는지 확인하고 version을 Docker build arg `VERSION`으로 전달한다.
