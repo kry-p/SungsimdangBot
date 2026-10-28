@@ -127,7 +127,7 @@ class TestCommuteHandler:
 class TestCodexHandler:
     def test_success_replies_with_forecast_notice_and_banked_update(self, hub):
         forecast = MagicMock()
-        last_reset_at = datetime.datetime(2026, 9, 12, tzinfo=datetime.timezone.utc)
+        last_reset_at = datetime.datetime(2026, 9, 12, tzinfo=datetime.utc)
         forecast.latest_reset.occurred_at = last_reset_at
         history = MagicMock()
         notice = MagicMock()
