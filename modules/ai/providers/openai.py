@@ -9,7 +9,7 @@ import openai as openai_sdk
 
 from config import config
 from modules import log
-from modules.ai.diagnostics import build_diagnostic_event, sanitize_exception_message
+from modules.ai.diagnostics import build_diagnostic_event, sanitize_exception_message, sanitize_traceback
 from modules.ai.providers.base import AIClientError, AIServerError
 from resources import strings
 
@@ -138,7 +138,7 @@ class OpenAIProvider:
             try:
                 response = self.client.responses.create(**kwargs)
             except openai_sdk.APITimeoutError as e:
-                logger.log_exception(
+                logger.log_error(
                     build_diagnostic_event(
                         "ai.openai.request_failed",
                         strings.ask_openai_request_failed_log_error_msg,
@@ -149,13 +149,14 @@ class OpenAIProvider:
                         elapsed_ms=round((time.perf_counter() - request_started_at) * 1000),
                         exception_type=type(e).__name__,
                         exception_message=sanitize_exception_message(e, sensitive_values),
+                        traceback=sanitize_traceback(e, sensitive_values),
                         **_api_error_diagnostics(e),
                     )
                 )
                 session.messages.pop()
                 raise TimeoutError("OpenAI API timeout") from e
             except openai_sdk.APIConnectionError as e:
-                logger.log_exception(
+                logger.log_error(
                     build_diagnostic_event(
                         "ai.openai.request_failed",
                         strings.ask_openai_request_failed_log_error_msg,
@@ -166,6 +167,7 @@ class OpenAIProvider:
                         elapsed_ms=round((time.perf_counter() - request_started_at) * 1000),
                         exception_type=type(e).__name__,
                         exception_message=sanitize_exception_message(e, sensitive_values),
+                        traceback=sanitize_traceback(e, sensitive_values),
                         **_api_error_diagnostics(e),
                     )
                 )
@@ -175,7 +177,7 @@ class OpenAIProvider:
                 error_category = "rate_limit" if e.status_code == 429 else "client_error"
                 if e.status_code >= 500:
                     error_category = "server_error"
-                logger.log_exception(
+                logger.log_error(
                     build_diagnostic_event(
                         "ai.openai.request_failed",
                         strings.ask_openai_request_failed_log_error_msg,
@@ -186,6 +188,7 @@ class OpenAIProvider:
                         elapsed_ms=round((time.perf_counter() - request_started_at) * 1000),
                         exception_type=type(e).__name__,
                         exception_message=sanitize_exception_message(e, sensitive_values),
+                        traceback=sanitize_traceback(e, sensitive_values),
                         **_api_error_diagnostics(e),
                     )
                 )
@@ -194,17 +197,18 @@ class OpenAIProvider:
                     raise AIClientError(str(e)) from e
                 raise AIServerError(str(e)) from e
             except Exception as e:
-                logger.log_exception(
+                logger.log_error(
                     build_diagnostic_event(
                         "ai.openai.request_failed",
                         strings.ask_openai_request_failed_log_error_msg,
                         operation_id=operation_id,
-                        stage="sdk_response_parse",
+                        stage="api_call",
                         model=self.model,
-                        error_category="sdk_response_parse",
+                        error_category="unexpected",
                         elapsed_ms=round((time.perf_counter() - request_started_at) * 1000),
                         exception_type=type(e).__name__,
                         exception_message=sanitize_exception_message(e, sensitive_values),
+                        traceback=sanitize_traceback(e, sensitive_values),
                         **_api_error_diagnostics(e),
                     )
                 )
@@ -216,7 +220,7 @@ class OpenAIProvider:
             try:
                 result = response.output_text
             except Exception as e:
-                logger.log_exception(
+                logger.log_error(
                     build_diagnostic_event(
                         "ai.openai.postprocess_failed",
                         strings.ask_openai_postprocess_failed_log_error_msg,
@@ -226,6 +230,7 @@ class OpenAIProvider:
                         elapsed_ms=round((time.perf_counter() - request_started_at) * 1000),
                         exception_type=type(e).__name__,
                         exception_message=sanitize_exception_message(e, sensitive_values),
+                        traceback=sanitize_traceback(e, sensitive_values),
                         **response_diagnostics,
                     )
                 )
@@ -250,7 +255,7 @@ class OpenAIProvider:
             try:
                 self._trim_history(session_key)
             except Exception as e:
-                logger.log_exception(
+                logger.log_error(
                     build_diagnostic_event(
                         "ai.openai.postprocess_failed",
                         strings.ask_openai_postprocess_failed_log_error_msg,
@@ -261,6 +266,7 @@ class OpenAIProvider:
                         output_char_count=len(result) if isinstance(result, str) else None,
                         exception_type=type(e).__name__,
                         exception_message=sanitize_exception_message(e, sensitive_values),
+                        traceback=sanitize_traceback(e, sensitive_values),
                         **response_diagnostics,
                     )
                 )

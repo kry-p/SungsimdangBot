@@ -68,7 +68,7 @@ class TestAsk:
         with patch("modules.ai.providers.openai.logger") as mock_logger, pytest.raises(AIClientError):
             p.ask((1, 1), "system", "질문")
 
-        event = parse_log_calls(mock_logger.log_exception)[0]
+        event = parse_log_calls(mock_logger.log_error)[0]
         assert event["stage"] == "api_call"
         assert event["error_category"] == "rate_limit"
         assert event["status_code"] == 429
@@ -94,7 +94,7 @@ class TestAsk:
         with patch("modules.ai.providers.openai.logger") as mock_logger, pytest.raises(AIServerError):
             p.ask((1, 1), "system", "질문")
 
-        event = parse_log_calls(mock_logger.log_exception)[0]
+        event = parse_log_calls(mock_logger.log_error)[0]
         assert event["stage"] == "api_call"
         assert event["error_category"] == "connection"
 
@@ -106,7 +106,7 @@ class TestAsk:
         with patch("modules.ai.providers.openai.logger") as mock_logger, pytest.raises(TimeoutError):
             p.ask((1, 1), "system", "질문")
 
-        event = parse_log_calls(mock_logger.log_exception)[0]
+        event = parse_log_calls(mock_logger.log_error)[0]
         assert event["stage"] == "api_call"
         assert event["error_category"] == "timeout"
 
@@ -150,7 +150,7 @@ class TestAsk:
         assert event["output_text_present"] is False
         assert event["response_id"] == "resp_empty"
 
-    def test_sdk_response_parsing_error_is_logged_without_sensitive_values(self):
+    def test_unexpected_sdk_error_is_logged_without_sensitive_values(self):
         p = make_provider()
         question = "비밀 질문"
         p.client.responses.create.side_effect = AttributeError(
@@ -160,11 +160,12 @@ class TestAsk:
         with patch("modules.ai.providers.openai.logger") as mock_logger, pytest.raises(AIServerError):
             p.ask((1, 1), "system", question)
 
-        serialized = mock_logger.log_exception.call_args.args[0]
+        serialized = mock_logger.log_error.call_args.args[0]
         event = json.loads(serialized)
-        assert event["stage"] == "sdk_response_parse"
-        assert event["error_category"] == "sdk_response_parse"
+        assert event["stage"] == "api_call"
+        assert event["error_category"] == "unexpected"
         assert event["exception_type"] == "AttributeError"
+        assert "Traceback (most recent call last)" in event["traceback"]
         assert question not in serialized
         assert "sk-test-secret" not in serialized
         assert "private-token" not in serialized
@@ -189,7 +190,7 @@ class TestAsk:
         with patch("modules.ai.providers.openai.logger") as mock_logger, pytest.raises(AIServerError):
             p.ask((1, 1), "system", "질문")
 
-        event = parse_log_calls(mock_logger.log_exception)[0]
+        event = parse_log_calls(mock_logger.log_error)[0]
         assert event["event"] == "ai.openai.postprocess_failed"
         assert event["stage"] == "response_extract"
         assert event["request_id"] == "req_broken"
@@ -203,7 +204,7 @@ class TestAsk:
         with patch("modules.ai.providers.openai.logger") as mock_logger, pytest.raises(AIServerError):
             p.ask((1, 1), "system", "질문")
 
-        event = parse_log_calls(mock_logger.log_exception)[0]
+        event = parse_log_calls(mock_logger.log_error)[0]
         assert event["event"] == "ai.openai.postprocess_failed"
         assert event["stage"] == "history_trim"
         assert len(p.sessions[(1, 1)].messages) == 2

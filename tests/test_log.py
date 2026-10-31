@@ -74,13 +74,6 @@ class TestLogMethods:
             logger.log_error("error message")
             mock_error.assert_called_once_with("error message")
 
-    @patch("modules.log.Logger.create_directory", return_value=False)
-    def test_log_exception(self, _mock_create):
-        logger = Logger()
-        with patch.object(logger.logger, "exception") as mock_exception:
-            logger.log_exception("exception message")
-            mock_exception.assert_called_once_with("exception message")
-
 
 class TestExternalLogger:
     def test_add_file_handler(self):

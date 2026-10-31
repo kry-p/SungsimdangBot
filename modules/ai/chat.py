@@ -4,7 +4,7 @@ import time
 
 from config import config
 from modules import log
-from modules.ai.diagnostics import build_diagnostic_event, sanitize_exception_message
+from modules.ai.diagnostics import build_diagnostic_event, sanitize_exception_message, sanitize_traceback
 from modules.ai.providers.base import AIClientError, AIServerError
 from modules.ai.providers.gemini import DEFAULT_MODEL as GEMINI_DEFAULT_MODEL
 from modules.ai.providers.gemini import GeminiProvider
@@ -89,7 +89,7 @@ class AIChatManager:
         except AIServerError:
             return [strings.ask_error_msg]
         except Exception as e:
-            logger.log_exception(
+            logger.log_error(
                 build_diagnostic_event(
                     "ai.ask.unexpected_failure",
                     strings.ask_unexpected_log_error_msg,
@@ -98,6 +98,10 @@ class AIChatManager:
                     model=getattr(self.provider, "model", None),
                     exception_type=type(e).__name__,
                     exception_message=sanitize_exception_message(
+                        e,
+                        (question, context, config.OPENAI_API_KEY, config.GEMINI_API_KEY),
+                    ),
+                    traceback=sanitize_traceback(
                         e,
                         (question, context, config.OPENAI_API_KEY, config.GEMINI_API_KEY),
                     ),

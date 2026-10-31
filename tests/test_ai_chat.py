@@ -97,7 +97,7 @@ class TestAsk:
         ):
             result = m.ask(1, 1, "질문", "ko")
         assert result == [strings.ask_error_msg]
-        event = json.loads(mock_logger.log_exception.call_args.args[0])
+        event = json.loads(mock_logger.log_error.call_args.args[0])
         assert event["event"] == "ai.ask.unexpected_failure"
         assert event["stage"] == "manager"
         assert event["exception_type"] == "Exception"
@@ -127,9 +127,10 @@ class TestAsk:
             result = m.ask(1, 1, question, "ko")
 
         assert result == [strings.ask_error_msg]
-        serialized = mock_logger.log_exception.call_args.args[0]
+        serialized = mock_logger.log_error.call_args.args[0]
         event = json.loads(serialized)
         assert event["exception_type"] == "RuntimeError"
+        assert "Traceback (most recent call last)" in event["traceback"]
         assert question not in serialized
         assert "sk-private-key" not in serialized
 

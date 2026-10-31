@@ -57,9 +57,6 @@ class Logger:
     def log_error(self, message):
         self.logger.error(message)
 
-    def log_exception(self, message):
-        self.logger.exception(message)
-
     def add_file_handler_to(self, target_logger):
         file_handler = getattr(self, "timed_file_handler", None)
         if file_handler is not None and file_handler not in target_logger.handlers:
