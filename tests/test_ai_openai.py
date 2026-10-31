@@ -1,3 +1,4 @@
+import json
 import threading
 import time
 from unittest.mock import MagicMock, patch
@@ -21,13 +22,33 @@ def make_provider(**kwargs):
     return p
 
 
+def parse_log_calls(mock_method):
+    return [json.loads(call.args[0]) for call in mock_method.call_args_list]
+
+
 class TestAsk:
     def test_normal_response(self):
         p = make_provider()
-        p.client.responses.create.return_value.output_text = "답변"
+        response = p.client.responses.create.return_value
+        response.output_text = "답변"
+        response.id = "resp_test"
+        response._request_id = "req_test"
+        response.status = "completed"
+        response.output = [MagicMock(type="message")]
 
-        result = p.ask((1, 1), "system", "질문")
+        with patch("modules.ai.providers.openai.logger") as mock_logger:
+            result = p.ask((1, 1), "system", "질문")
+
         assert result == "답변"
+        events = parse_log_calls(mock_logger.log_info)
+        assert [event["event"] for event in events] == [
+            "ai.openai.request_started",
+            "ai.openai.request_succeeded",
+        ]
+        assert events[1]["request_id"] == "req_test"
+        assert events[1]["response_id"] == "resp_test"
+        assert events[1]["output_item_types"] == ["message"]
+        assert "질문" not in mock_logger.log_info.call_args.args[0]
 
     def test_no_client_raises(self):
         p = make_provider(client=None)
@@ -38,11 +59,21 @@ class TestAsk:
         import openai
 
         p = make_provider()
+        error_response = MagicMock(status_code=429, headers={"x-request-id": "req_rate_limit"})
         p.client.responses.create.side_effect = openai.APIStatusError(
-            "error", response=MagicMock(status_code=429), body={}
+            "error",
+            response=error_response,
+            body={"error": {"type": "rate_limit_error", "code": "rate_limit_exceeded"}},
         )
-        with pytest.raises(AIClientError):
+        with patch("modules.ai.providers.openai.logger") as mock_logger, pytest.raises(AIClientError):
             p.ask((1, 1), "system", "질문")
+
+        event = parse_log_calls(mock_logger.log_error)[0]
+        assert event["stage"] == "api_call"
+        assert event["error_category"] == "rate_limit"
+        assert event["status_code"] == 429
+        assert event["error_type"] == "rate_limit_error"
+        assert event["error_code"] == "rate_limit_exceeded"
 
     def test_server_error_raises(self):
         import openai
@@ -54,13 +85,30 @@ class TestAsk:
         with pytest.raises(AIServerError):
             p.ask((1, 1), "system", "질문")
 
+    def test_connection_error_is_logged_and_raises(self):
+        import openai
+
+        p = make_provider()
+        p.client.responses.create.side_effect = openai.APIConnectionError(request=MagicMock())
+
+        with patch("modules.ai.providers.openai.logger") as mock_logger, pytest.raises(AIServerError):
+            p.ask((1, 1), "system", "질문")
+
+        event = parse_log_calls(mock_logger.log_error)[0]
+        assert event["stage"] == "api_call"
+        assert event["error_category"] == "connection"
+
     def test_timeout_raises(self):
         import openai
 
         p = make_provider()
         p.client.responses.create.side_effect = openai.APITimeoutError(request=MagicMock())
-        with pytest.raises(TimeoutError):
+        with patch("modules.ai.providers.openai.logger") as mock_logger, pytest.raises(TimeoutError):
             p.ask((1, 1), "system", "질문")
+
+        event = parse_log_calls(mock_logger.log_error)[0]
+        assert event["stage"] == "api_call"
+        assert event["error_category"] == "timeout"
 
     def test_with_image(self):
         p = make_provider()
@@ -84,13 +132,82 @@ class TestAsk:
 
     def test_empty_output_text_raises_and_clears_user_message(self):
         p = make_provider()
-        p.client.responses.create.return_value.output_text = None
+        response = p.client.responses.create.return_value
+        response.output_text = None
+        response.id = "resp_empty"
+        response._request_id = "req_empty"
+        response.status = "completed"
+        response.output = [MagicMock(type="reasoning")]
 
-        with pytest.raises(AIServerError):
+        with patch("modules.ai.providers.openai.logger") as mock_logger, pytest.raises(AIServerError):
             p.ask((1, 1), "system", "질문")
 
         session = p.sessions.get((1, 1))
         assert session is None or len(session.messages) == 0
+        event = parse_log_calls(mock_logger.log_error)[0]
+        assert event["event"] == "ai.openai.response_invalid"
+        assert event["stage"] == "response_extract"
+        assert event["output_text_present"] is False
+        assert event["response_id"] == "resp_empty"
+
+    def test_unexpected_sdk_error_is_logged_without_sensitive_values(self):
+        p = make_provider()
+        question = "비밀 질문"
+        p.client.responses.create.side_effect = AttributeError(
+            f"{question}: typing.Union failed with sk-test-secret and Bearer private-token"
+        )
+
+        with patch("modules.ai.providers.openai.logger") as mock_logger, pytest.raises(AIServerError):
+            p.ask((1, 1), "system", question)
+
+        serialized = mock_logger.log_error.call_args.args[0]
+        event = json.loads(serialized)
+        assert event["stage"] == "api_call"
+        assert event["error_category"] == "unexpected"
+        assert event["exception_type"] == "AttributeError"
+        assert "Traceback (most recent call last)" in event["traceback"]
+        assert question not in serialized
+        assert "sk-test-secret" not in serialized
+        assert "private-token" not in serialized
+        assert p.sessions[(1, 1)].messages == []
+
+    def test_output_text_accessor_error_is_logged(self):
+        class BrokenResponse:
+            id = "resp_broken"
+            _request_id = "req_broken"
+            status = "completed"
+            output = []
+            error = None
+            incomplete_details = None
+
+            @property
+            def output_text(self):
+                raise ValueError("output accessor failed")
+
+        p = make_provider()
+        p.client.responses.create.return_value = BrokenResponse()
+
+        with patch("modules.ai.providers.openai.logger") as mock_logger, pytest.raises(AIServerError):
+            p.ask((1, 1), "system", "질문")
+
+        event = parse_log_calls(mock_logger.log_error)[0]
+        assert event["event"] == "ai.openai.postprocess_failed"
+        assert event["stage"] == "response_extract"
+        assert event["request_id"] == "req_broken"
+        assert len(p.sessions[(1, 1)].messages) == 1
+
+    def test_history_trim_error_is_logged(self):
+        p = make_provider()
+        p.client.responses.create.return_value.output_text = "답변"
+        p._trim_history = MagicMock(side_effect=RuntimeError("trim failed"))
+
+        with patch("modules.ai.providers.openai.logger") as mock_logger, pytest.raises(AIServerError):
+            p.ask((1, 1), "system", "질문")
+
+        event = parse_log_calls(mock_logger.log_error)[0]
+        assert event["event"] == "ai.openai.postprocess_failed"
+        assert event["stage"] == "history_trim"
+        assert len(p.sessions[(1, 1)].messages) == 2
 
     def test_search_disabled_no_tool(self):
         p = make_provider(search_enabled=False)

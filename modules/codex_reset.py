@@ -1,5 +1,5 @@
 import re
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from urllib.parse import urljoin
 from zoneinfo import ZoneInfo
 
@@ -25,7 +25,7 @@ class CodexResetService:
         forecast: CodexResetForecastResponse,
         now: datetime | None = None,
     ) -> str:
-        now = now or datetime.now(timezone.utc)
+        now = now or datetime.now(UTC)
         probability = strings.codex_reset_probability_unavailable_msg
         if (
             forecast.probabilities is not None
