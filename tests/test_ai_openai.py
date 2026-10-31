@@ -3,6 +3,8 @@ import threading
 import time
 from unittest.mock import MagicMock, patch
 
+import httpx
+import openai
 import pytest
 
 from modules.ai.providers.base import AIClientError, AIServerError
@@ -24,6 +26,55 @@ def make_provider(**kwargs):
 
 def parse_log_calls(mock_method):
     return [json.loads(call.args[0]) for call in mock_method.call_args_list]
+
+
+class TestSDKResponseParsing:
+    @pytest.mark.parametrize("search_enabled", [False, True])
+    def test_parses_response_through_real_sdk(self, search_enabled):
+        output = [
+            {
+                "id": "msg_test",
+                "type": "message",
+                "role": "assistant",
+                "status": "completed",
+                "content": [{"type": "output_text", "text": "답변", "annotations": []}],
+            }
+        ]
+        if search_enabled:
+            # Missing search details exercise the SDK's permissive union parsing.
+            output.insert(
+                0,
+                {
+                    "id": "ws_test",
+                    "type": "web_search_call",
+                    "status": "completed",
+                    "action": {"type": "search"},
+                },
+            )
+
+        def respond(request):
+            assert request.url.path == "/v1/responses"
+            return httpx.Response(
+                200,
+                headers={"x-request-id": "req_test"},
+                json={
+                    "id": "resp_test",
+                    "object": "response",
+                    "created_at": 0,
+                    "status": "completed",
+                    "model": "gpt-4o",
+                    "output": output,
+                },
+            )
+
+        with openai.OpenAI(
+            api_key="test-key",
+            base_url="https://openai.test/v1",
+            http_client=httpx.Client(transport=httpx.MockTransport(respond)),
+        ) as client:
+            provider = make_provider(client=client, search_enabled=search_enabled)
+            assert provider.ask((1, 1), "system", "질문") == "답변"
+            assert provider.sessions[(1, 1)].messages[-1] == {"role": "assistant", "content": "답변"}
 
 
 class TestAsk:
