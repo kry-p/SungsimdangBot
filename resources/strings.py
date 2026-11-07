@@ -130,6 +130,7 @@ commute_schedule_empty_msg = "• 없음"
 commute_schedule_item_msg = "• {weekday} {start_time}~{end_time}"
 commute_command_error_msg = "출퇴근 일정 관리 명령어가 올바르지 않습니다.\n/commute에서 사용법을 확인해 주세요."
 commute_set_error_msg = "일정 등록 형식이 올바르지 않습니다.\n/commute에서 다시 시도해 주세요."
+commute_overlap_error_msg = "기존 출퇴근 일정과 시간이 겹칩니다.\n/commute에서 등록된 일정을 확인해 주세요."
 commute_delete_error_msg = "삭제할 요일 형식이 올바르지 않습니다.\n/commute에서 다시 시도해 주세요."
 
 commute_set_success_msg = "{count}개 요일의 출퇴근 일정을 등록했습니다."
