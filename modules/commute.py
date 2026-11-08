@@ -17,10 +17,15 @@ VALIDATION_ERROR_MESSAGES = {
     "invalid_weekday": "invalid weekday",
     "empty_weekday": "weekday cannot be empty",
     "same_start_and_end": "start and end time must be different",
+    "overlapping_schedule": "commute schedules must not overlap",
     "negative_minutes": "minutes cannot be negative",
 }
 
 WEEKDAY_MAP = {name: index for index, name in enumerate(strings.commute_weekday_names)}
+
+
+class ScheduleOverlapError(ValueError):
+    """A commute schedule overlaps another schedule for the same user."""
 
 
 def parse_time_to_minutes(time_text):
@@ -65,6 +70,19 @@ def parse_weekdays(value):
     return weekdays
 
 
+def _schedule_intervals(weekday, start_time_minutes, end_time_minutes):
+    """Return half-open minute intervals within a repeating week."""
+    start = weekday * MINUTES_PER_DAY + start_time_minutes
+    end = weekday * MINUTES_PER_DAY + end_time_minutes
+    if end_time_minutes < start_time_minutes:
+        end += MINUTES_PER_DAY
+
+    if end > MINUTES_PER_WEEK:
+        return ((start, MINUTES_PER_WEEK), (0, end - MINUTES_PER_WEEK))
+
+    return ((start, end),)
+
+
 def save_schedule(user_id, weekday_text, start_time_text, end_time_text):
     weekdays = parse_weekdays(weekday_text)
     start_time_minutes = parse_time_to_minutes(start_time_text)
@@ -73,7 +91,27 @@ def save_schedule(user_id, weekday_text, start_time_text, end_time_text):
     if start_time_minutes == end_time_minutes:
         raise ValueError(VALIDATION_ERROR_MESSAGES["same_start_and_end"])
 
-    with db.atomic():
+    # Acquire the write lock before reading so concurrent registrations validate
+    # against the latest committed schedules.
+    with db.atomic("IMMEDIATE"):
+        intervals = [
+            interval
+            for schedule in get_schedules(user_id)
+            if schedule.weekday not in weekdays
+            for interval in _schedule_intervals(
+                schedule.weekday, schedule.start_time_minutes, schedule.end_time_minutes
+            )
+        ]
+        for weekday in weekdays:
+            new_intervals = _schedule_intervals(weekday, start_time_minutes, end_time_minutes)
+            if any(
+                start < existing_end and existing_start < end
+                for start, end in new_intervals
+                for existing_start, existing_end in intervals
+            ):
+                raise ScheduleOverlapError(VALIDATION_ERROR_MESSAGES["overlapping_schedule"])
+            intervals.extend(new_intervals)
+
         for weekday in weekdays:
             CommuteSchedule.replace(
                 user_id=user_id,
