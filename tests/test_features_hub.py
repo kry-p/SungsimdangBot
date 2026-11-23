@@ -331,8 +331,12 @@ class TestAskHandler:
         msg.from_user.language_code = "ko"
         hub.ask_handler(msg)
         hub.ai_chat.ask.assert_called_once_with(1, 1, "질문", "ko", None, None)
-        hub.bot.reply_to.assert_called_once_with(msg, strings.ask_waiting_msg)
-        hub.bot.edit_message_text.assert_called_once_with("답변입니다", 1, 999, entities=[])
+        assert hub.bot.method_calls == [
+            call.reply_to(msg, strings.ask_waiting_msg),
+            call.delete_message(1, 999),
+            call.reply_to(msg, "답변입니다", entities=[]),
+        ]
+        hub.bot.edit_message_text.assert_not_called()
         hub.bot.send_chat_action.assert_not_called()
 
     def test_reply_with_context(self, hub):
@@ -428,19 +432,23 @@ class TestAskHandler:
         msg = make_message("/ask 질문", user_id=1)
         msg.from_user.language_code = "ko"
         hub.ask_handler(msg)
-        hub.bot.reply_to.assert_called_once_with(msg, strings.ask_waiting_msg)
-        call_kwargs = hub.bot.edit_message_text.call_args
+        hub.bot.delete_message.assert_called_once_with(1, 999)
+        call_kwargs = hub.bot.reply_to.call_args_list[1]
         assert "entities" in call_kwargs.kwargs
         entities = call_kwargs.kwargs["entities"]
         assert len(entities) > 0
+        hub.bot.edit_message_text.assert_not_called()
 
     def test_not_allowed(self, hub):
         hub.ai_chat.ask.return_value = [strings.ask_not_allowed_msg]
         msg = make_message("/ask 질문", user_id=1)
         msg.from_user.language_code = "ko"
         hub.ask_handler(msg)
-        hub.bot.reply_to.assert_called_once_with(msg, strings.ask_waiting_msg)
-        hub.bot.edit_message_text.assert_called_once_with(strings.ask_not_allowed_msg, 1, 999, entities=[])
+        assert hub.bot.reply_to.call_args_list == [
+            call(msg, strings.ask_waiting_msg),
+            call(msg, strings.ask_not_allowed_msg, entities=[]),
+        ]
+        hub.bot.delete_message.assert_called_once_with(1, 999)
 
     @patch("modules.features_hub.convert", side_effect=Exception("parse error"))
     def test_convert_failure_fallback(self, mock_convert, hub):
@@ -448,10 +456,13 @@ class TestAskHandler:
         msg = make_message("/ask 질문", user_id=1)
         msg.from_user.language_code = "ko"
         hub.ask_handler(msg)
-        hub.bot.reply_to.assert_called_once_with(msg, strings.ask_waiting_msg)
-        hub.bot.edit_message_text.assert_called_once_with("plain text response", 1, 999)
+        assert hub.bot.reply_to.call_args_list == [
+            call(msg, strings.ask_waiting_msg),
+            call(msg, "plain text response"),
+        ]
+        hub.bot.delete_message.assert_called_once_with(1, 999)
 
-    def test_multiple_response_chunks_edit_waiting_message_then_send_replies(self, hub):
+    def test_multiple_response_chunks_are_sent_as_new_replies(self, hub):
         hub.ai_chat.ask.return_value = ["첫 번째", "두 번째"]
         msg = make_message("/ask 긴 질문", user_id=1)
         msg.from_user.language_code = "ko"
@@ -460,44 +471,25 @@ class TestAskHandler:
 
         assert hub.bot.reply_to.call_args_list == [
             call(msg, strings.ask_waiting_msg),
+            call(msg, "첫 번째", entities=[]),
             call(msg, "두 번째", entities=[]),
         ]
-        hub.bot.edit_message_text.assert_called_once_with("첫 번째", 1, 999, entities=[])
-
-    def test_edit_failure_sends_final_answer_as_new_reply(self, hub):
-        hub.ai_chat.ask.return_value = ["**답변입니다**"]
-        hub.bot.edit_message_text.side_effect = Exception("edit failed")
-        msg = make_message("/ask 질문", user_id=1)
-        msg.from_user.language_code = "ko"
-
-        hub.ask_handler(msg)
-
-        assert hub.bot.reply_to.call_args_list == [
-            call(msg, strings.ask_waiting_msg),
-            call(msg, "**답변입니다**"),
-        ]
-        assert hub.bot.edit_message_text.call_count == 2
         hub.bot.delete_message.assert_called_once_with(1, 999)
+        hub.bot.edit_message_text.assert_not_called()
 
-    def test_formatted_edit_failure_preserves_link_in_plain_text(self, hub):
-        hub.ai_chat.ask.return_value = ["[공식 문서](https://example.com/docs)"]
-        hub.bot.edit_message_text.side_effect = [Exception("formatted edit failed"), None]
+    def test_ai_failure_still_deletes_waiting_message(self, hub):
+        hub.ai_chat.ask.side_effect = RuntimeError("AI failed")
         msg = make_message("/ask 질문", user_id=1)
         msg.from_user.language_code = "ko"
 
-        hub.ask_handler(msg)
+        with pytest.raises(RuntimeError, match="AI failed"):
+            hub.ask_handler(msg)
 
-        assert hub.bot.edit_message_text.call_count == 2
-        first_edit, second_edit = hub.bot.edit_message_text.call_args_list
-        assert first_edit.args[:3] == ("공식 문서", 1, 999)
-        assert first_edit.kwargs["entities"]
-        assert second_edit == call("[공식 문서](https://example.com/docs)", 1, 999)
+        hub.bot.delete_message.assert_called_once_with(1, 999)
         hub.bot.reply_to.assert_called_once_with(msg, strings.ask_waiting_msg)
-        hub.bot.delete_message.assert_not_called()
 
-    def test_delete_failure_does_not_interrupt_fallback_reply(self, hub):
+    def test_delete_failure_does_not_interrupt_final_reply(self, hub):
         hub.ai_chat.ask.return_value = ["답변입니다"]
-        hub.bot.edit_message_text.side_effect = Exception("edit failed")
         hub.bot.delete_message.side_effect = Exception("delete failed")
         msg = make_message("/ask 질문", user_id=1)
         msg.from_user.language_code = "ko"
@@ -506,8 +498,24 @@ class TestAskHandler:
 
         assert hub.bot.reply_to.call_args_list == [
             call(msg, strings.ask_waiting_msg),
-            call(msg, "답변입니다"),
+            call(msg, "답변입니다", entities=[]),
         ]
+        hub.bot.delete_message.assert_called_once_with(1, 999)
+
+    @patch("modules.features_hub.convert", side_effect=lambda text: (text, []))
+    def test_utf16_oversized_response_is_split_into_new_replies(self, _mock_convert, hub):
+        response = "😀" * 3000
+        hub.ai_chat.ask.return_value = [response]
+        msg = make_message("/ask 긴 답변", user_id=1)
+        msg.from_user.language_code = "ko"
+
+        hub.ask_handler(msg)
+
+        answer_calls = hub.bot.reply_to.call_args_list[1:]
+        answer_parts = [item.args[1] for item in answer_calls]
+        assert "".join(answer_parts) == response
+        assert len(answer_parts) > 1
+        assert all(len(part.encode("utf-16-le")) // 2 <= 4090 for part in answer_parts)
         hub.bot.delete_message.assert_called_once_with(1, 999)
 
     def test_formatted_follow_up_failure_retries_as_plain_text(self, hub):
@@ -535,18 +543,15 @@ class TestAskHandler:
             ("C", [entity]),
             ("D", [entity]),
         ]
-        hub.bot.reply_to.side_effect = [None, Exception("formatted send failed"), None, None]
-        waiting_message = MagicMock()
-        waiting_message.chat.id = 1
-        waiting_message.message_id = 999
+        hub.bot.reply_to.side_effect = [None, Exception("formatted send failed"), None, None, None]
         msg = make_message("/ask 질문", user_id=1)
 
-        hub._reply_markdown(msg, "ABCD", waiting_message)
+        hub._reply_markdown(msg, "ABCD")
 
-        hub.bot.edit_message_text.assert_called_once_with("A", 1, 999, entities=[{"type": "bold"}])
         assert hub.bot.reply_to.call_args_list == [
+            call(msg, "A", entities=[{"type": "bold"}]),
             call(msg, "B", entities=[{"type": "bold"}]),
-            call(msg, "C", entities=[{"type": "bold"}]),
+            call(msg, "B"),
             call(msg, "C"),
             call(msg, "D"),
         ]
