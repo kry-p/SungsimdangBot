@@ -3,6 +3,7 @@ import datetime
 from config import config
 from modules.commute import (
     MINUTES_PER_HOUR,
+    ScheduleOverlapError,
     delete_all_schedules,
     delete_schedules,
     find_active_schedule,
@@ -115,6 +116,9 @@ class CommuteManager:
                 start_time_text,
                 end_time_text,
             )
+        except ScheduleOverlapError:
+            self.bot.reply_to(message, strings.commute_overlap_error_msg)
+            return
         except ValueError:
             self.bot.reply_to(message, strings.commute_set_error_msg)
             return

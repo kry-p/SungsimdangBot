@@ -88,6 +88,18 @@ class TestCommuteCommands:
         assert manager._build_schedule_text(123) == strings.commute_schedule_empty_msg
         bot.reply_to.assert_called_once_with(message, strings.commute_set_error_msg)
 
+    def test_overlapping_register_command_shows_error_and_preserves_schedule(self):
+        save_schedule(123, "일", "22:00", "06:00")
+        save_schedule(123, "월", "06:00", "14:00")
+        bot = MagicMock()
+        manager = CommuteManager(bot)
+        message = make_message("/commute 등록 월 05:00 14:00", user_id=123)
+
+        manager.handle_command(message)
+
+        bot.reply_to.assert_called_once_with(message, strings.commute_overlap_error_msg)
+        assert manager._build_schedule_text(123) == "• 월 06:00~14:00\n• 일 22:00~06:00"
+
     def test_deletes_selected_schedules(self):
         save_schedule(123, "월화수", "09:00", "18:00")
         bot = MagicMock()

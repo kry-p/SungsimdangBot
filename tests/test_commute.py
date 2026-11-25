@@ -1,6 +1,10 @@
+from concurrent.futures import ThreadPoolExecutor
+from threading import Barrier
+
 import pytest
 
 from modules.commute import (
+    ScheduleOverlapError,
     delete_all_schedules,
     delete_schedules,
     find_active_schedule,
@@ -14,7 +18,7 @@ from modules.commute import (
     parse_weekdays,
     save_schedule,
 )
-from modules.database import CommuteSchedule
+from modules.database import CommuteSchedule, db
 
 
 class TestParseTime:
@@ -125,6 +129,128 @@ class TestSaveSchedule:
         assert schedules[0].weekday == 0
         assert schedules[0].start_time_minutes == 9 * 60
         assert schedules[0].end_time_minutes == 18 * 60
+
+
+class TestScheduleOverlap:
+    @pytest.mark.parametrize("reverse_order", (False, True))
+    @pytest.mark.parametrize(
+        "first, second",
+        (
+            (("월", "22:00", "06:00"), ("화", "05:00", "14:00")),
+            (("일", "22:00", "06:00"), ("월", "05:00", "14:00")),
+            (("월", "09:00", "18:00"), ("일", "22:00", "10:00")),
+            (("월", "23:00", "02:00"), ("화", "01:00", "00:00")),
+            (("월", "00:00", "24:00"), ("일", "23:00", "01:00")),
+        ),
+    )
+    def test_rejects_overlap_in_either_registration_order(self, first, second, reverse_order):
+        if reverse_order:
+            first, second = second, first
+        save_schedule(123, *first)
+
+        with pytest.raises(ScheduleOverlapError):
+            save_schedule(123, *second)
+
+        assert len(get_schedules(123)) == 1
+
+    @pytest.mark.parametrize("reverse_order", (False, True))
+    @pytest.mark.parametrize(
+        "first, second",
+        (
+            (("월", "22:00", "06:00"), ("화", "06:00", "14:00")),
+            (("일", "22:00", "06:00"), ("월", "06:00", "14:00")),
+            (("월", "20:00", "00:00"), ("화", "00:00", "09:00")),
+            (("일", "20:00", "00:00"), ("월", "00:00", "09:00")),
+            (("월", "00:00", "24:00"), ("화", "00:00", "24:00")),
+            (("일", "00:00", "24:00"), ("월", "00:00", "24:00")),
+        ),
+    )
+    def test_allows_touching_boundaries(self, first, second, reverse_order):
+        if reverse_order:
+            first, second = second, first
+
+        save_schedule(123, *first)
+        save_schedule(123, *second)
+
+        assert len(get_schedules(123)) == 2
+
+    def test_ignores_other_users_schedules(self):
+        save_schedule(123, "일", "22:00", "06:00")
+
+        assert save_schedule(456, "월", "05:00", "14:00") == 1
+
+    def test_rejected_update_preserves_existing_schedule(self):
+        save_schedule(123, "월", "22:00", "06:00")
+        save_schedule(123, "화", "06:00", "14:00")
+
+        with pytest.raises(ScheduleOverlapError):
+            save_schedule(123, "화", "05:00", "14:00")
+
+        assert get_schedules(123)[1].start_time_minutes == 6 * 60
+
+    def test_rejects_entire_batch_without_replacing_or_adding_schedules(self):
+        save_schedule(123, "월", "09:00", "18:00")
+        save_schedule(123, "수", "00:00", "09:00")
+
+        with pytest.raises(ScheduleOverlapError):
+            save_schedule(123, "월화", "22:00", "06:00")
+
+        schedules = get_schedules(123)
+        assert [(s.weekday, s.start_time_minutes, s.end_time_minutes) for s in schedules] == [
+            (0, 9 * 60, 18 * 60),
+            (2, 0, 9 * 60),
+        ]
+
+    @pytest.mark.parametrize("weekdays", ("월화", "화월"))
+    def test_excludes_all_replaced_weekdays_before_validating_batch(self, weekdays):
+        save_schedule(123, "월", "22:00", "06:00")
+        save_schedule(123, "화", "06:00", "14:00")
+
+        assert save_schedule(123, weekdays, "05:00", "14:00") == 2
+
+        assert [(s.start_time_minutes, s.end_time_minutes) for s in get_schedules(123)] == [
+            (5 * 60, 14 * 60),
+            (5 * 60, 14 * 60),
+        ]
+
+    @pytest.mark.parametrize("start, end", (("22:00", "06:00"), ("00:00", "24:00")))
+    def test_accepts_full_week_batch(self, start, end):
+        assert save_schedule(123, "월화수목금토일", start, end) == 7
+        assert len(get_schedules(123)) == 7
+
+    def test_leaves_unrelated_legacy_overlaps_unchanged(self):
+        CommuteSchedule.create(user_id=123, weekday=0, start_time_minutes=22 * 60, end_time_minutes=6 * 60)
+        CommuteSchedule.create(user_id=123, weekday=1, start_time_minutes=5 * 60, end_time_minutes=14 * 60)
+
+        assert save_schedule(123, "금", "09:00", "18:00") == 1
+
+        assert [(s.weekday, s.start_time_minutes, s.end_time_minutes) for s in get_schedules(123)] == [
+            (0, 22 * 60, 6 * 60),
+            (1, 5 * 60, 14 * 60),
+            (4, 9 * 60, 18 * 60),
+        ]
+
+    @pytest.mark.parametrize("journal_mode", ("delete", "wal"))
+    def test_concurrent_conflicting_registrations_only_save_one_schedule(self, journal_mode):
+        db.pragma("journal_mode", journal_mode)
+        ready = Barrier(2, timeout=5)
+
+        def register(weekday, start, end):
+            with db.connection_context():
+                ready.wait()
+                try:
+                    save_schedule(123, weekday, start, end)
+                except ScheduleOverlapError:
+                    return "overlap"
+                return "saved"
+
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            first = executor.submit(register, "일", "22:00", "06:00")
+            second = executor.submit(register, "월", "05:00", "14:00")
+            results = [first.result(timeout=10), second.result(timeout=10)]
+
+        assert sorted(results) == ["overlap", "saved"]
+        assert len(get_schedules(123)) == 1
 
 
 class TestGetSchedules:
